@@ -1,0 +1,11 @@
+node_modules
+.output
+.tanstack
+.vscode
+.husky
+playwright-report
+e2e
+*.log
+.env
+.env.local
+.DS_Store

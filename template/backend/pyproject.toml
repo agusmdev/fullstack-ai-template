@@ -1,0 +1,176 @@
+[project]
+name = "backend-template"
+version = "0.1.0"
+description = "Generic FastAPI backend template with async SQLAlchemy"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "sentry-sdk[fastapi]>=2.14.0",
+    "fastapi>=0.115.0",
+    "pydantic[email]>=2.9.2",
+    "sqlalchemy>=2.0.35",
+    "asyncpg>=0.29.0",
+    "aiosqlite>=0.20.0",
+    "psycopg2-binary>=2.9.9",
+    "uvicorn>=0.31.0",
+    "pydantic-settings>=2.5.2",
+    "requests>=2.32.3",
+    "fastapi-filter>=2.0.0",
+    "fastapi-pagination>=0.12.27",
+    "boto3>=1.35.29",
+    "python-multipart>=0.0.11",
+    "pymupdf>=1.25.1",
+    "alembic>=1.14.0",
+    "alembic-postgresql-enum>=1.5.0",
+    "loguru>=0.7.3",
+    "pdfplumber>=0.11.5",
+    "genson>=1.3.0",
+    "datamodel-code-generator>=0.28.1",
+    "openpyxl>=3.1.5",
+    "discord-webhook>=1.4.1",
+    "pdf2image>=1.17.0",
+    "google-genai>=1.37.0",
+    "instructor>=1.11.3",
+    "argon2-cffi>=25.1.0",
+    "requests-oauthlib>=2.0.0",
+    "fastapi-limiter>=0.1.6",
+    "redis>=6.4.0",
+    "pypdf>=6.1.3",
+    "deepdiff>=8.6.1",
+    "pandas>=2.3.3",
+]
+
+[dependency-groups]
+dev = [
+    "alembic>=1.14.0",
+    "alembic-postgresql-enum>=1.5.0",
+    "greenlet>=3.0.0",
+    "jupyterlab>=4.3.5",
+    "pre-commit>=4.0.1",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "testcontainers[postgres]>=4.0.0",
+    "httpx>=0.27.0",
+    "ruff>=0.9.1",
+    "types-redis>=4.6.0.20241004",
+    "types-requests>=2.32.0.20250401",
+    "types-boto3>=1.37.0",
+]
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "UP",  # pyupgrade
+    "TCH",  # type-checking
+    "PYI",  # pyi
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "F821", # undefined name
+]
+
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".ty_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*__init__*",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+omit = [
+    "*__init__*",
+    ".venv/*",
+    "tests/*",
+    "app/core/db*", # This should be an external package
+    "notebooks/*",
+]
+exclude_lines = [
+    "if __name__ == .__main__.:"
+]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+exclude = [
+    "**/migrations/**",
+    "**/__pycache__/**",
+]
+
+[tool.ty.rules]
+unresolved-import = "warn"
+
+[tool.ty.analysis]
+respect-type-ignore-comments = true
+allowed-unresolved-imports = [
+    "fastapi_filter.**",
+    "fastapi_pagination.**",
+    "pdfplumber.**",
+    "genson.**",
+    "datamodel_code_generator.**",
+    "discord_webhook.**",
+    "boto3.**",
+    "instructor.**",
+    "argon2_cffi.**",
+]
+
+[tool.pylint]
+disable = [
+    "C0116",  # Missing function or method docstring
+    "C0115",  # Missing class docstring
+    "C0114",  # Missing module docstring
+    "R0903",  # Too few public methods
+    "R0902",  # Too many instance attributes
+    "R0913",  # Too many arguments
+    "R0914",  # Too many local variables
+    "R0915",  # Too many statements
+]

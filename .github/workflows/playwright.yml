@@ -1,0 +1,78 @@
+name: Playwright E2E Tests
+
+on:
+  workflow_dispatch:  # Allow manual trigger
+  schedule:
+    # Run nightly at 2 AM UTC (9 PM EST previous day)
+    - cron: '0 2 * * *'
+  push:
+    branches: [main]
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: template
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin uv" >> $GITHUB_PATH
+
+      - name: Start backend and database
+        run: |
+          cd backend
+          uv sync
+          uv run alembic upgrade head
+          docker compose up -d db backend
+        env:
+          DATABASE_URL: postgresql://app:app@localhost:5432/app
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install bun
+        run: |
+          curl -fsSL https://bun.sh/install.sh | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          bun install
+
+      - name: Install Playwright
+        run: |
+          cd frontend
+          bunx -y playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: |
+          cd frontend
+          bunx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: template/frontend/playwright-report/
+          retention-days: 30
+
+      - name: Stop services
+        if: always()
+        run: |
+          cd template
+          docker compose down
