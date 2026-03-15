@@ -10,7 +10,6 @@ from app.core.logging.context import (
     WideEventContext,
     add_entity_to_context,
     clear_wide_event_context,
-    ensure_wide_event_context,
     get_wide_event_context,
     set_wide_event_context,
 )
@@ -169,25 +168,6 @@ class TestContextVarFunctions:
         clear_wide_event_context()
 
         assert get_wide_event_context() is None
-
-    def test_ensure_wide_event_context_returns_none_when_not_set(self):
-        """Test ensure returns None when context not set."""
-        clear_wide_event_context()
-
-        result = ensure_wide_event_context()
-
-        assert result is None
-
-    def test_ensure_wide_event_context_returns_context_when_set(self):
-        """Test ensure returns context when set."""
-        ctx = WideEventContext(request_id="test-req")
-        set_wide_event_context(ctx)
-
-        result = ensure_wide_event_context()
-
-        assert result is ctx
-        clear_wide_event_context()
-
 
 class TestAddEntityToContext:
     """Tests for add_entity_to_context function."""

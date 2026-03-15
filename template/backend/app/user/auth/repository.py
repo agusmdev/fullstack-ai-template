@@ -18,10 +18,8 @@ class SessionRepository(SQLAlchemyRepository[Session]):
         filter_field: str = "id",
         response_model: type[BaseModel] | None = None,
     ) -> Session | None:
-        """Get a session by ID (string or UUID)."""
-        # Call the parent get method - passing str to UUID param
         return await super().get(
-            entity_id,  # type: ignore[arg-type]
+            entity_id,
             raise_error=raise_error,
             filter_field=filter_field,
             response_model=response_model,

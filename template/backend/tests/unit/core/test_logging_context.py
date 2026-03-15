@@ -9,7 +9,6 @@ from app.core.logging.context import (
     WideEventContext,
     add_entity_to_context,
     clear_wide_event_context,
-    ensure_wide_event_context,
     get_wide_event_context,
     set_wide_event_context,
 )
@@ -134,13 +133,9 @@ class TestContextVar:
         clear_wide_event_context()
         assert get_wide_event_context() is None
 
-    def test_ensure_returns_none_when_not_set(self):
-        assert ensure_wide_event_context() is None
-
-    def test_ensure_returns_context_when_set(self):
-        ctx = WideEventContext(request_id="req-ensure")
-        set_wide_event_context(ctx)
-        assert ensure_wide_event_context() is ctx
+    def test_get_returns_none_when_not_set_second_check(self):
+        clear_wide_event_context()
+        assert get_wide_event_context() is None
 
 
 class TestAddEntityToContext:

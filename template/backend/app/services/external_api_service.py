@@ -1,6 +1,6 @@
 from typing import Any
 
-import requests
+import httpx
 from pydantic import BaseModel, ConfigDict
 
 from app.services.exceptions import ExternalApiException
@@ -12,22 +12,22 @@ class ExternalApiService(BaseModel):
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
     return_json: bool = True
 
-    def post(self, endpoint: str, **kwargs: Any) -> Any:
-        return self.__send_request(endpoint, method="post", **kwargs)
+    async def post(self, endpoint: str, **kwargs: Any) -> Any:
+        return await self._send_request(endpoint, method="POST", **kwargs)
 
-    def get(self, endpoint: str, **kwargs: Any) -> Any:
-        return self.__send_request(endpoint, method="get", **kwargs)
+    async def get(self, endpoint: str, **kwargs: Any) -> Any:
+        return await self._send_request(endpoint, method="GET", **kwargs)
 
-    def put(self, endpoint: str, **kwargs: Any) -> Any:
-        return self.__send_request(endpoint, method="put", **kwargs)
+    async def put(self, endpoint: str, **kwargs: Any) -> Any:
+        return await self._send_request(endpoint, method="PUT", **kwargs)
 
-    def patch(self, endpoint: str, **kwargs: Any) -> Any:
-        return self.__send_request(endpoint, method="patch", **kwargs)
+    async def patch(self, endpoint: str, **kwargs: Any) -> Any:
+        return await self._send_request(endpoint, method="PATCH", **kwargs)
 
-    def delete(self, endpoint: str, **kwargs: Any) -> Any:
-        return self.__send_request(endpoint, method="delete", **kwargs)
+    async def delete(self, endpoint: str, **kwargs: Any) -> Any:
+        return await self._send_request(endpoint, method="DELETE", **kwargs)
 
-    def __send_request(
+    async def _send_request(
         self,
         endpoint: str,
         method: str,
@@ -35,17 +35,17 @@ class ExternalApiService(BaseModel):
         **kwargs: Any,
     ) -> Any:
         url = self.base_url + endpoint
-        headers = headers or self.headers
+        merged_headers = {**self.headers, **(headers or {})}
         try:
-            response = requests.request(
-                method=method, url=url, headers=headers, **kwargs
-            )
-            response.raise_for_status()
-            if self.return_json:
-                return response.json()
-            return response
-        except requests.exceptions.HTTPError as err:
-            print(err)  # TODO use logger
+            async with httpx.AsyncClient() as client:
+                response = await client.request(
+                    method=method, url=url, headers=merged_headers, **kwargs
+                )
+                response.raise_for_status()
+                if self.return_json:
+                    return response.json()
+                return response
+        except httpx.HTTPStatusError as err:
             raise ExternalApiException(
-                status_code=response.status_code, detail=response.text
+                status_code=err.response.status_code, detail=err.response.text
             ) from err

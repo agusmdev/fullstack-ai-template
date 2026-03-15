@@ -128,11 +128,6 @@ def clear_wide_event_context() -> None:
     _wide_event_ctx.set(None)
 
 
-def ensure_wide_event_context() -> WideEventContext | None:
-    """Get the context, returning None if not available (for use in non-request contexts)."""
-    return _wide_event_ctx.get()
-
-
 def add_entity_to_context(entity_type: str, entity_id: str | UUID) -> None:
     """Add entity context to the current wide event."""
     ctx = get_wide_event_context()

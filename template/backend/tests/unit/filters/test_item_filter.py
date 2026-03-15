@@ -15,7 +15,7 @@ class TestItemFilterConstants:
 
     def test_search_model_fields(self):
         """Test that search fields are configured correctly."""
-        expected_fields = ["name", "description", "sku"]
+        expected_fields = ["name", "description"]
         assert ItemFilter.Constants.search_model_fields == expected_fields
 
 

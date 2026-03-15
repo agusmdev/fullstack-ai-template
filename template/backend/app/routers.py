@@ -21,7 +21,6 @@ def get_app_router() -> APIRouter:
         user_router,
         prefix="/users",
         tags=["users"],
-        dependencies=[Depends(AuthenticatedUser.current_user_id)],
     )
 
     router.include_router(items_router)

@@ -78,7 +78,8 @@ class UserService(BaseService[User]):
             )
 
         try:
-            user.check_password(password)
+            if not user.check_password(password):
+                raise InvalidPasswordError()
         except VerifyMismatchError as e:
             raise InvalidPasswordError() from e
 

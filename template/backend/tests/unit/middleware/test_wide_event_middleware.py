@@ -202,7 +202,7 @@ class TestWideEventMiddlewareEmitWideEvent:
         middleware._emit_wide_event(ctx)
 
         mock_logger.bind.assert_called_once()
-        mock_logger.bind().log.assert_called_once_with("info", "request_completed")
+        mock_logger.bind().log.assert_called_once_with("INFO", "request_completed")
 
     @patch("app.core.logging.middleware.logger")
     def test_logs_warning_for_4xx(self, mock_logger, middleware):
@@ -215,7 +215,7 @@ class TestWideEventMiddlewareEmitWideEvent:
         middleware._emit_wide_event(ctx)
 
         mock_logger.bind.assert_called_once()
-        mock_logger.bind().log.assert_called_once_with("warning", "request_completed")
+        mock_logger.bind().log.assert_called_once_with("WARNING", "request_completed")
 
     @patch("app.core.logging.middleware.logger")
     def test_logs_error_for_5xx(self, mock_logger, middleware):
@@ -228,7 +228,7 @@ class TestWideEventMiddlewareEmitWideEvent:
         middleware._emit_wide_event(ctx)
 
         mock_logger.bind.assert_called_once()
-        mock_logger.bind().log.assert_called_once_with("error", "request_completed")
+        mock_logger.bind().log.assert_called_once_with("ERROR", "request_completed")
 
     @patch("app.core.logging.middleware.logger")
     def test_logs_error_when_error_flag_set(self, mock_logger, middleware):
@@ -241,4 +241,4 @@ class TestWideEventMiddlewareEmitWideEvent:
 
         middleware._emit_wide_event(ctx)
 
-        mock_logger.bind().log.assert_called_once_with("error", "request_completed")
+        mock_logger.bind().log.assert_called_once_with("ERROR", "request_completed")

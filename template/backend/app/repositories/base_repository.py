@@ -25,7 +25,7 @@ class BaseRepository[T: Base](abc.ABC):
     @abc.abstractmethod
     async def get(
         self,
-        entity_id: uuid.UUID,
+        entity_id: uuid.UUID | str,
         raise_error: bool = True,
         filter_field: str = "id",
         response_model: type[BaseModel] | None = None,

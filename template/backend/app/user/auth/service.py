@@ -184,25 +184,21 @@ class AuthService(BaseService[Session]):
         if not self.password_reset_repo:
             raise RuntimeError("Password reset repository not configured")
 
-        # Get user by email
         user = await self.user_service.get(
             email, filter_field="email", raise_error=False
         )
         if not user:
-            # Return None silently to prevent email enumeration
+            # Prevent email enumeration: return None rather than raising
             loguru.logger.info(
                 f"Password reset requested for non-existent email: {email}"
             )
             return None
 
-        # Check if user has a password (not OAuth-only)
         if user.password is None:
             raise OAuthUserPasswordResetError()
 
-        # Invalidate any existing tokens for this user
         await self.password_reset_repo.invalidate_user_tokens(user.id)
 
-        # Create new token
         token = self.generate_token("pr")
         await self.password_reset_repo.create(
             PasswordResetTokenCreate(
@@ -225,18 +221,13 @@ class AuthService(BaseService[Session]):
         if not self.password_reset_repo:
             raise RuntimeError("Password reset repository not configured")
 
-        # Validate token
         token_record = await self.password_reset_repo.get_valid_token(token)
         if not token_record:
             raise InvalidTokenError()
 
-        # Update user password
         await self.user_service.update_password(token_record.user_id, new_password)
-
-        # Mark token as used
         await self.password_reset_repo.mark_as_used(token)
-
-        # Optionally: logout all sessions for security
+        # Invalidate all sessions after password change as a security measure
         await self.repo.delete_all_for_user(token_record.user_id)
 
         loguru.logger.info(f"Password reset completed for user: {token_record.user_id}")
@@ -254,19 +245,14 @@ class AuthService(BaseService[Session]):
         if not self.email_verification_repo:
             raise RuntimeError("Email verification repository not configured")
 
-        # Get user
         user = await self.user_service.get(user_id, raise_error=False)
         if not user:
             raise UserNotFoundError()
 
-        # Check if already verified
         if user.email_verified_at is not None:
             raise EmailAlreadyVerifiedError()
 
-        # Invalidate any existing tokens
         await self.email_verification_repo.invalidate_user_tokens(user_id)
-
-        # Create new token
         token = self.generate_token("ev")
         await self.email_verification_repo.create(
             EmailVerificationTokenCreate(
@@ -289,15 +275,11 @@ class AuthService(BaseService[Session]):
         if not self.email_verification_repo:
             raise RuntimeError("Email verification repository not configured")
 
-        # Validate token
         token_record = await self.email_verification_repo.get_valid_token(token)
         if not token_record:
             raise InvalidTokenError()
 
-        # Mark email as verified
         await self.user_service.mark_email_verified(token_record.user_id)
-
-        # Mark token as used
         await self.email_verification_repo.mark_as_used(token)
 
         loguru.logger.info(f"Email verified for user: {token_record.user_id}")

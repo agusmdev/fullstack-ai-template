@@ -127,7 +127,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
     @handle_commit_errors
     async def get(
         self,
-        entity_id: uuid.UUID,
+        entity_id: uuid.UUID | str,
         raise_error: bool = True,
         filter_field: str = "id",
         response_model: type[BaseModel] | None = None,
