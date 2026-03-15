@@ -10,7 +10,7 @@ from app.context import (
     _request_context_cache,
     _request_id_ctx,
     clear_request_context,
-    fork_request_context,
+    register_request_context,
     get_request_context,
     req_or_thread_id,
     set_request_id,
@@ -107,14 +107,14 @@ class TestGetRequestContext:
 
 
 class TestForkRequestContext:
-    """Tests for fork_request_context function."""
+    """Tests for register_request_context function."""
 
     def test_fork_creates_new_if_not_exists(self):
         """Test fork creates new context if not in cache."""
         clear_request_context()
 
         new_ctx = RequestContext(user_id="forked-user", email="fork@example.com")
-        result = fork_request_context(new_ctx)
+        result = register_request_context(new_ctx)
 
         assert result.user_id == "forked-user"
         assert result.email == "fork@example.com"
@@ -131,7 +131,7 @@ class TestForkRequestContext:
 
         # Now try to fork
         new_ctx = RequestContext(user_id="new-user")
-        result = fork_request_context(new_ctx)
+        result = register_request_context(new_ctx)
 
         # Should return existing, not new
         assert result.user_id == "existing-user"

@@ -84,10 +84,8 @@ class SQLAlchemyRepository(BaseRepository[T]):
             error: The original integrity error
 
         Returns:
-            A RepositoryError subclass or the original error
-
-        Raises:
-            The original error if it cannot be parsed
+            A RepositoryError subclass if recognized, otherwise the original error unchanged.
+            The caller (handle_commit_errors) is responsible for re-raising unparsed errors.
         """
         import sqlalchemy.exc as sqlalchemy_exc
 

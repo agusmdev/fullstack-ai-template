@@ -39,7 +39,7 @@ def get_request_context() -> RequestContext:
     return ctx
 
 
-def fork_request_context(context: RequestContext) -> RequestContext:
+def register_request_context(context: RequestContext) -> RequestContext:
     request_id = req_or_thread_id()
     if ctx := _request_context_cache.get(request_id):
         # If it already exists do nothing
