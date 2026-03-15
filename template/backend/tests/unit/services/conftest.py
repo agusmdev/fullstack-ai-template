@@ -47,7 +47,6 @@ def mock_session_repository():
     repo.create = AsyncMock()
     repo.update = AsyncMock()
     repo.delete = AsyncMock()
-    repo.delete_by_id = AsyncMock()
     repo.delete_all_for_user = AsyncMock()
     return repo
 

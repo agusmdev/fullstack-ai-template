@@ -162,11 +162,11 @@ class AuthService:
 
     async def logout(self, session_id: str) -> None:
         """Invalidate a session by deleting it."""
-        await self.repo.delete_by_id(session_id)
+        await self.repo.delete(session_id)
 
-    async def logout_all(self, user_id: str) -> None:
+    async def logout_all(self, user_id: uuid.UUID) -> None:
         """Invalidate all sessions for a user (logout from all devices)."""
-        await self.repo.delete_all_for_user(uuid.UUID(user_id))
+        await self.repo.delete_all_for_user(user_id)
 
     # Password Reset Methods
 

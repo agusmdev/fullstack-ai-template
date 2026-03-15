@@ -76,7 +76,7 @@ async def logout_all_devices(
     auth_service: AuthService = Depends(get_auth_service),
 ) -> LogoutResponse:
     """Logout from all devices by invalidating all sessions for the user."""
-    await auth_service.logout_all(str(user_id))
+    await auth_service.logout_all(user_id)
     return LogoutResponse(message="Successfully logged out from all devices")
 
 
