@@ -1,62 +1,28 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form } from '@/components/ui/form'
 import { AuthFormShell } from '@/components/AuthFormShell'
-import { api } from '@/lib/api-client'
+import { EmailField, PasswordField } from '@/components/AuthFormFields'
 import { API } from '@/lib/api-endpoints'
-import { useAuth } from '@/contexts/AuthContext'
-import { handleApiError } from '@/lib/error-handler'
+import { useAuthSubmit } from '@/hooks/useAuthSubmit'
 import { loginSchema, type LoginFormData } from '@/lib/schemas'
-import type { AuthSessionResponse } from '@/types/auth'
 
 export const Route = createFileRoute('/login')({
   component: Login,
 })
 
 function Login() {
-  const navigate = useNavigate()
-  const { login } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
+  const { submit, isLoading } = useAuthSubmit(API.AUTH.LOGIN, 'Signed in successfully', 'Login failed')
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: { email: '', password: '' },
   })
 
-  const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true)
-
-    try {
-      const result = await api.post<AuthSessionResponse>(API.AUTH.LOGIN, {
-        email: data.email,
-        password: data.password,
-      })
-
-      login(result)
-
-      toast.success('Signed in successfully')
-      navigate({ to: '/' })
-    } catch (err) {
-      handleApiError(err, 'Login failed')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const onSubmit = (data: LoginFormData) =>
+    submit({ email: data.email, password: data.password })
 
   return (
     <AuthFormShell
@@ -73,44 +39,8 @@ function Login() {
     >
       <Form {...form}>
         <form method="post" action="#" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-muted-foreground">Email</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    placeholder="john@example.com"
-                    {...field}
-                    disabled={isLoading}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-muted-foreground">Password</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    {...field}
-                    disabled={isLoading}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+          <EmailField control={form.control} name="email" isLoading={isLoading} />
+          <PasswordField control={form.control} name="password" isLoading={isLoading} />
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>

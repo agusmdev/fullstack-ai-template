@@ -5,10 +5,10 @@ import type { ItemFormData } from '@/lib/schemas'
 
 interface EditItemDialogProps {
   item: Item
-  children: React.ReactNode
+  trigger: React.ReactNode
 }
 
-export function EditItemDialog({ item, children }: EditItemDialogProps) {
+export function EditItemDialog({ item, trigger }: EditItemDialogProps) {
   const updateItem = useUpdateItem(item.id)
 
   const handleSubmit = async (data: ItemFormData) => {
@@ -23,7 +23,7 @@ export function EditItemDialog({ item, children }: EditItemDialogProps) {
     <ItemFormDialog
       mode="edit"
       item={item}
-      trigger={children}
+      trigger={trigger}
       onSubmit={handleSubmit}
       isPending={updateItem.isPending}
     />

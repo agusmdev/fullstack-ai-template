@@ -61,8 +61,6 @@ function mockFetch(status: number, body?: unknown, ok = status >= 200 && status 
 describe('ApiClient.request()', () => {
   beforeEach(() => {
     localStorage.clear()
-    // Reset window.location.href tracking
-    vi.stubGlobal('location', { href: '' })
   })
 
   afterEach(() => {
@@ -108,14 +106,14 @@ describe('ApiClient.request()', () => {
     expect(response.json).not.toHaveBeenCalled()
   })
 
-  it('clears token and redirects to /login on 401', async () => {
+  it('clears token and throws ApiError on 401', async () => {
     localStorage.setItem(AUTH_TOKEN_KEY, 'expired-token')
     const response = { ok: false, status: 401, json: vi.fn().mockResolvedValue({}) }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
 
     await expect(api.get('/protected')).rejects.toThrow(ApiError)
     expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull()
-    expect(window.location.href).toBe('/login')
+    // Routing is handled by AuthContext's subscribeToAuthChanges listener, not api-client
   })
 
   it('throws ApiError with parsed detail on non-ok response', async () => {

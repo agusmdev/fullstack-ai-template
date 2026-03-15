@@ -1,63 +1,32 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form } from '@/components/ui/form'
 import { AuthFormShell } from '@/components/AuthFormShell'
-import { api } from '@/lib/api-client'
+import { EmailField, PasswordField } from '@/components/AuthFormFields'
 import { API } from '@/lib/api-endpoints'
-import { useAuth } from '@/contexts/AuthContext'
-import { handleApiError } from '@/lib/error-handler'
+import { useAuthSubmit } from '@/hooks/useAuthSubmit'
 import { registerSchema, type RegisterFormData } from '@/lib/schemas'
-import type { AuthSessionResponse } from '@/types/auth'
 
 export const Route = createFileRoute('/register')({
   component: Register,
 })
 
 function Register() {
-  const navigate = useNavigate()
-  const { login } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
+  const { submit, isLoading } = useAuthSubmit(
+    API.AUTH.REGISTER,
+    'Account created successfully',
+    'Registration failed',
+  )
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
+    defaultValues: { email: '', password: '', confirmPassword: '' },
   })
 
-  const onSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true)
-
-    try {
-      const result = await api.post<AuthSessionResponse>(API.AUTH.REGISTER, {
-        email: data.email,
-        raw_password: data.password,
-      })
-
-      login(result)
-
-      toast.success('Account created successfully')
-      navigate({ to: '/' })
-    } catch (err) {
-      handleApiError(err, 'Registration failed')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const onSubmit = (data: RegisterFormData) =>
+    submit({ email: data.email, raw_password: data.password })
 
   return (
     <AuthFormShell
@@ -74,63 +43,14 @@ function Register() {
     >
       <Form {...form}>
         <form method="post" action="#" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-muted-foreground">Email</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    placeholder="john@example.com"
-                    {...field}
-                    disabled={isLoading}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-muted-foreground">Password</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    {...field}
-                    disabled={isLoading}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
+          <EmailField control={form.control} name="email" isLoading={isLoading} />
+          <PasswordField control={form.control} name="password" isLoading={isLoading} />
+          <PasswordField
             control={form.control}
             name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-muted-foreground">Confirm Password</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    {...field}
-                    disabled={isLoading}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            isLoading={isLoading}
+            label="Confirm Password"
           />
-
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Creating account...' : 'Create account'}
           </Button>

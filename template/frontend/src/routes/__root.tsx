@@ -28,7 +28,6 @@ import { initWebVitals } from '@/lib/web-vitals'
 
 import appCss from '@/styles/app.css?url'
 
-// Create a QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

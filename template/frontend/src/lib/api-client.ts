@@ -1,4 +1,4 @@
-import { config } from './config'
+import { getConfig } from './config'
 import { getAuthToken, clearAuthToken } from './auth'
 
 interface ApiErrorResponse {
@@ -20,7 +20,7 @@ export class ApiError extends Error {
 }
 
 class ApiClient {
-  private get baseUrl() { return config.apiBaseUrl }
+  private get baseUrl() { return getConfig().apiBaseUrl }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const token = getAuthToken()
@@ -36,9 +36,6 @@ class ApiClient {
 
     if (response.status === 401) {
       clearAuthToken()
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login'
-      }
       throw new ApiError(401, 'Session expired')
     }
 

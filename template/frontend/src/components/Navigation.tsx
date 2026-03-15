@@ -13,7 +13,7 @@ export function Navigation() {
   }, [logout, navigate])
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[1000] bg-background/80 backdrop-blur-[20px] border-b border-[rgba(46,46,50,0.5)]">
+    <header className="fixed top-0 left-0 right-0 z-[1000] bg-background/80 backdrop-blur-[20px] border-b border-border/50">
       <nav className="max-w-[1400px] mx-auto px-8">
         <div className="flex items-center justify-between h-[72px]">
           <div className="flex items-center gap-12">

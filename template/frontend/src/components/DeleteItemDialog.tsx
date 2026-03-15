@@ -17,10 +17,10 @@ import { handleApiError } from '@/lib/error-handler'
 
 interface DeleteItemDialogProps {
   item: Item
-  children?: React.ReactNode
+  trigger?: React.ReactNode
 }
 
-export function DeleteItemDialog({ item, children }: DeleteItemDialogProps) {
+export function DeleteItemDialog({ item, trigger }: DeleteItemDialogProps) {
   const [open, setOpen] = useState(false)
   const deleteItem = useDeleteItem(item.id)
 
@@ -36,7 +36,7 @@ export function DeleteItemDialog({ item, children }: DeleteItemDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        {children || <Button variant="destructive">Delete</Button>}
+        {trigger || <Button variant="destructive">Delete</Button>}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

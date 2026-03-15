@@ -4,11 +4,10 @@ const envSchema = z.object({
   VITE_API_BASE_URL: z.string().url().default('http://localhost:9095'),
 })
 
-const env = envSchema.parse({
-  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-})
-
-export const config = {
-  /** @default http://localhost:9095 */
-  apiBaseUrl: env.VITE_API_BASE_URL,
-} as const
+export function getConfig() {
+  const env = envSchema.parse({ VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL })
+  return {
+    /** @default http://localhost:9095 */
+    apiBaseUrl: env.VITE_API_BASE_URL,
+  }
+}

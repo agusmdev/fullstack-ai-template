@@ -45,7 +45,7 @@ src/
 │   ├── query-keys.ts    ← Query key factory
 │   ├── config.ts        ← Runtime configuration
 │   ├── error-handler.ts ← Error handling utilities
-│   ├── schemas/         ← Zod validation schemas
+│   ├── schemas.ts       ← Zod validation schemas
 │   └── utils.ts         ← Helper utilities
 ├── routes/              ← TanStack file-based routes
 │   └── __root.tsx       ← Root layout with providers

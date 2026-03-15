@@ -138,26 +138,32 @@ function Items() {
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <EditItemDialog item={item}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label={`Edit ${item.name}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </EditItemDialog>
-                      <DeleteItemDialog item={item}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          aria-label={`Delete ${item.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </DeleteItemDialog>
+                      <EditItemDialog
+                        item={item}
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={`Edit ${item.name}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      <DeleteItemDialog
+                        item={item}
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            aria-label={`Delete ${item.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
                     </div>
                   </div>
                 </CardHeader>

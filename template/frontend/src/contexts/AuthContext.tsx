@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useRouter } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { getAuthToken, setAuthToken, clearAuthToken, subscribeToAuthChanges } from '@/lib/auth'
 import { api } from '@/lib/api-client'
@@ -8,7 +9,9 @@ import type { AuthSessionResponse } from '@/types/auth'
 interface AuthContextValue {
   isAuthenticated: boolean
   token: string | null
+  /** Sync — sets the auth token and updates state. Do not await. */
   login: (response: AuthSessionResponse) => void
+  /** Async — calls the backend logout endpoint then clears local state. Must be awaited. */
   logout: () => Promise<void>
 }
 
@@ -20,6 +23,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children, queryClient }: AuthProviderProps) {
+  const router = useRouter()
   const [token, setTokenState] = useState<string | null>(() => {
     return getAuthToken()
   })
@@ -32,11 +36,12 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
 
       if (currentToken === null) {
         queryClient.clear()
+        router.navigate({ to: '/login' })
       }
     })
 
     return unsubscribe
-  }, [queryClient])
+  }, [queryClient, router])
 
   const login = useCallback((response: AuthSessionResponse) => {
     if (!response.id) {
