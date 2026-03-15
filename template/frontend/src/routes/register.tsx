@@ -25,16 +25,11 @@ import { API } from '@/lib/api-endpoints'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleApiError } from '@/lib/error-handler'
 import { registerSchema, type RegisterFormData } from '@/lib/schemas'
+import type { AuthSessionResponse } from '@/types/auth'
 
 export const Route = createFileRoute('/register')({
   component: Register,
 })
-
-interface RegisterResponse {
-  id: string
-  expires_at: string
-  expires_in: number
-}
 
 function Register() {
   const navigate = useNavigate()
@@ -54,14 +49,15 @@ function Register() {
     setIsLoading(true)
 
     try {
-      const result = await api.post<RegisterResponse>(API.AUTH.REGISTER, {
+      const result = await api.post<AuthSessionResponse>(API.AUTH.REGISTER, {
         email: data.email,
         raw_password: data.password,
       })
 
-      if (result.id) {
-        login(result.id)
+      if (!result.id) {
+        throw new Error('No session token returned from server')
       }
+      login(result.id)
 
       toast.success('Account created successfully')
       navigate({ to: '/' })

@@ -73,8 +73,8 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'PATCH', body: JSON.stringify(data) })
   }
 
-  delete<T>(endpoint: string) {
-    return this.request<T>(endpoint, { method: 'DELETE' })
+  delete(endpoint: string): Promise<void> {
+    return this.request<void>(endpoint, { method: 'DELETE' })
   }
 }
 

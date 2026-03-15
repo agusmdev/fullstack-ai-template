@@ -24,16 +24,11 @@ import { API } from '@/lib/api-endpoints'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleApiError } from '@/lib/error-handler'
 import { loginSchema, type LoginFormData } from '@/lib/schemas'
+import type { AuthSessionResponse } from '@/types/auth'
 
 export const Route = createFileRoute('/login')({
   component: Login,
 })
-
-interface LoginResponse {
-  id: string
-  expires_at: string
-  expires_in: number
-}
 
 function Login() {
   const navigate = useNavigate()
@@ -52,14 +47,15 @@ function Login() {
     setIsLoading(true)
 
     try {
-      const result = await api.post<LoginResponse>(API.AUTH.LOGIN, {
+      const result = await api.post<AuthSessionResponse>(API.AUTH.LOGIN, {
         email: data.email,
         password: data.password,
       })
 
-      if (result.id) {
-        login(result.id)
+      if (!result.id) {
+        throw new Error('No session token returned from server')
       }
+      login(result.id)
 
       navigate({ to: '/' })
     } catch (err) {

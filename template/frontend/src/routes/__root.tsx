@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -20,18 +20,13 @@ const TanStackRouterDevtoolsPanel = import.meta.env.DEV
     )
   : () => null
 
-import Layout from '../components/Layout'
+import { Layout } from '../components/Layout'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Toaster } from '../components/ui/sonner'
 import { AuthProvider } from '../contexts/AuthContext'
 import { initWebVitals } from '../lib/web-vitals'
 
 import appCss from '../styles/app.css?url'
-
-// Initialize Web Vitals tracking
-if (typeof window !== 'undefined') {
-  initWebVitals()
-}
 
 // Create a QueryClient instance
 const queryClient = new QueryClient({
@@ -71,6 +66,10 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    initWebVitals()
+  }, [])
+
   return (
     <html lang="en">
       <head>

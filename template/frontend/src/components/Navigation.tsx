@@ -3,7 +3,7 @@ import { useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 
-export default function Navigation() {
+export function Navigation() {
   const { isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
 

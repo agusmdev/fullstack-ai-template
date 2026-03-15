@@ -1,6 +1,7 @@
-import { createFileRoute, Navigate } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useAuth } from '@/contexts/AuthContext'
 import { useItems } from '@/hooks/useItems'
+import { isAuthenticated } from '@/lib/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +20,11 @@ function formatDate(dateString: string | null | undefined): string {
 }
 
 export const Route = createFileRoute('/items')({
+  beforeLoad: () => {
+    if (!isAuthenticated()) {
+      throw redirect({ to: '/login', search: { redirect: '/items' } })
+    }
+  },
   component: Items,
 })
 
@@ -36,10 +42,6 @@ function Items() {
     name: debouncedSearchTerm || undefined,
     enabled: isAuthenticated,
   })
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" search={{ redirect: '/items' }} />
-  }
 
   const handleClearSearch = useCallback(() => {
     setSearchInput('')

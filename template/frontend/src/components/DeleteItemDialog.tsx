@@ -42,7 +42,7 @@ export function DeleteItemDialog({ item, children }: DeleteItemDialogProps) {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Item</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{item?.name || 'this item'}"? This action cannot be undone.
+            Are you sure you want to delete "{item.name}"? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

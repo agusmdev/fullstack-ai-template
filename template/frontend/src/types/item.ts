@@ -1,3 +1,10 @@
+export interface ItemsParams {
+  page?: number
+  size?: number
+  name?: string
+  enabled?: boolean
+}
+
 export interface Item {
   id: string
   created_at: string

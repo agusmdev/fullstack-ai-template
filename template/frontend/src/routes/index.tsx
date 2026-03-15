@@ -1,70 +1,63 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
 import './index.css'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
 })
 
+const features = [
+  {
+    title: 'TanStack Start SSR',
+    description: 'Server-side rendering with React for blazing fast initial loads',
+    number: '01',
+    color: 'lime',
+  },
+  {
+    title: 'FastAPI Backend',
+    description: 'Modern Python async API with automatic OpenAPI docs',
+    number: '02',
+    color: 'cyan',
+  },
+  {
+    title: 'PostgreSQL + SQLAlchemy',
+    description: 'Rock-solid async database layer with migrations',
+    number: '03',
+    color: 'purple',
+  },
+  {
+    title: 'Authentication Built-in',
+    description: 'Session-based auth ready to customize',
+    number: '04',
+    color: 'orange',
+  },
+  {
+    title: 'Docker Compose',
+    description: 'One command to spin up your entire stack',
+    number: '05',
+    color: 'blue',
+  },
+  {
+    title: 'Type-Safe Everything',
+    description: 'TypeScript frontend + Pydantic backend = zero runtime surprises',
+    number: '06',
+    color: 'pink',
+  },
+]
+
+const techStack = [
+  { name: 'React 19', category: 'Frontend' },
+  { name: 'TanStack Router', category: 'Frontend' },
+  { name: 'TanStack Query', category: 'Frontend' },
+  { name: 'Tailwind CSS v4', category: 'Frontend' },
+  { name: 'shadcn/ui', category: 'Frontend' },
+  { name: 'FastAPI', category: 'Backend' },
+  { name: 'SQLAlchemy 2.0', category: 'Backend' },
+  { name: 'PostgreSQL', category: 'Backend' },
+  { name: 'Alembic', category: 'Backend' },
+  { name: 'Pydantic v2', category: 'Backend' },
+]
+
 function HomePage() {
-  const [isLoaded, setIsLoaded] = useState(false)
-
-  useEffect(() => {
-    setIsLoaded(true)
-  }, [])
-
-  const features = [
-    {
-      title: 'TanStack Start SSR',
-      description: 'Server-side rendering with React for blazing fast initial loads',
-      number: '01',
-      color: 'lime',
-    },
-    {
-      title: 'FastAPI Backend',
-      description: 'Modern Python async API with automatic OpenAPI docs',
-      number: '02',
-      color: 'cyan',
-    },
-    {
-      title: 'PostgreSQL + SQLAlchemy',
-      description: 'Rock-solid async database layer with migrations',
-      number: '03',
-      color: 'purple',
-    },
-    {
-      title: 'Authentication Built-in',
-      description: 'Session-based auth ready to customize',
-      number: '04',
-      color: 'orange',
-    },
-    {
-      title: 'Docker Compose',
-      description: 'One command to spin up your entire stack',
-      number: '05',
-      color: 'blue',
-    },
-    {
-      title: 'Type-Safe Everything',
-      description: 'TypeScript frontend + Pydantic backend = zero runtime surprises',
-      number: '06',
-      color: 'pink',
-    },
-  ]
-
-  const techStack = [
-    { name: 'React 19', category: 'Frontend' },
-    { name: 'TanStack Router', category: 'Frontend' },
-    { name: 'TanStack Query', category: 'Frontend' },
-    { name: 'Tailwind CSS v4', category: 'Frontend' },
-    { name: 'shadcn/ui', category: 'Frontend' },
-    { name: 'FastAPI', category: 'Backend' },
-    { name: 'SQLAlchemy 2.0', category: 'Backend' },
-    { name: 'PostgreSQL', category: 'Backend' },
-    { name: 'Alembic', category: 'Backend' },
-    { name: 'Pydantic v2', category: 'Backend' },
-  ]
-
   return (
     <div className="demo-page">
       {/* Hero Section */}
@@ -72,7 +65,7 @@ function HomePage() {
         <div className="hero-noise" />
         <div className="hero-grid" />
 
-        <div className={`hero-content ${isLoaded ? 'loaded' : ''}`}>
+        <div className="hero-content loaded">
           <div className="hero-badge">
             <span className="hero-badge-dot" />
             PRODUCTION READY
@@ -109,7 +102,7 @@ function HomePage() {
           </div>
         </div>
 
-        <div className={`hero-visual ${isLoaded ? 'loaded' : ''}`}>
+        <div className="hero-visual loaded">
           <div className="terminal-window" style={{ animationDelay: '800ms' }}>
             <div className="terminal-header">
               <div className="terminal-dots">

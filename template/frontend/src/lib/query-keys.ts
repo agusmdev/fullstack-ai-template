@@ -1,4 +1,4 @@
-import type { ItemsParams } from '@/hooks/useItems'
+import type { ItemsParams } from '@/types/item'
 
 export const queryKeys = {
   items: {

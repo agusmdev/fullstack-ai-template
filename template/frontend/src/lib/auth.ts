@@ -27,10 +27,6 @@ function notifyAuthChange() {
   authChangeListeners.forEach(listener => listener())
 }
 
-/**
- * Get the authentication token from localStorage
- * @returns The auth token or null if not found
- */
 export function getAuthToken(): string | null {
   if (typeof localStorage === 'undefined') {
     return null
@@ -38,10 +34,6 @@ export function getAuthToken(): string | null {
   return localStorage.getItem(AUTH_TOKEN_KEY)
 }
 
-/**
- * Set the authentication token in localStorage
- * @param token - The auth token to store
- */
 export function setAuthToken(token: string): void {
   if (typeof localStorage === 'undefined') {
     return
@@ -50,10 +42,6 @@ export function setAuthToken(token: string): void {
   notifyAuthChange()
 }
 
-/**
- * Check if the user is authenticated
- * @returns true if the user has a valid token, false otherwise
- */
 export function isAuthenticated(): boolean {
   return getAuthToken() !== null
 }
