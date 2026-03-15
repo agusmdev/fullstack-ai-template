@@ -64,10 +64,6 @@ async def get_item(
     log_action("get")
     log_entity("item", item_id)
     result = await item_service.get_by_id(item_id)
-    if result is None:
-        msg = f"Item {item_id} not found"
-        raise ValueError(msg)
-    # result is now narrowed to Item, not None
     return cast("ItemResponse", result)
 
 

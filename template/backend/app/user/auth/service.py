@@ -156,8 +156,6 @@ class AuthService(BaseService[Session]):
                 session_id, response_model=UserSessionResponse, raise_error=True
             ),
         )
-        if session is None:
-            raise SessionExpiredError()
         if session.expires_at < datetime.now():
             raise SessionExpiredError()
         # Return the user from the session

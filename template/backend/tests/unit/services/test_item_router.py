@@ -78,10 +78,12 @@ class TestGetItem:
         assert result is sample_item_response
 
     async def test_raises_when_item_not_found(self, mock_item_service, sample_item_id):
-        mock_item_service.get_by_id.return_value = None
+        from app.repositories.exceptions import NotFoundError
+
+        mock_item_service.get_by_id.side_effect = NotFoundError(detail=f"Item {sample_item_id} not found")
 
         with patch("app.modules.items.routers.log_action"), patch("app.modules.items.routers.log_entity"):
-            with pytest.raises(ValueError, match=str(sample_item_id)):
+            with pytest.raises(NotFoundError):
                 await get_item(sample_item_id, mock_item_service)
 
     async def test_calls_service_with_item_id(self, mock_item_service, sample_item_response, sample_item_id):

@@ -149,7 +149,7 @@ def _extract_nested_basemodels(annotation: Any) -> list[type[BaseModel]]:
         for arg in args:
             if arg is not type(None):  # Skip None type
                 basemodel_types.extend(_extract_nested_basemodels(arg))
-    elif origin in (list, list):
+    elif origin is list:
         # Handle List[T]
         if args:
             basemodel_types.extend(_extract_nested_basemodels(args[0]))
@@ -216,7 +216,7 @@ def _transform_annotation_to_partial(
             if new_args
             else Optional[annotation]
         )
-    elif origin in (list, list):
+    elif origin is list:
         # Transform BaseModels in List types
         if args:
             transformed_arg = _transform_annotation_to_partial(args[0], cache)

@@ -8,6 +8,11 @@ from pydantic import BaseModel
 _request_id_ctx: ContextVar[str] = ContextVar("request_id", default=str(uuid4()))
 
 
+def set_request_id(request_id: str) -> None:
+    """Set the request ID for the current context."""
+    _request_id_ctx.set(request_id)
+
+
 def req_or_thread_id() -> str:
     """Get the request_id from context, falling back to thread_id if not set."""
     try:

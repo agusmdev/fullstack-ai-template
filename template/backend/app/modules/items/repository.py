@@ -10,10 +10,10 @@ class ItemRepository(SQLAlchemyRepository[Item]):
     Inherits all CRUD operations from SQLAlchemyRepository:
     - get(entity_id)
     - get_all(filter, pagination)
-    - save(entity)
+    - create(entity)
     - update(entity_id, entity)
     - delete(entity_id)
-    - save_many(entities)
+    - create_many(entities)
     """
 
     model = Item

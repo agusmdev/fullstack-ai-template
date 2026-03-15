@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.context import _request_id_ctx
+from app.context import set_request_id
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -13,11 +13,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        # Generate request_id
         request_id = str(uuid.uuid4())
-
-        # Set in context
-        _request_id_ctx.set(request_id)
+        set_request_id(request_id)
 
         # Process request
         response = await call_next(request)

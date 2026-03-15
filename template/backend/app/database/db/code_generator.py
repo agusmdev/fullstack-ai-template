@@ -71,7 +71,7 @@ class QueryOptionGenerator:
         Raises:
             QueryOptimizerError: If a column is not a valid column field.
         """
-        orm_columns = (safe_getattr(node.model, col) for col in node.columns)
+        orm_columns = [safe_getattr(node.model, col) for col in node.columns]
 
         if orm_columns:
             try:
