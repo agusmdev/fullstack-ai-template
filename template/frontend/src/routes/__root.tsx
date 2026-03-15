@@ -1,8 +1,24 @@
+import React from 'react'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
+const ReactQueryDevtools = import.meta.env.DEV
+  ? React.lazy(() =>
+      import('@tanstack/react-query-devtools').then(m => ({ default: m.ReactQueryDevtools }))
+    )
+  : () => null
+
+const TanStackDevtools = import.meta.env.DEV
+  ? React.lazy(() =>
+      import('@tanstack/react-devtools').then(m => ({ default: m.TanStackDevtools }))
+    )
+  : () => null
+
+const TanStackRouterDevtoolsPanel = import.meta.env.DEV
+  ? React.lazy(() =>
+      import('@tanstack/react-router-devtools').then(m => ({ default: m.TanStackRouterDevtoolsPanel }))
+    )
+  : () => null
 
 import Layout from '../components/Layout'
 import { ErrorBoundary } from '../components/ErrorBoundary'
@@ -69,18 +85,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               </Layout>
             </ErrorBoundary>
             <Toaster />
-            <ReactQueryDevtools initialIsOpen={false} />
-            <TanStackDevtools
-              config={{
-                position: 'bottom-right',
-              }}
-              plugins={[
-                {
-                  name: 'Tanstack Router',
-                  render: <TanStackRouterDevtoolsPanel />,
-                },
-              ]}
-            />
+            <React.Suspense>
+              <ReactQueryDevtools initialIsOpen={false} />
+              <TanStackDevtools
+                config={{
+                  position: 'bottom-right',
+                }}
+                plugins={[
+                  {
+                    name: 'Tanstack Router',
+                    render: <TanStackRouterDevtoolsPanel />,
+                  },
+                ]}
+              />
+            </React.Suspense>
           </AuthProvider>
         </QueryClientProvider>
         <Scripts />

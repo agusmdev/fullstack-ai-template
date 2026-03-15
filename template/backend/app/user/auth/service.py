@@ -1,3 +1,4 @@
+import asyncio
 import secrets
 import uuid
 from datetime import datetime, timedelta
@@ -127,7 +128,7 @@ class AuthService(BaseService[Session]):
         if not provider:
             raise UnsupportedOAuthProviderError()
 
-        oauth_user = provider.callback(payload)
+        oauth_user = await asyncio.to_thread(provider.callback, payload)
         user = await self.user_service.get_or_create(
             oauth_user.email,
             filter_field="email",
