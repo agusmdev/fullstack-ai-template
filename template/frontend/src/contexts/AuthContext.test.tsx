@@ -17,6 +17,7 @@ import {
   subscribeToAuthChanges,
   isAuthenticated,
 } from '@/lib/auth'
+import { createAuthChangeHandler } from './AuthContext'
 
 function makeQueryClient() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -110,6 +111,51 @@ describe('AuthContext: 401 path', () => {
     })
 
     // Simulate api-client clearing the token on 401
+    clearAuthToken()
+
+    expect(qc.clear).toHaveBeenCalled()
+    unsub()
+  })
+})
+
+describe('createAuthChangeHandler', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('calls navigate({ to: /login }) when token is cleared', () => {
+    const navigate = vi.fn()
+    const qc = makeQueryClient()
+    localStorage.setItem(AUTH_TOKEN_KEY, 'active-token')
+
+    const handler = createAuthChangeHandler(vi.fn(), qc, navigate)
+    const unsub = subscribeToAuthChanges(handler)
+
+    clearAuthToken()
+
+    expect(navigate).toHaveBeenCalledWith({ to: '/login' })
+    unsub()
+  })
+
+  it('does not navigate when token is set (login path)', () => {
+    const navigate = vi.fn()
+    const qc = makeQueryClient()
+
+    const handler = createAuthChangeHandler(vi.fn(), qc, navigate)
+    const unsub = subscribeToAuthChanges(handler)
+
+    setAuthToken('new-token')
+
+    expect(navigate).not.toHaveBeenCalled()
+    unsub()
+  })
+
+  it('calls queryClient.clear() on token clear', () => {
+    const navigate = vi.fn()
+    const qc = makeQueryClient()
+    localStorage.setItem(AUTH_TOKEN_KEY, 'active-token')
+
+    const handler = createAuthChangeHandler(vi.fn(), qc, navigate)
+    const unsub = subscribeToAuthChanges(handler)
+
     clearAuthToken()
 
     expect(qc.clear).toHaveBeenCalled()

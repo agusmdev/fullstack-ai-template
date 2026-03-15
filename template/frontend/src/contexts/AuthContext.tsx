@@ -22,6 +22,25 @@ interface AuthProviderProps {
   queryClient: QueryClient
 }
 
+/**
+ * Creates the auth change handler used in AuthProvider's subscription.
+ * Exported for unit testing without needing to mount the React component tree.
+ */
+export function createAuthChangeHandler(
+  setTokenState: (token: string | null) => void,
+  queryClient: QueryClient,
+  navigate: (opts: { to: string }) => void,
+) {
+  return () => {
+    const currentToken = getAuthToken()
+    setTokenState(currentToken)
+    if (currentToken === null) {
+      queryClient.clear()
+      navigate({ to: '/login' })
+    }
+  }
+}
+
 export function AuthProvider({ children, queryClient }: AuthProviderProps) {
   const router = useRouter()
   const [token, setTokenState] = useState<string | null>(() => {
@@ -30,17 +49,9 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
 
   // Subscribe to auth changes from external sources (like api-client clearing token on 401)
   useEffect(() => {
-    const unsubscribe = subscribeToAuthChanges(() => {
-      const currentToken = getAuthToken()
-      setTokenState(currentToken)
-
-      if (currentToken === null) {
-        queryClient.clear()
-        router.navigate({ to: '/login' })
-      }
-    })
-
-    return unsubscribe
+    return subscribeToAuthChanges(
+      createAuthChangeHandler(setTokenState, queryClient, router.navigate)
+    )
   }, [queryClient, router])
 
   const login = useCallback((response: AuthSessionResponse) => {
