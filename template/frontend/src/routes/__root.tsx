@@ -2,23 +2,22 @@ import React, { useEffect } from 'react'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-const ReactQueryDevtools = import.meta.env.DEV
-  ? React.lazy(() =>
-      import('@tanstack/react-query-devtools').then(m => ({ default: m.ReactQueryDevtools }))
-    )
-  : () => null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyDev<P = any>(factory: () => Promise<React.ComponentType<P>>): React.ComponentType<P> {
+  return import.meta.env.DEV
+    ? React.lazy(() => factory().then(c => ({ default: c })))
+    : (() => null) as React.ComponentType<P>
+}
 
-const TanStackDevtools = import.meta.env.DEV
-  ? React.lazy(() =>
-      import('@tanstack/react-devtools').then(m => ({ default: m.TanStackDevtools }))
-    )
-  : () => null
-
-const TanStackRouterDevtoolsPanel = import.meta.env.DEV
-  ? React.lazy(() =>
-      import('@tanstack/react-router-devtools').then(m => ({ default: m.TanStackRouterDevtoolsPanel }))
-    )
-  : () => null
+const ReactQueryDevtools = lazyDev(
+  () => import('@tanstack/react-query-devtools').then(m => m.ReactQueryDevtools)
+)
+const TanStackDevtools = lazyDev(
+  () => import('@tanstack/react-devtools').then(m => m.TanStackDevtools)
+)
+const TanStackRouterDevtoolsPanel = lazyDev(
+  () => import('@tanstack/react-router-devtools').then(m => m.TanStackRouterDevtoolsPanel)
+)
 
 import { Layout } from '@/components/Layout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
