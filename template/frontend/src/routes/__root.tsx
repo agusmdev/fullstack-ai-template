@@ -64,7 +64,7 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument() {
   useEffect(() => {
     initWebVitals()
   }, [])

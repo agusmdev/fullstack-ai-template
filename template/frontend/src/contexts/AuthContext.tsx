@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { getAuthToken, setAuthToken, clearAuthToken, subscribeToAuthChanges } from '@/lib/auth'
-import { api } from '@/lib/api-client'
+import { api, ApiError } from '@/lib/api-client'
 import { API } from '@/lib/api-endpoints'
 import type { AuthSessionResponse } from '@/types/auth'
 
@@ -45,7 +45,7 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
 
   const login = useCallback((response: AuthSessionResponse) => {
     if (!response.id) {
-      throw new Error('No session token returned from server')
+      throw new ApiError(500, 'No session token returned from server')
     }
     setAuthToken(response.id)
     setTokenState(response.id)

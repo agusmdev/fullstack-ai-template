@@ -66,7 +66,6 @@ export function ItemFormDialog({
     try {
       await onSubmit(data)
       setOpen(false)
-      form.reset()
     } catch (error) {
       handleApiError(
         error,
