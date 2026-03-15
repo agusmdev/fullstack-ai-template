@@ -7,7 +7,6 @@ import pytest
 
 from app.context import (
     RequestContext,
-    _request_context_cache,
     _request_id_ctx,
     clear_request_context,
     register_request_context,

@@ -26,34 +26,34 @@ class RequestContext(BaseModel):
     email: str = "No email"
 
 
-_request_context_cache: dict[str, RequestContext] = {}
+# ContextVar-based storage: automatically scoped to each async Task (HTTP request).
+# No explicit cleanup needed for web requests; clear_request_context() is kept for
+# tests and non-HTTP contexts (CLI, background tasks) where the ContextVar persists.
+_request_context_ctx: ContextVar[RequestContext | None] = ContextVar(
+    "request_context", default=None
+)
 
 
 def get_request_context() -> RequestContext:
-    request_id = req_or_thread_id()
-    if ctx := _request_context_cache.get(request_id):
-        return ctx
-
-    ctx = RequestContext()
-    _request_context_cache[request_id] = ctx
+    ctx = _request_context_ctx.get()
+    if ctx is None:
+        ctx = RequestContext()
+        _request_context_ctx.set(ctx)
     return ctx
 
 
 def register_request_context(context: RequestContext) -> RequestContext:
-    request_id = req_or_thread_id()
-    if ctx := _request_context_cache.get(request_id):
-        # If it already exists do nothing
-        return ctx
-
-    _request_context_cache[request_id] = context
+    existing = _request_context_ctx.get()
+    if existing is not None:
+        return existing
+    _request_context_ctx.set(context)
     return context
 
 
 def clear_request_context() -> None:
-    """Clean up context cache after request completion.
+    """Reset request context.
 
-    This prevents unbounded memory growth by removing the context
-    entry for the current request when the request is complete.
+    Needed for tests and non-HTTP contexts (CLI, background tasks) where the
+    ContextVar is not automatically scoped to a single async Task.
     """
-    request_id = req_or_thread_id()
-    _request_context_cache.pop(request_id, None)
+    _request_context_ctx.set(None)
