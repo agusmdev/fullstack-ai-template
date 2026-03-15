@@ -4,7 +4,7 @@ A complete guide to the template's architecture, patterns, and conventions for A
 
 ## Overview
 
-This is a **TanStack Router SPA** (Single Page Application) with:
+This is a **TanStack Start SSR** application with:
 - **State:** React Query for server state, React Context for UI state
 - **Routing:** File-based routing in `src/routes/`
 - **API:** Fetch-based client with Bearer token auth
@@ -44,10 +44,9 @@ src/
 │   ├── config.ts            # Runtime config
 │   ├── error-handler.ts     # Error handling utilities
 │   ├── query-keys.ts        # Query key factory
+│   ├── schemas.ts           # Zod validation schemas (loginSchema, registerSchema, itemSchema)
 │   ├── utils.ts             # General utilities
-│   ├── web-vitals.ts        # Web Vitals tracking (DEV-only logging)
-│   └── schemas/             # Zod validation schemas
-│       └── index.ts         # Auth + item schemas (loginSchema, registerSchema, etc.)
+│   └── web-vitals.ts        # Web Vitals tracking (DEV-only logging)
 │
 ├── routes/                  # TanStack Router file-based routes
 │   ├── __root.tsx           # Root layout & providers
@@ -103,17 +102,14 @@ Group endpoints by feature:
 ```tsx
 export const API = {
   AUTH: {
-    REGISTER: '/api/v1/auth/register',
-    LOGIN: '/api/v1/auth/login',
-    LOGOUT: '/api/v1/auth/logout',
-    ME: '/api/v1/auth/me',
+    REGISTER: '/auth/register',
+    LOGIN: '/auth/login',
+    LOGOUT: '/auth/logout',
   },
   ITEMS: {
-    LIST: '/api/v1/items',
-    CREATE: '/api/v1/items',
-    DETAIL: (id: string) => `/api/v1/items/${id}`,
-    UPDATE: (id: string) => `/api/v1/items/${id}`,
-    DELETE: (id: string) => `/api/v1/items/${id}`,
+    LIST: '/items',
+    CREATE: '/items',
+    DETAIL: (id: string) => `/items/${id}`,
   },
   // Add more features as needed
 } as const
@@ -243,7 +239,7 @@ function CreateItemDialog() {
 
 ### 4. Forms with Validation
 
-File: `src/lib/schemas/index.ts`
+File: `src/lib/schemas.ts`
 
 ```tsx
 import { z } from 'zod'
@@ -253,26 +249,11 @@ export const itemSchema = z.object({
     .min(1, 'Name is required')
     .max(255, 'Name must be less than 255 characters'),
   description: z.string()
-    .max(1000, 'Description must be less than 1000 characters')
+    .max(5000, 'Description must be less than 5000 characters')
     .optional(),
 })
 
 export type ItemFormData = z.infer<typeof itemSchema>
-```
-
-Usage in component (see `src/components/ItemFormDialog.tsx`):
-
-```tsx
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { itemSchema, type ItemFormData } from '@/lib/schemas'
-
-export function useItemForm(defaultValues?: Partial<ItemFormData>) {
-  return useForm<ItemFormData>({
-    resolver: zodResolver(itemSchema),
-    defaultValues: defaultValues || { name: '', description: '' },
-  })
-}
 ```
 
 Usage in component (see `src/components/ItemFormDialog.tsx`):
@@ -579,7 +560,7 @@ test.describe('Items Feature', () => {
 | Components | `components/` | `*.tsx` (named exports) | `Navigation.tsx` |
 | Dialogs | `components/` | `*Dialog.tsx` | `CreateItemDialog.tsx` |
 | Route Pages | `routes/` | `*.tsx` | `items.tsx` |
-| Schemas | `lib/schemas/` | `*.ts` | `index.ts` |
+| Schemas | `lib/` | `schemas.ts` | `schemas.ts` |
 | Types | `types/` | `*.ts` | `item.ts` |
 | Utils | `lib/` | `*.ts` (named exports) | `utils.ts` |
 
@@ -590,7 +571,7 @@ test.describe('Items Feature', () => {
 ### Adding a New Feature
 
 1. **Create API endpoints** in `lib/api-endpoints.ts`
-2. **Create Zod schemas** in `lib/schemas/index.ts`
+2. **Create Zod schemas** in `lib/schemas.ts`
 3. **Create hook** in `hooks/use{Feature}.ts` (queries and mutations together)
 4. **Create components** in `components/` (flat — no subdirectory)
 5. **Create route** in `routes/{feature}.tsx`
@@ -669,7 +650,7 @@ const baseUrl = config.apiBaseUrl
 - [ ] Errors are handled with try/catch or onError callbacks
 - [ ] Protected routes check `isAuthenticated`
 - [ ] Tests are co-located with source files (`use*.test.ts`, `*.test.ts`)
-- [ ] Types are defined in `lib/schemas/` or `types/`
+- [ ] Types are defined in `lib/schemas.ts` or `types/`
 - [ ] Components follow shadcn/ui patterns
 
 ---
