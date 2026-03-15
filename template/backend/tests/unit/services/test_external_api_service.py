@@ -5,8 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.services.exceptions import ExternalApiException
-from app.services.external_api_service import ExternalApiService
+from app.integrations.http_client import ExternalApiException, ExternalApiService
 
 
 def _make_response(status_code=200, json_data=None, text=""):
@@ -33,7 +32,7 @@ def _patch_client(mock_response):
     mock_client_cls = MagicMock()
     mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
-    return patch("app.services.external_api_service.httpx.AsyncClient", mock_client_cls), mock_client
+    return patch("app.integrations.http_client.httpx.AsyncClient", mock_client_cls), mock_client
 
 
 class TestExternalApiServiceInit:

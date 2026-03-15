@@ -1,9 +1,5 @@
-from app.exceptions import HTTPExceptionMixin
+# ExternalApiException has moved to app.integrations.http_client.
+# This re-export exists for backwards compatibility.
+from app.integrations.http_client import ExternalApiException
 
-
-class ExternalApiException(HTTPExceptionMixin):
-    """Base external API exception"""
-
-    detail = "External API error"
-    error_code = "external_api_error"
-    status_code = 500
+__all__ = ["ExternalApiException"]
