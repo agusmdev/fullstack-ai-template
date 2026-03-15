@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 /**
  * E2E tests for Items CRUD flow.
@@ -19,7 +19,7 @@ test.describe('Items CRUD Flow', () => {
   const testPassword = 'TestPassword123!'
 
   // Helper function to authenticate user
-  async function authenticateUser(page: any, email: string, password: string) {
+  async function authenticateUser(page: Page, email: string, password: string) {
     await page.goto('/register')
     await page.fill('input[type="email"]', email)
     await page.fill('input[name="password"]', password)
