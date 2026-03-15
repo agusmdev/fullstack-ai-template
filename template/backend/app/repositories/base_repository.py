@@ -56,9 +56,17 @@ class BaseRepository[T: Base](abc.ABC):
     async def get_all(
         self,
         entity_filter: BaseFilterModel | None = None,
-        pagination_params: Params | None = None,
         options: QueryOptions | None = None,
-    ) -> list[T] | Page[T]:
+    ) -> list[T]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def get_all_paginated(
+        self,
+        pagination_params: Params,
+        entity_filter: BaseFilterModel | None = None,
+        options: QueryOptions | None = None,
+    ) -> Page[T]:
         raise NotImplementedError
 
     # CREATE operations

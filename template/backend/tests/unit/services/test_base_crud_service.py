@@ -68,7 +68,7 @@ class TestBaseServiceGetAll:
 
         result = await service.get_all()
 
-        mock_item_repository.get_all.assert_called_once_with(None, None, None)
+        mock_item_repository.get_all.assert_called_once_with(None, None)
         assert result == expected
 
     async def test_get_all_with_filter(self, service, mock_item_repository):
@@ -79,20 +79,20 @@ class TestBaseServiceGetAll:
 
         result = await service.get_all(entity_filter=mock_filter)
 
-        mock_item_repository.get_all.assert_called_once_with(mock_filter, None, None)
+        mock_item_repository.get_all.assert_called_once_with(mock_filter, None)
         assert result == expected
 
-    async def test_get_all_with_pagination(self, service, mock_item_repository):
-        """Test get_all with pagination params."""
+    async def test_get_all_paginated(self, service, mock_item_repository):
+        """Test get_all_paginated delegates to repo with correct args."""
         from fastapi_pagination import Params
 
         params = Params(page=1, size=10)
         mock_page = MagicMock()
-        mock_item_repository.get_all.return_value = mock_page
+        mock_item_repository.get_all_paginated = AsyncMock(return_value=mock_page)
 
-        result = await service.get_all(pagination_params=params)
+        result = await service.get_all_paginated(pagination_params=params)
 
-        mock_item_repository.get_all.assert_called_once_with(None, params, None)
+        mock_item_repository.get_all_paginated.assert_called_once_with(params, None, None)
         assert result == mock_page
 
 

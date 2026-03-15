@@ -165,12 +165,11 @@ class SQLAlchemyRepository(BaseRepository[T]):
             )
         return item
 
-    async def get_all(
+    def _build_filtered_query(
         self,
-        entity_filter: BaseFilterModel | None = None,
-        pagination_params: Params | None = None,
-        options: "QueryOptions | None" = None,
-    ) -> list[T] | Page[T]:
+        entity_filter: BaseFilterModel | None,
+        options: "QueryOptions | None",
+    ) -> Any:
         from app.repositories.base_repository import QueryOptions as _QueryOptions
 
         opts = options or _QueryOptions()
@@ -181,15 +180,14 @@ class SQLAlchemyRepository(BaseRepository[T]):
             query = entity_filter.filter(query)
             if hasattr(entity_filter, "sort"):
                 query = entity_filter.sort(query)
+        return query, opts
 
-        if pagination_params:
-            # paginate returns Any due to dynamic params typing - explicit cast needed
-            return await paginate(  # type: ignore[no-any-return, call-overload]
-                self._session,
-                query,
-                params=pagination_params,
-                **opts.pagination_kwargs,
-            )
+    async def get_all(
+        self,
+        entity_filter: BaseFilterModel | None = None,
+        options: "QueryOptions | None" = None,
+    ) -> list[T]:
+        query, opts = self._build_filtered_query(entity_filter, options)
 
         if opts.return_scalars:
             result = await self._session.execute(query)  # type: ignore[call-overload]
@@ -197,6 +195,21 @@ class SQLAlchemyRepository(BaseRepository[T]):
 
         result = await self._session.execute(query)  # type: ignore[call-overload]
         return list(result.all())
+
+    async def get_all_paginated(
+        self,
+        pagination_params: Params,
+        entity_filter: BaseFilterModel | None = None,
+        options: "QueryOptions | None" = None,
+    ) -> Page[T]:
+        query, opts = self._build_filtered_query(entity_filter, options)
+        # paginate returns Any due to dynamic params typing - explicit cast needed
+        return await paginate(  # type: ignore[no-any-return, call-overload]
+            self._session,
+            query,
+            params=pagination_params,
+            **opts.pagination_kwargs,
+        )
 
     @handle_commit_errors
     async def create(self, entity: BaseModel, **extra_fields: Any) -> T:

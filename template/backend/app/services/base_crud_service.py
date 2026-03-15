@@ -8,6 +8,8 @@ from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
 from pydantic import BaseModel
 
+
+
 from app.core.logging import log_entity
 from app.repositories.base_repository import BaseRepository, QueryOptions, T
 from app.repositories.clauses import OnConflictClause, do_default_on_conflict
@@ -59,10 +61,17 @@ class BaseService(Generic[T]):  # noqa: UP046
     async def get_all(
         self,
         entity_filter: BaseFilterModel | None = None,
-        pagination_params: Params | None = None,
         options: QueryOptions | None = None,
-    ) -> list[T] | Page[T]:
-        return await self.repo.get_all(entity_filter, pagination_params, options)
+    ) -> list[T]:
+        return await self.repo.get_all(entity_filter, options)
+
+    async def get_all_paginated(
+        self,
+        pagination_params: Params,
+        entity_filter: BaseFilterModel | None = None,
+        options: QueryOptions | None = None,
+    ) -> Page[T]:
+        return await self.repo.get_all_paginated(pagination_params, entity_filter, options)
 
     async def create(self, entity: BaseModel, **extra_fields: Any) -> T:
         result = await self.repo.create(entity, **extra_fields)

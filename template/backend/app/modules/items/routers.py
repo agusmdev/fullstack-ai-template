@@ -1,7 +1,7 @@
 """Items router - CRUD endpoints for Item entity."""
 
 import uuid
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 from fastapi import APIRouter, Body, Depends, status
 from fastapi_pagination import Page, Params
@@ -12,9 +12,6 @@ from app.modules.items.dependencies import get_item_service
 from app.modules.items.filters import ItemFilter
 from app.modules.items.schemas import ItemCreate, ItemResponse, ItemUpdate
 from app.modules.items.service import ItemService
-
-if TYPE_CHECKING:
-    from app.modules.items.models import Item
 
 items_router = APIRouter(
     prefix="/items",
@@ -44,9 +41,9 @@ async def list_items(
         - quantity__gte: Filter by minimum quantity
     """
     log_action("list")
-    result: Page[Item] | list[Item] = await item_service.get_all(
-        entity_filter=item_filter,
+    result = await item_service.get_all_paginated(
         pagination_params=pagination,
+        entity_filter=item_filter,
     )
     return cast("Page[ItemResponse]", result)
 

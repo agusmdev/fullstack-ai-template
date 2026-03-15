@@ -21,6 +21,7 @@ def mock_item_service():
     svc = MagicMock()
     svc.get_by_id = AsyncMock()
     svc.get_all = AsyncMock()
+    svc.get_all_paginated = AsyncMock()
     svc.create = AsyncMock()
     svc.update = AsyncMock()
     svc.delete = AsyncMock()
@@ -43,22 +44,22 @@ def sample_item_response(sample_item_id):
 
 
 class TestListItems:
-    async def test_calls_service_get_all(self, mock_item_service):
-        mock_item_service.get_all.return_value = []
+    async def test_calls_service_get_all_paginated(self, mock_item_service):
+        mock_item_service.get_all_paginated.return_value = MagicMock()
         pagination = MagicMock()
         item_filter = MagicMock()
 
         with patch("app.modules.items.routers.log_action"):
             await list_items(pagination, item_filter, mock_item_service)
 
-        mock_item_service.get_all.assert_called_once_with(
-            entity_filter=item_filter,
+        mock_item_service.get_all_paginated.assert_called_once_with(
             pagination_params=pagination,
+            entity_filter=item_filter,
         )
 
     async def test_returns_result(self, mock_item_service):
         mock_page = MagicMock()
-        mock_item_service.get_all.return_value = mock_page
+        mock_item_service.get_all_paginated.return_value = mock_page
         pagination = MagicMock()
         item_filter = MagicMock()
 
