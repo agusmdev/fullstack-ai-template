@@ -9,6 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database.base import Base
 from app.database.mixins import TimestampMixin
 
+_ph = PasswordHasher()
+
 
 class User(TimestampMixin, Base):
     __tablename__ = "user"
@@ -22,10 +24,9 @@ class User(TimestampMixin, Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(default=None)
 
     def check_password(self, password: str) -> bool:
-        ph = PasswordHasher()
         if self.password is None:
             return False
-        return ph.verify(self.password, password)
+        return _ph.verify(self.password, password)
 
     @property
     def is_email_verified(self) -> bool:
