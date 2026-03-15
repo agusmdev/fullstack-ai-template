@@ -127,7 +127,7 @@ function Items() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
-              <Card key={item.id}>
+              <Card key={item.id} data-testid="item-card">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">

@@ -150,7 +150,7 @@ test.describe('Items CRUD Flow', () => {
     await expect(page.locator('text=Original Title')).toBeVisible()
 
     // Find and click the edit button for the item
-    const itemCard = page.locator('text=Original Title').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Original Title' })
     await itemCard.locator('button:has([data-lucide="pencil"])').click()
 
     // Wait for edit dialog
@@ -180,7 +180,7 @@ test.describe('Items CRUD Flow', () => {
     await expect(page.locator('text=Item to Edit')).toBeVisible()
 
     // Edit the item
-    const itemCard = page.locator('text=Item to Edit').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Item to Edit' })
     await itemCard.locator('button:has([data-lucide="pencil"])').click()
 
     // Update description
@@ -205,7 +205,7 @@ test.describe('Items CRUD Flow', () => {
     await expect(page.locator('text=Keep Original')).toBeVisible()
 
     // Start editing
-    const itemCard = page.locator('text=Keep Original').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Keep Original' })
     await itemCard.locator('button:has([data-lucide="pencil"])').click()
 
     // Change the title but cancel
@@ -227,7 +227,7 @@ test.describe('Items CRUD Flow', () => {
     await expect(page.locator('text=To Be Deleted')).toBeVisible()
 
     // Click the delete button
-    const itemCard = page.locator('text=To Be Deleted').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'To Be Deleted' })
     await itemCard.locator('button:has([data-lucide="trash-2"])').click()
 
     // Confirm deletion in alert dialog
@@ -249,7 +249,7 @@ test.describe('Items CRUD Flow', () => {
     await expect(page.locator('text=Keep This Item')).toBeVisible()
 
     // Click delete but cancel
-    const itemCard = page.locator('text=Keep This Item').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Keep This Item' })
     await itemCard.locator('button:has([data-lucide="trash-2"])').click()
 
     // Click Cancel in the alert dialog

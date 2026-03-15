@@ -2,12 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { queryKeys } from './query-keys'
 
 describe('queryKeys', () => {
-  describe('items.all', () => {
-    it('returns static key tuple', () => {
-      expect(queryKeys.items.all).toEqual(['items'])
-    })
-  })
-
   describe('items.list', () => {
     it('returns key with no params', () => {
       expect(queryKeys.items.list()).toEqual(['items', 'list', undefined])

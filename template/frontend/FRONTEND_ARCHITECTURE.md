@@ -16,92 +16,63 @@ This is a **TanStack Router SPA** (Single Page Application) with:
 
 ```
 src/
-├── components/                 # React components
-│   ├── ui/                    # shadcn/ui exports (DO NOT add custom components here)
+├── components/              # React components (flat — no feature subdirs)
+│   ├── ui/                  # shadcn/ui primitives (DO NOT add custom components here)
 │   │   ├── button.tsx
 │   │   ├── input.tsx
 │   │   ├── dialog.tsx
 │   │   └── ...
-│   │
-│   ├── common/                # Shared feature components
-│   │   ├── Navigation.tsx      # App navigation
-│   │   ├── Layout.tsx          # Root layout wrapper
-│   │   └── ErrorBoundary.tsx   # Error boundary
-│   │
-│   ├── auth/                  # Auth feature components
-│   │   ├── LoginForm.tsx
-│   │   ├── RegisterForm.tsx
-│   │   └── ProtectedRoute.tsx  (if needed)
-│   │
-│   └── items/                 # Items feature components
-│       ├── ItemsList.tsx       # List page component
-│       ├── ItemCard.tsx        # Item display component
-│       ├── ItemForm.tsx        # Reusable form component
-│       └── dialogs/
-│           ├── CreateItemDialog.tsx
-│           ├── EditItemDialog.tsx
-│           └── DeleteItemDialog.tsx
+│   ├── Navigation.tsx       # App navigation
+│   ├── Layout.tsx           # Root layout wrapper
+│   ├── ErrorBoundary.tsx    # Error boundary
+│   ├── CreateItemDialog.tsx
+│   ├── EditItemDialog.tsx
+│   ├── DeleteItemDialog.tsx
+│   └── ItemFormDialog.tsx   # Shared form used by Create and Edit dialogs
 │
-├── contexts/                   # React Context for UI state
-│   └── AuthContext.tsx         # Global auth state
+├── contexts/                # React Context for UI state
+│   └── AuthContext.tsx      # Global auth state
 │
-├── hooks/                      # React hooks
-│   ├── queries/               # Query hooks with queryOptions
-│   │   ├── useItemsQuery.ts
-│   │   └── useItemDetailQuery.ts
-│   │
-│   ├── mutations/             # Mutation hooks
-│   │   ├── useCreateItem.ts
-│   │   ├── useUpdateItem.ts
-│   │   └── useDeleteItem.ts
-│   │
-│   ├── useAuth.ts             # Already in context, but can export separately
-│   ├── useErrorHandler.ts     # Error handling hook
-│   └── use*.ts                # Other custom hooks
+├── hooks/                   # React hooks (flat)
+│   ├── useItems.ts          # All items queries and mutations
+│   └── useDebounce.ts       # Debounce utility hook
 │
-├── lib/                        # Utilities & configuration
-│   ├── api-client.ts          # Fetch wrapper class
-│   ├── api-endpoints.ts       # Endpoint URL constants
-│   ├── auth.ts                # Token storage functions
-│   ├── config.ts              # Runtime config
-│   ├── error-handler.ts       # Error handling utilities
-│   ├── query-keys.ts          # Query key factory
-│   ├── utils.ts               # General utilities
-│   │
-│   └── schemas/               # Zod validation schemas
-│       ├── auth.ts            # Auth schemas (LoginInput, RegisterInput)
-│       ├── items.ts           # Item schemas (ItemCreate, ItemUpdate)
-│       └── common.ts          # Common schemas (pagination, errors)
+├── lib/                     # Utilities & configuration
+│   ├── api-client.ts        # Fetch wrapper class
+│   ├── api-endpoints.ts     # Endpoint URL constants
+│   ├── auth.ts              # Token storage functions
+│   ├── config.ts            # Runtime config
+│   ├── error-handler.ts     # Error handling utilities
+│   ├── query-keys.ts        # Query key factory
+│   ├── utils.ts             # General utilities
+│   ├── web-vitals.ts        # Web Vitals tracking (DEV-only logging)
+│   └── schemas/             # Zod validation schemas
+│       └── index.ts         # Auth + item schemas (loginSchema, registerSchema, etc.)
 │
-├── routes/                     # TanStack Router file-based routes
-│   ├── __root.tsx             # Root layout & providers
-│   ├── index.tsx              # Home page
-│   ├── login.tsx              # Login page
-│   ├── register.tsx           # Register page
-│   └── items.tsx              # Items list page
+├── routes/                  # TanStack Router file-based routes
+│   ├── __root.tsx           # Root layout & providers
+│   ├── index.tsx            # Home page
+│   ├── login.tsx            # Login page
+│   ├── register.tsx         # Register page
+│   └── items.tsx            # Items list page (auth-guarded via beforeLoad)
 │
-├── types/                      # TypeScript types & interfaces
-│   ├── api.ts                 # API response/request types
-│   ├── components.ts          # Component prop types
-│   └── index.ts               # Type exports
+├── types/                   # TypeScript types & interfaces
+│   ├── auth.ts              # AuthSessionResponse
+│   └── item.ts              # Item, ItemsResponse, ItemsParams
 │
-├── styles/                     # Global styles
-│   ├── app.css                # Main stylesheet
-│   └── index.css              # Tailwind imports
+├── styles/                  # Global styles
+│   ├── app.css              # Main stylesheet (Tailwind imports + CSS vars)
+│   └── home.css             # Home page styles (glassmorphism demo)
 │
-├── test/                       # Testing utilities
-│   ├── setup.ts               # Vitest setup
-│   └── test-utils.tsx         # Testing helpers
+├── test/                    # Testing utilities
+│   └── setup.ts             # Vitest setup
 │
-├── router.tsx                  # Router initialization
-├── main.tsx                    # App entry point (if exists)
-└── styles.css                  # Global CSS
+└── router.tsx               # Router initialization
 
 test/ (project root)
-└── e2e/                        # Playwright E2E tests
+└── e2e/                     # Playwright E2E tests
     ├── auth.spec.ts
-    ├── items.spec.ts
-    └── ...
+    └── items.spec.ts
 ```
 
 ## Detailed Patterns
@@ -401,40 +372,24 @@ The root layout wraps the app with providers:
 
 ### 6. Protected Routes
 
-Option A: Check auth in component:
-
-```tsx
-function ItemsList() {
-  const { isAuthenticated } = useAuth()
-  const navigate = useNavigate()
-  
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate({ to: '/login' })
-    }
-  }, [isAuthenticated, navigate])
-  
-  return <div>Items content</div>
-}
-```
-
-Option B: Check auth in route loader:
+Use `beforeLoad` in the route definition to guard protected pages. This runs before the component mounts, avoiding any flash of content.
 
 ```tsx
 // src/routes/items.tsx
-import { createRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { isAuthenticated } from '@/lib/auth'
 
-const itemsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/items',
-  beforeLoad: ({ context }) => {
-    if (!context.isAuthenticated) {
-      throw redirect({ to: '/login' })
+export const Route = createFileRoute('/items')({
+  beforeLoad: () => {
+    if (!isAuthenticated()) {
+      throw redirect({ to: '/login', search: { redirect: '/items' } })
     }
   },
   component: ItemsPage,
 })
 ```
+
+`isAuthenticated()` reads from localStorage synchronously — safe to call in `beforeLoad` on both client and server.
 
 ---
 
@@ -637,14 +592,13 @@ test.describe('Items Feature', () => {
 
 | Type | Location | Pattern | Example |
 |------|----------|---------|---------|
-| Query Hooks | `hooks/queries/` | `use*Query.ts` | `useItemsQuery.ts` |
-| Mutation Hooks | `hooks/mutations/` | `use*Mutation.ts` | `useCreateItem.ts` |
-| Custom Hooks | `hooks/` | `use*.ts` | `useAuth.ts` |
-| Components | `components/{feature}/` | `*.tsx` | `ItemCard.tsx` |
-| Dialogs | `components/{feature}/dialogs/` | `*Dialog.tsx` | `CreateItemDialog.tsx` |
+| Feature Hooks | `hooks/` | `use*.ts` | `useItems.ts` |
+| Utility Hooks | `hooks/` | `use*.ts` | `useDebounce.ts` |
+| Components | `components/` | `*.tsx` (named exports) | `Navigation.tsx` |
+| Dialogs | `components/` | `*Dialog.tsx` | `CreateItemDialog.tsx` |
 | Route Pages | `routes/` | `*.tsx` | `items.tsx` |
-| Schemas | `lib/schemas/` | `*.ts` | `items.ts` |
-| Types | `types/` | `*.ts` | `api.ts` |
+| Schemas | `lib/schemas/` | `*.ts` | `index.ts` |
+| Types | `types/` | `*.ts` | `item.ts` |
 | Utils | `lib/` | `*.ts` (named exports) | `utils.ts` |
 
 ---
@@ -654,36 +608,29 @@ test.describe('Items Feature', () => {
 ### Adding a New Feature
 
 1. **Create API endpoints** in `lib/api-endpoints.ts`
-2. **Create Zod schemas** in `lib/schemas/{feature}.ts`
-3. **Create query hook** in `hooks/queries/use{Feature}Query.ts`
-4. **Create mutation hooks** in `hooks/mutations/use{Feature}Mutation.ts`
-5. **Create components** in `components/{feature}/`
-6. **Create route** in `routes/{feature}.tsx`
-7. **Add tests** alongside components
+2. **Create Zod schemas** in `lib/schemas/index.ts`
+3. **Create hook** in `hooks/use{Feature}.ts` (queries and mutations together)
+4. **Create components** in `components/` (flat — no subdirectory)
+5. **Create route** in `routes/{feature}.tsx`
+6. **Add tests** co-located with the hook (`hooks/use{Feature}.test.ts`)
 
 ### Adding Authentication-Required Route
 
 ```tsx
 // src/routes/protected-feature.tsx
-import { createRoute } from '@tanstack/react-router'
-import { useAuth } from '@/contexts/AuthContext'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { isAuthenticated } from '@/lib/auth'
 
-export const protectedRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/protected',
+export const Route = createFileRoute('/protected-feature')({
+  beforeLoad: () => {
+    if (!isAuthenticated()) {
+      throw redirect({ to: '/login', search: { redirect: '/protected-feature' } })
+    }
+  },
   component: ProtectedFeature,
 })
 
 function ProtectedFeature() {
-  const { isAuthenticated } = useAuth()
-  const navigate = useNavigate()
-  
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate({ to: '/login' })
-    }
-  }, [isAuthenticated])
-  
   return <div>Protected content</div>
 }
 ```
@@ -735,11 +682,11 @@ const baseUrl = config.apiBaseUrl
 - [ ] Query hooks use `queryOptions` factory pattern
 - [ ] Mutations invalidate relevant cache
 - [ ] Forms use Zod schemas
-- [ ] Components are located in appropriate folder
+- [ ] Components are in `components/` (no feature subdirectories)
 - [ ] API endpoints are defined in `api-endpoints.ts`
 - [ ] Errors are handled with try/catch or onError callbacks
 - [ ] Protected routes check `isAuthenticated`
-- [ ] Tests are co-located with components
+- [ ] Tests are co-located with source files (`use*.test.ts`, `*.test.ts`)
 - [ ] Types are defined in `lib/schemas/` or `types/`
 - [ ] Components follow shadcn/ui patterns
 
