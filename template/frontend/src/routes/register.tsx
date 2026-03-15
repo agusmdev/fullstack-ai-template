@@ -48,10 +48,7 @@ function Register() {
         raw_password: data.password,
       })
 
-      if (!result.id) {
-        throw new Error('No session token returned from server')
-      }
-      login(result.id)
+      login(result)
 
       toast.success('Account created successfully')
       navigate({ to: '/' })

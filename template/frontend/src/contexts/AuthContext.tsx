@@ -3,11 +3,12 @@ import type { QueryClient } from '@tanstack/react-query'
 import { getAuthToken, setAuthToken, clearAuthToken, subscribeToAuthChanges } from '@/lib/auth'
 import { api } from '@/lib/api-client'
 import { API } from '@/lib/api-endpoints'
+import type { AuthSessionResponse } from '@/types/auth'
 
 interface AuthContextValue {
   isAuthenticated: boolean
   token: string | null
-  login: (token: string) => void
+  login: (response: AuthSessionResponse) => void
   logout: () => Promise<void>
 }
 
@@ -37,9 +38,12 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
     return unsubscribe
   }, [queryClient])
 
-  const login = useCallback((newToken: string) => {
-    setAuthToken(newToken)
-    setTokenState(newToken)
+  const login = useCallback((response: AuthSessionResponse) => {
+    if (!response.id) {
+      throw new Error('No session token returned from server')
+    }
+    setAuthToken(response.id)
+    setTokenState(response.id)
   }, [])
 
   const logout = useCallback(async () => {

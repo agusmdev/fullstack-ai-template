@@ -47,10 +47,7 @@ function Login() {
         password: data.password,
       })
 
-      if (!result.id) {
-        throw new Error('No session token returned from server')
-      }
-      login(result.id)
+      login(result)
 
       toast.success('Signed in successfully')
       navigate({ to: '/' })
