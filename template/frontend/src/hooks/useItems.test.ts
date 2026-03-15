@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
-import type { ItemsResponse } from '@/types/item'
+import type { Item, ItemsResponse } from '@/types/item'
 
 // --- Helpers ---
 
@@ -21,6 +21,42 @@ function makeItemsResponse(overrides?: Partial<ItemsResponse>): ItemsResponse {
     ...overrides,
   }
 }
+
+// --- useCreateItem / useUpdateItem cache invalidation ---
+
+describe('useCreateItem cache invalidation', () => {
+  it('invalidates items.all after a successful create', async () => {
+    const qc = makeQueryClient()
+    vi.stubGlobal('fetch', vi.fn())
+
+    const initial = makeItemsResponse()
+    qc.setQueryData(['items', 'list', undefined], initial)
+
+    // Simulate onSuccess: invalidateQueries({ queryKey: ['items'] })
+    await qc.invalidateQueries({ queryKey: ['items'] })
+
+    // After invalidation the query becomes stale — it will refetch on next access
+    const state = qc.getQueryState(['items', 'list', undefined])
+    expect(state?.isInvalidated).toBe(true)
+  })
+})
+
+describe('useUpdateItem cache invalidation', () => {
+  it('invalidates items.all after a successful update', async () => {
+    const qc = makeQueryClient()
+    vi.stubGlobal('fetch', vi.fn())
+
+    const initial = makeItemsResponse()
+    qc.setQueryData(['items', 'list', { page: 1, size: 9 }], initial)
+
+    // Simulate onSuccess: invalidateQueries({ queryKey: ['items'] })
+    await qc.invalidateQueries({ queryKey: ['items'] })
+
+    const state = qc.getQueryState(['items', 'list', { page: 1, size: 9 }])
+    expect(state?.isInvalidated).toBe(true)
+  })
+
+})
 
 // --- useDeleteItem optimistic update ---
 

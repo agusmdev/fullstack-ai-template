@@ -1,8 +1,3 @@
-/**
- * Web Vitals tracking
- * Tracks Core Web Vitals metrics for performance monitoring
- */
-
 import { onCLS, onINP, onFCP, onLCP, onTTFB, type Metric } from 'web-vitals'
 
 function logMetric(metric: Metric) {
