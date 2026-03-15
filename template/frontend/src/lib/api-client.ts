@@ -20,7 +20,7 @@ export class ApiError extends Error {
 }
 
 class ApiClient {
-  private baseUrl = config.apiBaseUrl
+  private get baseUrl() { return config.apiBaseUrl }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const token = getAuthToken()

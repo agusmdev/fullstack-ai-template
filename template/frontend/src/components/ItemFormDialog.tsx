@@ -136,10 +136,7 @@ export function ItemFormDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setOpen(false)
-                  form.reset()
-                }}
+                onClick={() => setOpen(false)}
               >
                 Cancel
               </Button>
