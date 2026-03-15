@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime, timedelta
 from typing import cast
 
-import loguru
 from requests_oauthlib import OAuth2Session
 
 from app.core.config import settings
@@ -181,7 +180,6 @@ class AuthService:
         user = await self.user_service.get_by_field("email", email, raise_error=False)
         if not user:
             # Prevent email enumeration: return None rather than raising
-            loguru.logger.info("Password reset requested for non-existent email")
             return None
 
         if user.password is None:
@@ -199,7 +197,6 @@ class AuthService:
             )
         )
 
-        loguru.logger.info(f"Password reset token created for user: {user.id}")
         return token
 
     async def reset_password(self, token: str, new_password: str) -> None:
@@ -217,7 +214,6 @@ class AuthService:
         # Invalidate all sessions after password change as a security measure
         await self.repo.delete_all_for_user(token_record.user_id)
 
-        loguru.logger.info(f"Password reset completed for user: {token_record.user_id}")
 
     # Email Verification Methods
 
@@ -247,7 +243,6 @@ class AuthService:
             )
         )
 
-        loguru.logger.info(f"Email verification token created for user: {user_id}")
         return token
 
     async def verify_email(self, token: str) -> None:
@@ -263,4 +258,3 @@ class AuthService:
         await self.user_service.mark_email_verified(token_record.user_id)
         await self.email_verification_repo.mark_as_used(token)
 
-        loguru.logger.info(f"Email verified for user: {token_record.user_id}")
