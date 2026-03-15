@@ -22,7 +22,8 @@ export class ApiError extends Error {
 class ApiClient {
   private get baseUrl() { return getConfig().apiBaseUrl }
 
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  // Executes the request with auth and error handling; returns the raw Response.
+  private async execute(endpoint: string, options?: RequestInit): Promise<Response> {
     const token = getAuthToken()
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -49,13 +50,11 @@ class ApiClient {
       )
     }
 
-    // 204 No Content is only expected for DELETE — other methods falling through to json() will
-    // throw naturally if the body is empty, surfacing the unexpected response rather than hiding it.
-    if (response.status === 204 && options?.method === 'DELETE') {
-      return undefined as unknown as T
-    }
+    return response
+  }
 
-    return response.json()
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    return (await this.execute(endpoint, options)).json()
   }
 
   get<T>(endpoint: string) {
@@ -75,7 +74,8 @@ class ApiClient {
   }
 
   delete(endpoint: string): Promise<void> {
-    return this.request<void>(endpoint, { method: 'DELETE' })
+    // execute() validates auth/errors; we discard the body (204 No Content returns nothing).
+    return this.execute(endpoint, { method: 'DELETE' }).then(() => undefined)
   }
 }
 

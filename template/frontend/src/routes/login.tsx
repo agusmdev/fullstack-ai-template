@@ -10,11 +10,15 @@ import { useAuthSubmit } from '@/hooks/useAuthSubmit'
 import { loginSchema, type LoginFormData } from '@/lib/schemas'
 
 export const Route = createFileRoute('/login')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search['redirect'] === 'string' ? search['redirect'] : '/',
+  }),
   component: Login,
 })
 
 function Login() {
-  const { submit, isLoading } = useAuthSubmit(API.AUTH.LOGIN, 'Signed in successfully', 'Login failed')
+  const { redirect: redirectTo } = Route.useSearch()
+  const { submit, isLoading } = useAuthSubmit(API.AUTH.LOGIN, 'Signed in successfully', 'Login failed', { to: redirectTo as '/' })
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

@@ -14,6 +14,8 @@ interface State {
   errorId: string | null
 }
 
+// Class component is intentional: React's error boundary API (getDerivedStateFromError /
+// componentDidCatch) has no functional equivalent and requires a class component.
 export class ErrorBoundary extends React.Component<Props, State> {
   state: State = { hasError: false, error: null, errorId: null }
 
