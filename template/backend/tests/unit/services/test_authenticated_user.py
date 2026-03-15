@@ -52,7 +52,7 @@ class TestAuthenticatedUserHttpAuth:
 
 
 class TestAuthenticatedUserGetUser:
-    """Tests for AuthenticatedUser.get_user."""
+    """Tests for AuthenticatedUser.load_user_context."""
 
     async def test_get_user_success(
         self, mock_request, mock_http_auth, mock_auth_service, sample_user_response
@@ -63,7 +63,7 @@ class TestAuthenticatedUserGetUser:
         with patch("app.user.auth.permissions.get_request_context") as mock_ctx, \
              patch("app.user.auth.permissions.log_user"):
             mock_ctx.return_value = MagicMock()
-            result = await AuthenticatedUser.get_user(
+            result = await AuthenticatedUser.load_user_context(
                 mock_request, mock_http_auth, mock_auth_service
             )
 
@@ -77,7 +77,7 @@ class TestAuthenticatedUserGetUser:
         mock_auth_service.validate_session = AsyncMock(side_effect=SessionExpiredError())
 
         with pytest.raises(HTTPException) as exc_info:
-            await AuthenticatedUser.get_user(
+            await AuthenticatedUser.load_user_context(
                 mock_request, mock_http_auth, mock_auth_service
             )
 
@@ -89,7 +89,7 @@ class TestAuthenticatedUserGetUser:
         """Test that user is returned from request.state if already set."""
         mock_request.state.user = sample_user_response
 
-        result = await AuthenticatedUser.get_user(
+        result = await AuthenticatedUser.load_user_context(
             mock_request, mock_http_auth, mock_auth_service
         )
 

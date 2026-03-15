@@ -20,7 +20,7 @@ user_router = APIRouter(dependencies=[Depends(AuthenticatedUser.current_user_id)
     status_code=status.HTTP_200_OK,
 )
 async def get_authenticated_user(
-    user: User = Depends(AuthenticatedUser.get_user),
+    user: User = Depends(AuthenticatedUser.load_user_context),
 ) -> UserResponse:
     return UserResponse(
         id=user.id,

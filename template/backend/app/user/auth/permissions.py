@@ -31,7 +31,7 @@ class AuthenticatedUser:
         http_auth: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=True)),
         auth_service: AuthService = Depends(get_auth_service),
     ) -> uuid.UUID:
-        user: User = await cls.get_user(request, http_auth, auth_service)
+        user: User = await cls.load_user_context(request, http_auth, auth_service)
         return user.id
 
     @classmethod
@@ -41,11 +41,11 @@ class AuthenticatedUser:
         http_auth: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=True)),
         auth_service: AuthService = Depends(get_auth_service),
     ) -> str:
-        user: User = await cls.get_user(request, http_auth, auth_service)
+        user: User = await cls.load_user_context(request, http_auth, auth_service)
         return user.email
 
     @classmethod
-    async def get_user(
+    async def load_user_context(
         cls,
         request: Request,
         http_auth: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=True)),
