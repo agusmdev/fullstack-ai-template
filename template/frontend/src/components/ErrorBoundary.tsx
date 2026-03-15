@@ -33,10 +33,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   copyErrorDetails = () => {
     const errorDetails = `Error ID: ${this.state.errorId}\nError: ${this.state.error?.message}\nStack: ${this.state.error?.stack}`
-    navigator.clipboard.writeText(errorDetails).catch(() => {
-      toast.error('Failed to copy error details')
-    })
-    toast.success('Error details copied to clipboard')
+    navigator.clipboard
+      .writeText(errorDetails)
+      .then(() => toast.success('Error details copied to clipboard'))
+      .catch(() => toast.error('Failed to copy error details'))
   }
 
   render() {

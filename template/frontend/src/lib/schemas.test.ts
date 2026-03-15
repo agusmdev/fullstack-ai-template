@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { loginSchema, registerSchema, itemSchema } from './schemas/index'
+import { loginSchema, registerSchema, itemSchema } from './schemas'
 
 describe('loginSchema', () => {
   it('accepts valid credentials', () => {

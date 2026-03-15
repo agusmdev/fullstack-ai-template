@@ -51,7 +51,8 @@ class ApiClient {
     }
 
     if (response.status === 204) {
-      return undefined as T
+      // 204 No Content — callers on this path must use Promise<void> (e.g. delete())
+      return undefined as unknown as T
     }
 
     return response.json()

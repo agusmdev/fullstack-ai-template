@@ -30,18 +30,18 @@
 src/
 ├── components/
 │   ├── ui/              ← shadcn/ui components ONLY
-│   ├── common/          ← Shared features (Navigation, Layout, ErrorBoundary)
-│   └── {feature}/       ← Feature-scoped (items/, auth/)
-│       └── dialogs/     ← Feature dialogs
+│   ├── Navigation.tsx   ← Top nav bar
+│   ├── Layout.tsx       ← Page layout wrapper
+│   ├── ErrorBoundary.tsx
+│   ├── CreateItemDialog.tsx
+│   ├── EditItemDialog.tsx
+│   └── DeleteItemDialog.tsx
 ├── contexts/            ← React Context (AuthContext, etc.)
-├── hooks/
-│   ├── queries/         ← queryOptions factories (useItemsQuery, etc.)
-│   ├── mutations/       ← useMutation hooks (useCreateItem, etc.)
-│   └── use*.ts          ← Other hooks (useAuth, useErrorHandler, etc.)
+├── hooks/               ← All hooks flat (useItems.ts, useDebounce.ts, etc.)
 ├── lib/
 │   ├── api-client.ts    ← Fetch wrapper with auth & error handling
-│   ├── api-endpoints.ts ← Endpoint URLs constant
-│   ├── auth.ts          ← Token storage/retrieval
+│   ├── api-endpoints.ts ← Endpoint URL constants
+│   ├── auth.ts          ← Token storage/retrieval + pub-sub
 │   ├── query-keys.ts    ← Query key factory
 │   ├── config.ts        ← Runtime configuration
 │   ├── error-handler.ts ← Error handling utilities
@@ -60,17 +60,14 @@ src/
 ```tsx
 export const API = {
   AUTH: {
-    REGISTER: '/api/v1/auth/register',
-    LOGIN: '/api/v1/auth/login',
-    LOGOUT: '/api/v1/auth/logout',
-    ME: '/api/v1/auth/me',
+    REGISTER: '/auth/register',
+    LOGIN: '/auth/login',
+    LOGOUT: '/auth/logout',
   },
   ITEMS: {
-    LIST: '/api/v1/items',
-    CREATE: '/api/v1/items',
-    DETAIL: (id: string) => `/api/v1/items/${id}`,
-    UPDATE: (id: string) => `/api/v1/items/${id}`,
-    DELETE: (id: string) => `/api/v1/items/${id}`,
+    LIST: '/items',
+    CREATE: '/items',
+    DETAIL: (id: string) => `/items/${id}`,  // used for GET, PATCH, DELETE
   },
 } as const
 ```
@@ -83,32 +80,24 @@ export const API = {
 
 ## Query & Mutation Patterns
 
-**Query with queryOptions** (`hooks/queries/use*.ts`):
-```tsx
-import { queryOptions } from '@tanstack/react-query'
+All item queries and mutations live in `hooks/useItems.ts` as individual exported hooks:
 
-export const itemsQueryOptions = () =>
-  queryOptions({
-    queryKey: ['items', 'list'],
-    queryFn: () => api.get(API.ITEMS.LIST),
-    staleTime: 1000 * 60 * 5,
+```tsx
+// Query
+export function useItems(params?: ItemsParams, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.items.list(params),
+    queryFn: () => api.get<ItemsResponse>(API.ITEMS.LIST + buildQuery(params)),
+    enabled,
   })
+}
 
-// Usage: const { data } = useQuery(itemsQueryOptions())
-```
-
-**Mutation with invalidation** (`hooks/mutations/use*.ts`):
-```tsx
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-
+// Mutation
 export function useCreateItem() {
   const queryClient = useQueryClient()
-  
   return useMutation({
-    mutationFn: (data: ItemCreate) => api.post(API.ITEMS.CREATE, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['items'] })
-    },
+    mutationFn: (data: CreateItemData) => api.post<Item>(API.ITEMS.CREATE, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.items.all }),
   })
 }
 ```
@@ -179,18 +168,15 @@ render(
 ## Naming Conventions
 
 **Files:**
-- Hooks: `use*.ts` (useAuth, useItems)
-- Query hooks: `hooks/queries/use*Query.ts`
-- Mutation hooks: `hooks/mutations/use*Mutation.ts`
-- Components: `components/{Feature}/{ComponentName}.tsx`
+- Hooks: `use*.ts` flat in `hooks/` (useItems.ts, useDebounce.ts)
+- Components: `components/*.tsx` flat (CreateItemDialog.tsx, Navigation.tsx)
 - Types: `types/*.ts` (no `.d.ts` for imports)
 - Utilities: `lib/*.ts` with named exports
 
 **Components:**
-- Feature folders: singular (items/, auth/, not items/, auths/)
-- Feature components: `ItemsList`, `ItemCard`, `ItemForm`
+- All components flat in `components/` (no subdirectories)
 - Dialog components: `*Dialog` suffix
-- Layout components: in `components/common/`
+- Layout/shared components: alongside feature components
 
 **Query Keys:**
 - First level: feature name (items, users, etc.)

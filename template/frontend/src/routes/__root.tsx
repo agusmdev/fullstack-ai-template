@@ -20,13 +20,13 @@ const TanStackRouterDevtoolsPanel = import.meta.env.DEV
     )
   : () => null
 
-import { Layout } from '../components/Layout'
-import { ErrorBoundary } from '../components/ErrorBoundary'
-import { Toaster } from '../components/ui/sonner'
-import { AuthProvider } from '../contexts/AuthContext'
-import { initWebVitals } from '../lib/web-vitals'
+import { Layout } from '@/components/Layout'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { Toaster } from '@/components/ui/sonner'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { initWebVitals } from '@/lib/web-vitals'
 
-import appCss from '../styles/app.css?url'
+import appCss from '@/styles/app.css?url'
 
 // Create a QueryClient instance
 const queryClient = new QueryClient({
@@ -79,9 +79,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <AuthProvider queryClient={queryClient}>
             <ErrorBoundary>
-              <Layout>
-                {children}
-              </Layout>
+              <Layout />
             </ErrorBoundary>
             <Toaster />
             <React.Suspense>
