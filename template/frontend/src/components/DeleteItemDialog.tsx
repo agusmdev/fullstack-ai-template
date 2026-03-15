@@ -10,14 +10,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
 import { useDeleteItem } from '@/hooks/useItems'
 import type { Item } from '@/types/item'
 import { handleApiError } from '@/lib/error-handler'
 
 interface DeleteItemDialogProps {
   item: Item
-  trigger?: React.ReactNode
+  trigger: React.ReactNode
 }
 
 export function DeleteItemDialog({ item, trigger }: DeleteItemDialogProps) {
@@ -36,7 +35,7 @@ export function DeleteItemDialog({ item, trigger }: DeleteItemDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        {trigger || <Button variant="destructive">Delete</Button>}
+        {trigger}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

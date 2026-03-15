@@ -2,8 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { API } from '@/lib/api-endpoints'
 import { queryKeys } from '@/lib/query-keys'
-import type { Item, ItemsParams, ItemsResponse } from '@/types/item'
+import type { Item, ItemsParams, ItemsResponse, CreateItemData, UpdateItemData } from '@/types/item'
 
+export type { CreateItemData, UpdateItemData }
 
 export function useItems(params?: ItemsParams, enabled = true) {
   const queryParams = new URLSearchParams()
@@ -28,11 +29,6 @@ export function useItems(params?: ItemsParams, enabled = true) {
   })
 }
 
-export interface CreateItemData {
-  name: string
-  description?: string
-}
-
 export function useCreateItem() {
   const queryClient = useQueryClient()
 
@@ -42,11 +38,6 @@ export function useCreateItem() {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
     },
   })
-}
-
-export interface UpdateItemData {
-  name?: string
-  description?: string
 }
 
 export function useUpdateItem(itemId: string) {

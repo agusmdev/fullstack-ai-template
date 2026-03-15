@@ -74,7 +74,7 @@ export const API = {
 
 **API Client** (`lib/api-client.ts`):
 - Automatic Bearer token injection
-- 401 redirect to `/login`
+- 401: clears token and throws ApiError; `AuthContext` handles redirect to `/login` via `subscribeToAuthChanges`
 - JSON error parsing with detail/code/fields
 - Throws `ApiError` with typed properties
 

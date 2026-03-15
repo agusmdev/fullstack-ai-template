@@ -1,16 +1,12 @@
-import { Link, useNavigate } from '@tanstack/react-router'
-import { useCallback } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 
 export function Navigation() {
   const { isAuthenticated, logout } = useAuth()
-  const navigate = useNavigate()
 
-  const handleLogout = useCallback(async () => {
-    await logout()
-    navigate({ to: '/login' })
-  }, [logout, navigate])
+  // AuthContext's subscribeToAuthChanges fires on token clear and navigates to /login
+  const handleLogout = () => logout()
 
   return (
     <header className="fixed top-0 left-0 right-0 z-[1000] bg-background/80 backdrop-blur-[20px] border-b border-border/50">

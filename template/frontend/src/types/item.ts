@@ -22,3 +22,13 @@ export interface ItemsResponse {
   size?: number
   pages?: number
 }
+
+export interface CreateItemData {
+  name: string
+  description?: string
+}
+
+export interface UpdateItemData {
+  name?: string
+  description?: string
+}
