@@ -10,6 +10,11 @@ export function subscribeToAuthChanges(listener: AuthChangeListener): () => void
   return () => authChangeListeners.delete(listener)
 }
 
+/** Clear all auth change listeners. For test teardown to prevent state leakage between tests. */
+export function clearAllAuthListeners(): void {
+  authChangeListeners.clear()
+}
+
 function notifyAuthChange() {
   authChangeListeners.forEach(listener => listener())
 }
