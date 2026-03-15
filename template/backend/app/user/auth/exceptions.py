@@ -55,3 +55,11 @@ class OAuthUserPasswordResetError(HTTPExceptionMixin):
     detail = "Cannot reset password for OAuth users. Please sign in with your OAuth provider."
     error_code = "oauth_user_password_reset"
     status_code = 400
+
+
+class UnsupportedOAuthProviderError(HTTPExceptionMixin):
+    """Unsupported OAuth provider"""
+
+    detail = "Unsupported OAuth provider"
+    error_code = "unsupported_oauth_provider"
+    status_code = 400

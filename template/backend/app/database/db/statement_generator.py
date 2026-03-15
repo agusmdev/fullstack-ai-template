@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Sequence
 
 from pydantic import BaseModel
@@ -12,9 +11,9 @@ from sqlalchemy.orm import (
 
 from .ast import ASTNode, LoadOnlyNode, RelationshipLoadNode, safe_getattr
 from .code_generator import QueryOptionGenerator
-from .pydantic_fields import PydanticGraph
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from .pydantic_fields import PydanticGraph
 
 
 class StatementGenerator:

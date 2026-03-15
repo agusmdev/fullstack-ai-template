@@ -13,6 +13,7 @@ from app.user.auth.exceptions import (
     InvalidTokenError,
     OAuthUserPasswordResetError,
     SessionExpiredError,
+    UnsupportedOAuthProviderError,
     UserNotFoundError,
 )
 from app.user.auth.models import Session
@@ -124,7 +125,7 @@ class AuthService(BaseService[Session]):
     ) -> SessionResponse:
         provider = self.providers.get(provider_name)
         if not provider:
-            raise ValueError("Unsupported provider")
+            raise UnsupportedOAuthProviderError()
 
         oauth_user = provider.callback(payload)
         user = await self.user_service.get_or_create(

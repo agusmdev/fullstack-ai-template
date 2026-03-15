@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import uuid
 from collections.abc import Callable, Sequence
 from functools import wraps
@@ -22,8 +22,6 @@ from app.repositories.exceptions import DuplicateError, NotFoundError, Reference
 from app.repositories.query_builder import QueryBuilder
 
 F = TypeVar("F", bound=Callable[..., Any])
-
-logger = logging.getLogger(__name__)
 
 
 class SQLAlchemyRepository(BaseRepository[T]):
@@ -166,10 +164,8 @@ class SQLAlchemyRepository(BaseRepository[T]):
             query = self._generate_select_from_pydantic(response_model, query)
         if entity_filter:
             query = entity_filter.filter(query)
-            try:
+            if hasattr(entity_filter, "sort"):
                 query = entity_filter.sort(query)
-            except AttributeError:
-                pass
 
         if pagination_params:
             # paginate returns Any due to dynamic params typing - explicit cast needed

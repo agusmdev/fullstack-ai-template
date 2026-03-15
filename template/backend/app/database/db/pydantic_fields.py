@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from collections import deque
 from collections.abc import Callable
 from types import UnionType
@@ -12,14 +11,13 @@ from typing import (
     get_origin,
 )
 
+from loguru import logger
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from pydantic.fields import FieldInfo
-
-logger = logging.getLogger(__name__)
 
 SELECT_STRATEGY_KEY = "_select_strategy"
 

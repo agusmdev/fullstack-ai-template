@@ -101,13 +101,10 @@ async def oauth_callback(
             url=f"{settings.FRONTEND_URL}/oauth/callback?session={session.id}",
             status_code=status.HTTP_302_FOUND,
         )
-    # TODO: Check exceptions
-    except Exception as e:
-        loguru.logger.exception(e)
-
-        query_params = f"error={str(e)}"
+    except Exception:
+        loguru.logger.exception("OAuth login failed for provider %s", provider)
         return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/oauth/error?{query_params}",
+            url=f"{settings.FRONTEND_URL}/oauth/error?error=oauth_login_failed",
             status_code=status.HTTP_302_FOUND,
         )
 

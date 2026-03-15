@@ -57,11 +57,7 @@ class JoinFilter(Filter):
                 field_value_dump = field_value.model_dump(
                     exclude_unset=True, exclude_none=True
                 )
-                if (
-                    field_value_dump
-                    and field_value_dump
-                    and any(field_value_dump.values())
-                ):
+                if field_value_dump and any(field_value_dump.values()):
                     joins = getattr(self.Constants, "joins", {})
                     if joins and field_name in joins:
                         join = joins[field_name]

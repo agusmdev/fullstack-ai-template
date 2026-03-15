@@ -33,8 +33,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app(
-    add_sentry: bool = settings.ENVIRONMENT != "local",
+    add_sentry: bool | None = None,
 ) -> FastAPI:
+    if add_sentry is None:
+        add_sentry = settings.ENVIRONMENT != "local"
+
     # Configure logging early
     configure_logging()
 
