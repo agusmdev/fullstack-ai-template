@@ -7,7 +7,7 @@ from typing import Any, Literal, TypeVar, overload
 from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
 from pydantic import BaseModel
-from sqlalchemy import Selectable
+from sqlalchemy import Select, Selectable
 
 from app.database.base import Base
 from app.repositories.clauses import OnConflictClause, do_default_on_conflict
@@ -17,9 +17,19 @@ T = TypeVar("T", bound=Base)
 
 @dataclass
 class QueryOptions:
-    """Optional modifiers for get_all queries."""
+    """Optional modifiers for get_all queries.
 
-    base_query: Any | None = None
+    Attributes:
+        base_query: Optional SQLAlchemy Select statement to use as the query base.
+            When provided, the repository will use this as the starting point instead
+            of building a default SELECT from the model.
+        return_scalars: Whether to return scalar row objects (True) or full Row tuples.
+        response_model: Optional Pydantic model to map results into.
+        pagination_kwargs: Extra keyword arguments forwarded to fastapi_pagination.paginate().
+            Accepted keys include: ``unique`` (bool), ``transformer`` (callable).
+    """
+
+    base_query: Select[Any] | None = None
     return_scalars: bool = True
     response_model: type[BaseModel] | None = None
     pagination_kwargs: dict[str, Any] = field(default_factory=dict)

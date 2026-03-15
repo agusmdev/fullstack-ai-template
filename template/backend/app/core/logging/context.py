@@ -47,6 +47,9 @@ class WideEventContext:
     entity_id: str | None = None
     entity_ids: list[str] = field(default_factory=list)
     action: str | None = None
+    # Free-form business context added via log_custom(). Keys are arbitrary string
+    # labels; values must be JSON-serializable. Common keys: "resource", "reason",
+    # "provider", "source". Sanitized before emission (see sanitize_dict).
     custom: dict[str, Any] = field(default_factory=dict)
 
     # Error context
