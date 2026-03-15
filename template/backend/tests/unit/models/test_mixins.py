@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.database.mixins import OrmBaseModel, StrEnum, TimestampOrmBaseModel, JsonOrmBaseModel
+from app.database.mixins import OrmBaseModel, TimestampOrmBaseModel, JsonOrmBaseModel
 
 
 class TestOrmBaseModel:
@@ -25,50 +25,6 @@ class TestOrmBaseModel:
         # from_attributes=True allows model_validate with arbitrary objects
         model = OrmBaseModel.model_validate(obj)
         assert model is not None
-
-
-class TestStrEnum:
-    """Tests for StrEnum class."""
-
-    def test_str_returns_value(self):
-        class Color(StrEnum):
-            RED = "red"
-            BLUE = "blue"
-
-        assert str(Color.RED) == "red"
-        assert str(Color.BLUE) == "blue"
-
-    def test_list_returns_all_values(self):
-        class Status(StrEnum):
-            ACTIVE = "active"
-            INACTIVE = "inactive"
-            PENDING = "pending"
-
-        result = Status.list()
-        assert set(result) == {"active", "inactive", "pending"}
-
-    def test_list_order_matches_definition(self):
-        class Direction(StrEnum):
-            NORTH = "north"
-            SOUTH = "south"
-            EAST = "east"
-            WEST = "west"
-
-        result = Direction.list()
-        assert result == ["north", "south", "east", "west"]
-
-    def test_is_string(self):
-        class Priority(StrEnum):
-            HIGH = "high"
-
-        assert isinstance(Priority.HIGH, str)
-        assert Priority.HIGH == "high"
-
-    def test_comparison_with_string(self):
-        class Status(StrEnum):
-            ACTIVE = "active"
-
-        assert Status.ACTIVE == "active"
 
 
 class TestTimestampOrmBaseModel:

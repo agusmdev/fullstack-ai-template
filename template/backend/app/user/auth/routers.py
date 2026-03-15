@@ -131,9 +131,7 @@ async def request_password_reset(
     if token:
         # TODO: Send email with reset link containing the token
         # Example: send_password_reset_email(request.email, token)
-        loguru.logger.info(
-            f"Password reset token generated (would be sent via email): {token}"
-        )
+        loguru.logger.info("Password reset token generated — implement email delivery")
     return PasswordResetResponse()
 
 
@@ -172,12 +170,9 @@ async def request_email_verification(
 
     Requires authentication. Generates a verification token and sends an email.
     """
-    token = await auth_service.initiate_email_verification(user_id)
+    await auth_service.initiate_email_verification(user_id)
     # TODO: Send email with verification link containing the token
     # Example: send_email_verification_email(user.email, token)
-    loguru.logger.info(
-        f"Email verification token generated (would be sent via email): {token}"
-    )
     return EmailVerificationResponse()
 
 

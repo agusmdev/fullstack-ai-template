@@ -13,7 +13,32 @@ from app.context import (
     fork_request_context,
     get_request_context,
     req_or_thread_id,
+    set_request_id,
 )
+
+
+class TestSetRequestId:
+    """Tests for set_request_id public function."""
+
+    def test_sets_request_id_in_context(self):
+        """Test that set_request_id updates the ContextVar."""
+        test_id = "public-api-request-id"
+        token = _request_id_ctx.set("before")
+        try:
+            set_request_id(test_id)
+            assert req_or_thread_id() == test_id
+        finally:
+            _request_id_ctx.reset(token)
+
+    def test_set_request_id_is_retrievable_via_req_or_thread_id(self):
+        """Test the public API integrates with req_or_thread_id."""
+        test_id = "integration-test-id"
+        token = _request_id_ctx.set("placeholder")
+        try:
+            set_request_id(test_id)
+            assert req_or_thread_id() == test_id
+        finally:
+            _request_id_ctx.reset(token)
 
 
 class TestReqOrThreadId:

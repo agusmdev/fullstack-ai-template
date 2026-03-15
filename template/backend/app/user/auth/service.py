@@ -188,9 +188,7 @@ class AuthService(BaseService[Session]):
         )
         if not user:
             # Prevent email enumeration: return None rather than raising
-            loguru.logger.info(
-                f"Password reset requested for non-existent email: {email}"
-            )
+            loguru.logger.info("Password reset requested for non-existent email")
             return None
 
         if user.password is None:
