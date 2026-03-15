@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { loginSchema, registerSchema, itemSchema } from './schemas'
+import {
+  loginSchema, registerSchema, itemSchema,
+  loginFormToPayload, registerFormToPayload, itemFormToPayload,
+} from './schemas'
 
 describe('loginSchema', () => {
   it('accepts valid credentials', () => {
@@ -84,5 +87,36 @@ describe('itemSchema', () => {
   it('rejects description longer than 5000 characters', () => {
     const result = itemSchema.safeParse({ name: 'Valid', description: 'x'.repeat(5001) })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('loginFormToPayload', () => {
+  it('maps email and password to login API shape', () => {
+    const result = loginFormToPayload({ email: 'user@example.com', password: 'secret' })
+    expect(result).toEqual({ email: 'user@example.com', password: 'secret' })
+  })
+})
+
+describe('registerFormToPayload', () => {
+  it('renames password → raw_password for register API shape', () => {
+    const result = registerFormToPayload({ email: 'user@example.com', password: 'Password1!', confirmPassword: 'Password1!' })
+    expect(result).toEqual({ email: 'user@example.com', raw_password: 'Password1!' })
+  })
+
+  it('omits confirmPassword from payload', () => {
+    const result = registerFormToPayload({ email: 'user@example.com', password: 'Password1!', confirmPassword: 'Password1!' })
+    expect(result).not.toHaveProperty('confirmPassword')
+  })
+})
+
+describe('itemFormToPayload', () => {
+  it('passes name and description through', () => {
+    const result = itemFormToPayload({ name: 'My Item', description: 'A description' })
+    expect(result).toEqual({ name: 'My Item', description: 'A description' })
+  })
+
+  it('omits description when empty string', () => {
+    const result = itemFormToPayload({ name: 'My Item', description: '' })
+    expect(result.description).toBeUndefined()
   })
 })
