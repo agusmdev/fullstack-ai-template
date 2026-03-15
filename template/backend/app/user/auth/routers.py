@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.core.config import settings
+from app.user.auth.exceptions import OAuthUserPasswordResetError, UnsupportedOAuthProviderError
 from app.user.auth.permissions import AuthenticatedUser
 from app.user.auth.schemas import (
     EmailVerificationConfirm,
@@ -93,9 +94,13 @@ async def oauth_callback(
         session = await auth_service.oauth_login(
             provider_name=provider, payload=callback
         )
-
         return RedirectResponse(
             url=f"{settings.FRONTEND_URL}/oauth/callback?session={session.id}",
+            status_code=status.HTTP_302_FOUND,
+        )
+    except UnsupportedOAuthProviderError:
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}/oauth/error?error=unsupported_provider",
             status_code=status.HTTP_302_FOUND,
         )
     except Exception:
@@ -124,7 +129,11 @@ async def request_password_reset(
     Always returns success to prevent email enumeration attacks.
     If the email exists and is not an OAuth-only account, a reset token will be generated.
     """
-    token = await auth_service.initiate_password_reset(request.email)
+    try:
+        token = await auth_service.initiate_password_reset(request.email)
+    except OAuthUserPasswordResetError:
+        # Treat OAuth-only accounts the same as missing users to prevent enumeration
+        return PasswordResetResponse()
     if token:
         # TODO: Send email with reset link containing the token
         # Example: send_password_reset_email(request.email, token)

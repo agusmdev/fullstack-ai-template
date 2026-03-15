@@ -2,7 +2,7 @@ import abc
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar, overload
 
 from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
@@ -33,6 +33,22 @@ class BaseRepository[T: Base](abc.ABC):
     """
 
     # READ operations
+    @overload
+    async def get(
+        self,
+        entity_id: uuid.UUID,
+        raise_error: Literal[True],
+        response_model: type[BaseModel] | None = None,
+    ) -> T: ...
+
+    @overload
+    async def get(
+        self,
+        entity_id: uuid.UUID,
+        raise_error: Literal[False],
+        response_model: type[BaseModel] | None = None,
+    ) -> T | None: ...
+
     @abc.abstractmethod
     async def get(
         self,
@@ -41,6 +57,24 @@ class BaseRepository[T: Base](abc.ABC):
         response_model: type[BaseModel] | None = None,
     ) -> T | None:
         raise NotImplementedError
+
+    @overload
+    async def get_by_field(
+        self,
+        field: str,
+        value: Any,
+        raise_error: Literal[True],
+        response_model: type[BaseModel] | None = None,
+    ) -> T: ...
+
+    @overload
+    async def get_by_field(
+        self,
+        field: str,
+        value: Any,
+        raise_error: Literal[False],
+        response_model: type[BaseModel] | None = None,
+    ) -> T | None: ...
 
     @abc.abstractmethod
     async def get_by_field(
