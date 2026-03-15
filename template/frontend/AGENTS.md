@@ -48,9 +48,11 @@ src/
 │   ├── schemas.ts       ← Zod validation schemas
 │   └── utils.ts         ← Helper utilities
 ├── routes/              ← TanStack file-based routes
-│   └── __root.tsx       ← Root layout with providers
+│   ├── __root.tsx       ← Root layout with providers
+│   ├── home.css         ← Home page styles (plain CSS, co-located intentionally — complex animations not suited to Tailwind utilities)
+│   └── index.tsx        ← Home page
 ├── types/               ← TypeScript types & interfaces
-├── styles/              ← Global CSS
+├── styles/              ← Global CSS (app.css only)
 └── test/                ← Testing utilities & setup
 ```
 
@@ -126,7 +128,7 @@ const form = useForm({
 **Protected Routes:**
 - Check `useAuth().isAuthenticated` in components
 - Loaders can validate auth before rendering
-- Failed auth redirects to `/login` (automatic via api-client)
+- Failed auth redirects to `/login` — api-client clears token on 401; `AuthContext` performs the redirect via `subscribeToAuthChanges`
 
 **Token Storage:**
 - localStorage via `lib/auth.ts` functions

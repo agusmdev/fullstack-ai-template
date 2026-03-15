@@ -5,9 +5,6 @@ import { useAuth } from '@/contexts/AuthContext'
 export function Navigation() {
   const { isAuthenticated, logout } = useAuth()
 
-  // AuthContext's subscribeToAuthChanges fires on token clear and navigates to /login
-  const handleLogout = () => logout()
-
   return (
     <header className="fixed top-0 left-0 right-0 z-[1000] bg-background/80 backdrop-blur-[20px] border-b border-border/50">
       <nav className="max-w-[1400px] mx-auto px-8">
@@ -43,7 +40,7 @@ export function Navigation() {
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
               <Button
-                onClick={handleLogout}
+                onClick={logout}
                 variant="outline"
                 className="text-[15px] font-medium rounded-lg"
               >

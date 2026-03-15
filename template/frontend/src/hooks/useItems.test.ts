@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
-import type { Item, ItemsResponse } from '@/types/item'
+import type { ItemsResponse } from '@/types/item'
 
 // --- Helpers ---
 

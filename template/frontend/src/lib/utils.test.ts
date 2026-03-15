@@ -15,7 +15,8 @@ describe('cn', () => {
   })
 
   it('handles conditional classes', () => {
-    expect(cn('base', false && 'skip', 'added')).toBe('base added')
+    const show = false
+    expect(cn('base', show && 'skip', 'added')).toBe('base added')
   })
 
   it('handles undefined and null values', () => {

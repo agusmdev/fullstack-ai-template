@@ -3,7 +3,11 @@ import { useCreateItem } from '@/hooks/useItems'
 import { ItemFormDialog } from './ItemFormDialog'
 import { itemFormToPayload, type ItemFormData } from '@/lib/schemas'
 
-export function CreateItemDialog() {
+interface CreateItemDialogProps {
+  trigger?: React.ReactNode
+}
+
+export function CreateItemDialog({ trigger = <Button>Create Item</Button> }: CreateItemDialogProps) {
   const createItem = useCreateItem()
 
   const handleSubmit = (data: ItemFormData) =>
@@ -12,7 +16,7 @@ export function CreateItemDialog() {
   return (
     <ItemFormDialog
       mode="create"
-      trigger={<Button>Create Item</Button>}
+      trigger={trigger}
       onSubmit={handleSubmit}
       isPending={createItem.isPending}
     />
