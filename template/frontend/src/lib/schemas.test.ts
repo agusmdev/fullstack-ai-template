@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   loginSchema, registerSchema, itemSchema,
-  loginFormToPayload, registerFormToPayload, itemFormToPayload,
+  registerFormToPayload, itemFormToPayload,
 } from './schemas'
 
 describe('loginSchema', () => {
@@ -87,13 +87,6 @@ describe('itemSchema', () => {
   it('rejects description longer than 5000 characters', () => {
     const result = itemSchema.safeParse({ name: 'Valid', description: 'x'.repeat(5001) })
     expect(result.success).toBe(false)
-  })
-})
-
-describe('loginFormToPayload', () => {
-  it('maps email and password to login API shape', () => {
-    const result = loginFormToPayload({ email: 'user@example.com', password: 'secret' })
-    expect(result).toEqual({ email: 'user@example.com', password: 'secret' })
   })
 })
 
