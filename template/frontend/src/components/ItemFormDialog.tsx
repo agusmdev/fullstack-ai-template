@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Item } from '@/types/item'
-import { handleApiError } from '@/lib/error-handler'
+import { toastApiError } from '@/lib/error-handler'
 import { itemSchema, type ItemFormData } from '@/lib/schemas'
 
 interface ItemFormDialogProps {
@@ -67,7 +67,7 @@ export function ItemFormDialog({
       await onSubmit(data)
       setOpen(false)
     } catch (error) {
-      handleApiError(
+      toastApiError(
         error,
         mode === 'create' ? 'Failed to create item' : 'Failed to update item'
       )

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { handleApiError } from './error-handler'
+import { toastApiError } from './error-handler'
 import { ApiError } from './api-client'
 
 vi.mock('sonner', () => ({
@@ -10,7 +10,7 @@ vi.mock('sonner', () => ({
 
 import { toast } from 'sonner'
 
-describe('handleApiError', () => {
+describe('toastApiError', () => {
   beforeEach(() => {
     vi.mocked(toast.error).mockClear()
   })
@@ -21,7 +21,7 @@ describe('handleApiError', () => {
       password: ['Too short', 'Must contain a number'],
     })
 
-    handleApiError(err, 'Save failed')
+    toastApiError(err, 'Save failed')
 
     expect(toast.error).toHaveBeenCalledTimes(2)
     expect(toast.error).toHaveBeenCalledWith('email: Invalid email')
@@ -31,7 +31,7 @@ describe('handleApiError', () => {
   it('shows fallback message with error description when ApiError has no fields', () => {
     const err = new ApiError(500, 'Internal server error')
 
-    handleApiError(err, 'Request failed')
+    toastApiError(err, 'Request failed')
 
     expect(toast.error).toHaveBeenCalledTimes(1)
     expect(toast.error).toHaveBeenCalledWith('Request failed', {
@@ -42,7 +42,7 @@ describe('handleApiError', () => {
   it('shows fallback message with Error.message for plain Error', () => {
     const err = new Error('Network timeout')
 
-    handleApiError(err, 'Connection failed')
+    toastApiError(err, 'Connection failed')
 
     expect(toast.error).toHaveBeenCalledTimes(1)
     expect(toast.error).toHaveBeenCalledWith('Connection failed', {
@@ -51,7 +51,7 @@ describe('handleApiError', () => {
   })
 
   it('shows generic description for non-Error thrown values', () => {
-    handleApiError('something went wrong', 'Unexpected failure')
+    toastApiError('something went wrong', 'Unexpected failure')
 
     expect(toast.error).toHaveBeenCalledTimes(1)
     expect(toast.error).toHaveBeenCalledWith('Unexpected failure', {

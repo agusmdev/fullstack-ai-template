@@ -1,7 +1,7 @@
 import { toast } from 'sonner'
 import { ApiError } from './api-client'
 
-export function handleApiError(error: unknown, fallbackMessage: string) {
+export function toastApiError(error: unknown, fallbackMessage: string) {
   if (error instanceof ApiError) {
     if (error.fields) {
       Object.entries(error.fields).forEach(([field, messages]) => {

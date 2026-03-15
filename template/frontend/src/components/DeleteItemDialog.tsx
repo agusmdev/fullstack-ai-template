@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useDeleteItem } from '@/hooks/useItems'
 import type { Item } from '@/types/item'
-import { handleApiError } from '@/lib/error-handler'
+import { toastApiError } from '@/lib/error-handler'
 
 interface DeleteItemDialogProps {
   item: Item
@@ -28,7 +28,7 @@ export function DeleteItemDialog({ item, trigger }: DeleteItemDialogProps) {
       await deleteItem.mutateAsync()
       setOpen(false)
     } catch (error) {
-      handleApiError(error, 'Failed to delete item')
+      toastApiError(error, 'Failed to delete item')
     }
   }
 

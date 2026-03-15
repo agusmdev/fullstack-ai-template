@@ -49,8 +49,9 @@ class ApiClient {
       )
     }
 
-    if (response.status === 204) {
-      // 204 No Content — callers on this path must use Promise<void> (e.g. delete())
+    // 204 No Content is only expected for DELETE — other methods falling through to json() will
+    // throw naturally if the body is empty, surfacing the unexpected response rather than hiding it.
+    if (response.status === 204 && options?.method === 'DELETE') {
       return undefined as unknown as T
     }
 
