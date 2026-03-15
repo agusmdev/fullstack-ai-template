@@ -1,6 +1,7 @@
 export interface ItemsParams {
   page?: number
   size?: number
+  /** Sent to the API as `name__ilike` for case-insensitive substring match */
   name?: string
 }
 

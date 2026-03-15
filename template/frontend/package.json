@@ -37,7 +37,6 @@
   "devDependencies": {
     "nitro": "npm:nitropack@latest",
     "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/router-plugin": "^1.132.0",
     "vite-tsconfig-paths": "^6.0.2",
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-query-devtools": "^5.91.2",

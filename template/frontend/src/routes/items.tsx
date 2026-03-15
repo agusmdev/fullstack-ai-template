@@ -8,7 +8,7 @@ import { CreateItemDialog } from '@/components/CreateItemDialog'
 import { EditItemDialog } from '@/components/EditItemDialog'
 import { DeleteItemDialog } from '@/components/DeleteItemDialog'
 import { Pencil, Trash2, ChevronLeft, ChevronRight, Search } from 'lucide-react'
-import { useState, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useDebounce } from '@/hooks/useDebounce'
 
 function formatDate(dateString: string | null | undefined): string {
@@ -26,6 +26,16 @@ export const Route = createFileRoute('/items')({
   },
   component: Items,
 })
+
+function PageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background pt-20">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </div>
+    </div>
+  )
+}
 
 function Items() {
   const [page, setPage] = useState(1)
@@ -46,26 +56,22 @@ function Items() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background pt-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
-          <p className="text-muted-foreground">Loading items...</p>
-        </div>
-      </div>
+      <PageShell>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
+        <p className="text-muted-foreground">Loading items...</p>
+      </PageShell>
     )
   }
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-background pt-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
-          <div className="bg-destructive/10 text-destructive p-4 rounded-md border border-destructive/20">
-            <p className="font-semibold">Error loading items</p>
-            <p className="text-sm">{error instanceof Error ? error.message : 'An unknown error occurred'}</p>
-          </div>
+      <PageShell>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
+        <div className="bg-destructive/10 text-destructive p-4 rounded-md border border-destructive/20">
+          <p className="font-semibold">Error loading items</p>
+          <p className="text-sm">{error instanceof Error ? error.message : 'An unknown error occurred'}</p>
         </div>
-      </div>
+      </PageShell>
     )
   }
 
@@ -76,8 +82,7 @@ function Items() {
   const hasPrevPage = page > 1
 
   return (
-    <div className="min-h-screen bg-background pt-20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <PageShell>
         <div role="status" aria-live="polite" className="sr-only">
           {`Showing ${items.length} of ${total} items`}
         </div>
@@ -198,7 +203,6 @@ function Items() {
             </Button>
           </div>
         )}
-      </div>
-    </div>
+    </PageShell>
   )
 }
