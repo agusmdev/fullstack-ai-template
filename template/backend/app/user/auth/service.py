@@ -96,21 +96,23 @@ class AuthService:
         """Generate a secure random token with a prefix."""
         return f"{prefix}_{secrets.token_urlsafe(32)}"
 
-    async def authenticate(self, email: str, password: str) -> SessionResponse:
-        user = await self.user_service.authenticate(email=email, password=password)
-
+    async def _create_session_for_user(self, user_id: uuid.UUID) -> SessionResponse:
+        """Create a new session for the given user and return the session response."""
         created_session = await self.repo.create(
             SessionCreate(
                 id=self.generate_session_id(),
-                user_id=user.id,
+                user_id=user_id,
                 expires_at=datetime.now() + timedelta(days=365),
             )
         )
-
         return SessionResponse(
             id=created_session.id,
             expires_at=created_session.expires_at,
         )
+
+    async def authenticate(self, email: str, password: str) -> SessionResponse:
+        user = await self.user_service.authenticate(email=email, password=password)
+        return await self._create_session_for_user(user.id)
 
     async def register(self, new_user: UserRegister) -> SessionResponse:
         await self.user_service.register(user=new_user)
@@ -134,19 +136,7 @@ class AuthService:
                 display_name=oauth_user.display_name or "",
             ),
         )
-
-        created_session = await self.repo.create(
-            SessionCreate(
-                id=self.generate_session_id(),
-                user_id=user.id,
-                expires_at=datetime.now() + timedelta(days=365),
-            )
-        )
-
-        return SessionResponse(
-            id=created_session.id,
-            expires_at=created_session.expires_at,
-        )
+        return await self._create_session_for_user(user.id)
 
     async def validate_session(self, session_id: str) -> UserResponse:
         session = cast(

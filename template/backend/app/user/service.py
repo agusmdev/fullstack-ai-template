@@ -19,6 +19,9 @@ from app.user.schemas import (
 from .repository import UserRepository
 
 
+_ph = PasswordHasher()
+
+
 class UserService(BaseService[User]):
     """Service to interact with user collection.
 
@@ -69,8 +72,7 @@ class UserService(BaseService[User]):
 
     async def update_password(self, user_id: uuid.UUID, new_password: str) -> None:
         """Update a user's password (hashed with Argon2)."""
-        ph = PasswordHasher()
-        hashed_password = ph.hash(new_password)
+        hashed_password = _ph.hash(new_password)
         await self.repo.update(user_id, {"password": hashed_password})
 
     async def mark_email_verified(self, user_id: uuid.UUID) -> None:
