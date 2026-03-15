@@ -1,7 +1,7 @@
 """Tests for Auth router endpoint functions."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.security import HTTPAuthorizationCredentials
@@ -13,6 +13,7 @@ from app.user.auth.routers import (
     login_user,
     logout_all_devices,
     logout_user,
+    oauth_callback,
     register_user,
     request_email_verification,
     request_password_reset,
@@ -20,6 +21,7 @@ from app.user.auth.routers import (
 from app.user.auth.schemas import (
     EmailVerificationConfirm,
     LogoutResponse,
+    OAuthCallback,
     PasswordResetConfirm,
     PasswordResetRequest,
     SessionResponse,
@@ -91,11 +93,8 @@ class TestRegisterUser:
 
 class TestLogoutUser:
     async def test_calls_logout_and_returns_response(self, mock_auth_service):
-        http_auth = MagicMock(spec=HTTPAuthorizationCredentials)
-        http_auth.credentials = "s_session_id"
-
         result = await logout_user(
-            http_auth=http_auth, auth_service=mock_auth_service
+            session_id="s_session_id", auth_service=mock_auth_service
         )
 
         mock_auth_service.logout.assert_called_once_with("s_session_id")
@@ -112,6 +111,51 @@ class TestLogoutAllDevices:
 
         mock_auth_service.logout_all.assert_called_once_with(sample_user_id)
         assert isinstance(result, LogoutResponse)
+
+
+class TestOAuthCallback:
+    async def test_redirects_to_error_on_unknown_provider(self, mock_auth_service):
+        """Unsupported providers are rejected before the service layer is called."""
+        callback = OAuthCallback(code="auth_code", state="st")
+
+        result = await oauth_callback(
+            provider="unknown_provider",
+            auth_service=mock_auth_service,
+            callback=callback,
+        )
+
+        mock_auth_service.oauth_login.assert_not_called()
+        assert result.status_code == 302
+        assert "unsupported_provider" in str(result.headers["location"])
+
+    async def test_redirects_to_frontend_on_success(self, mock_auth_service, sample_session_response):
+        """Known provider triggers oauth_login and redirects to frontend."""
+        mock_auth_service.oauth_login = AsyncMock(return_value=sample_session_response)
+        callback = OAuthCallback(code="auth_code", state="st")
+
+        result = await oauth_callback(
+            provider="google",
+            auth_service=mock_auth_service,
+            callback=callback,
+        )
+
+        mock_auth_service.oauth_login.assert_called_once_with(
+            provider_name="google", payload=callback
+        )
+        assert result.status_code == 302
+        assert sample_session_response.id in str(result.headers["location"])
+
+    async def test_unexpected_exceptions_propagate(self, mock_auth_service):
+        """Unexpected service errors propagate to middleware for structured logging."""
+        mock_auth_service.oauth_login.side_effect = RuntimeError("unexpected")
+        callback = OAuthCallback(code="code", state="st")
+
+        with pytest.raises(RuntimeError):
+            await oauth_callback(
+                provider="google",
+                auth_service=mock_auth_service,
+                callback=callback,
+            )
 
 
 class TestRequestPasswordReset:

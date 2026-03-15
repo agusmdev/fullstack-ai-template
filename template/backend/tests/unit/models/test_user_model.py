@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 
 import pytest
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
 
 from app.user.models import User
 
@@ -60,20 +59,20 @@ class TestCheckPassword:
         result = user_with_password.check_password("correct_password")
         assert result is True
 
-    def test_incorrect_password_raises_error(self, user_with_password):
-        """Test that incorrect password raises VerifyMismatchError."""
-        with pytest.raises(VerifyMismatchError):
-            user_with_password.check_password("wrong_password")
+    def test_incorrect_password_returns_false(self, user_with_password):
+        """Test that incorrect password returns False."""
+        result = user_with_password.check_password("wrong_password")
+        assert result is False
 
     def test_none_password_returns_false(self, user_without_password):
         """Test that checking password when password is None returns False."""
         result = user_without_password.check_password("any_password")
         assert result is False
 
-    def test_empty_password_raises_error(self, user_with_password):
-        """Test that empty password raises error."""
-        with pytest.raises(VerifyMismatchError):
-            user_with_password.check_password("")
+    def test_empty_password_returns_false(self, user_with_password):
+        """Test that empty password returns False."""
+        result = user_with_password.check_password("")
+        assert result is False
 
 
 class TestIsEmailVerified:

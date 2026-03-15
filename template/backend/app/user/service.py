@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime
 from typing import Any, override
 
-from argon2.exceptions import VerifyMismatchError
 from pydantic import BaseModel
 
 from app.services.base_crud_service import BaseService
@@ -62,11 +61,8 @@ class UserService(BaseService[User]):
                 detail="User does not exist or is not allowed to login"
             )
 
-        try:
-            if not user.check_password(password):
-                raise InvalidPasswordError()
-        except VerifyMismatchError as e:
-            raise InvalidPasswordError() from e
+        if not user.check_password(password):
+            raise InvalidPasswordError()
 
         return user
 

@@ -5,7 +5,6 @@ import uuid
 import loguru
 from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.responses import RedirectResponse
-from fastapi.security import HTTPAuthorizationCredentials
 
 from app.core.config import settings
 from app.user.auth.exceptions import (
@@ -64,11 +63,11 @@ async def register_user(
     status_code=status.HTTP_200_OK,
 )
 async def logout_user(
-    http_auth: HTTPAuthorizationCredentials = Depends(AuthenticatedUser.http_auth),
+    session_id: str = Depends(AuthenticatedUser.current_session_id),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> LogoutResponse:
     """Logout the current user by invalidating their session."""
-    await auth_service.logout(http_auth.credentials)
+    await auth_service.logout(session_id)
     return LogoutResponse()
 
 
@@ -172,9 +171,11 @@ async def request_email_verification(
 
     Requires authentication. Generates a verification token and sends an email.
     """
-    await auth_service.initiate_email_verification(user_id)
+    token = await auth_service.initiate_email_verification(user_id)
     # TODO: Send email with verification link containing the token
     # Example: send_email_verification_email(user.email, token)
+    loguru.logger.debug("Email verification token generated — implement email delivery")
+    del token  # token will be used when email delivery is implemented
     return EmailVerificationResponse()
 
 

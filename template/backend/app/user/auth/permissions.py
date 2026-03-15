@@ -54,11 +54,16 @@ async def _get_authenticated_user(
 
 class AuthenticatedUser:
     @classmethod
-    async def http_auth(
+    async def current_session_id(
         cls,
         http_auth: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=True)),
-    ) -> HTTPAuthorizationCredentials:
-        return http_auth
+    ) -> str:
+        """Return the raw session token without validating it.
+
+        Used by logout endpoints that must succeed even for expired sessions.
+        Does NOT guarantee the session exists or is valid.
+        """
+        return http_auth.credentials
 
     @classmethod
     async def load_user_context(

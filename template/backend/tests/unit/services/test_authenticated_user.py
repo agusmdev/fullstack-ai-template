@@ -81,12 +81,12 @@ class TestGetAuthenticatedUser:
         assert result is sample_user_response
 
 
-class TestAuthenticatedUserHttpAuth:
-    """Tests for AuthenticatedUser.http_auth."""
+class TestAuthenticatedUserCurrentSessionId:
+    """Tests for AuthenticatedUser.current_session_id."""
 
-    async def test_returns_credentials(self, mock_http_auth):
-        result = await AuthenticatedUser.http_auth(mock_http_auth)
-        assert result is mock_http_auth
+    async def test_returns_session_token(self, mock_http_auth):
+        result = await AuthenticatedUser.current_session_id(mock_http_auth)
+        assert result == "s_test_session_token"
 
 
 class TestAuthenticatedUserCurrentUserId:

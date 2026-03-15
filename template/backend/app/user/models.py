@@ -27,7 +27,10 @@ class User(TimestampMixin, Base):
     def check_password(self, password: str) -> bool:
         if self.password is None:
             return False
-        return _ph.verify(self.password, password)
+        try:
+            return _ph.verify(self.password, password)
+        except Exception:
+            return False
 
     @property
     def is_email_verified(self) -> bool:

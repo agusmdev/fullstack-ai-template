@@ -87,11 +87,14 @@ class TestItemResponse:
 
     def test_includes_id(self):
         """Test that response includes id field."""
+        user_id = uuid.uuid4()
         item = ItemResponse(
             id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+            user_id=user_id,
             name="Test Item",
         )
         assert item.id == uuid.UUID("12345678-1234-5678-1234-567812345678")
+        assert item.user_id == user_id
 
     def test_from_attributes_mode(self):
         """Test that model has from_attributes config for ORM mode."""
@@ -100,19 +103,23 @@ class TestItemResponse:
     def test_full_response(self):
         """Test full response with all fields."""
         item_id = uuid.uuid4()
+        user_id = uuid.uuid4()
         item = ItemResponse(
             id=item_id,
+            user_id=user_id,
             name="Complete Item",
             description="Full description",
         )
         assert item.id == item_id
+        assert item.user_id == user_id
         assert item.name == "Complete Item"
         assert item.description == "Full description"
 
     def test_json_serialization(self):
         """Test JSON serialization of response."""
         item_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
-        item = ItemResponse(id=item_id, name="Test")
+        user_id = uuid.uuid4()
+        item = ItemResponse(id=item_id, user_id=user_id, name="Test")
         json_data = item.model_dump_json()
         assert "12345678-1234-5678-1234-567812345678" in json_data
         assert "Test" in json_data

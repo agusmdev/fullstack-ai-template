@@ -37,7 +37,7 @@ class TestUserServiceGet:
         result = await service.get_by_field("email", "test@example.com")
 
         mock_user_repository.get_by_field.assert_called_once_with(
-            "email", "test@example.com", raise_error=True
+            "email", "test@example.com", raise_error=True, response_model=None
         )
         assert result == sample_user_model
 

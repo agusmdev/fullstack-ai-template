@@ -52,9 +52,15 @@ class BaseService(Generic[T]):  # noqa: UP046
         return result
 
     async def get_by_field(
-        self, field: str, value: Any, raise_error: bool = True
+        self,
+        field: str,
+        value: Any,
+        raise_error: bool = True,
+        response_model: type[BaseModel] | None = None,
     ) -> T | None:
-        result = await self.repo.get_by_field(field, value, raise_error=raise_error)
+        result = await self.repo.get_by_field(
+            field, value, raise_error=raise_error, response_model=response_model
+        )
         if result is not None:
             if entity_id := getattr(result, "id", None):
                 self._log_entity(entity_id)
