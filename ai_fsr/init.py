@@ -292,10 +292,7 @@ def apply_substitutions_to_file(
         List containing file_path if modified, empty list otherwise
     """
     # Get relative path from project root
-    try:
-        rel_path = str(file_path)
-    except Exception:
-        return []
+    rel_path = str(file_path)
 
     # Check if this file should have substitutions applied
     file_pattern = None
@@ -323,7 +320,7 @@ def apply_substitutions_to_file(
         if new_content != content:
             file_path.write_text(new_content)
             return [str(file_path)]
-    except (UnicodeDecodeError, Exception):
+    except (UnicodeDecodeError, OSError):
         # Skip files that can't be read as text
         pass
 
@@ -336,11 +333,8 @@ def check_docker_installed() -> bool:
     Returns:
         True if Docker is available, False otherwise
     """
-    try:
-        import shutil
-        return shutil.which("docker") is not None
-    except Exception:
-        return False
+    import shutil
+    return shutil.which("docker") is not None
 
 
 def run_command(

@@ -70,15 +70,15 @@ class GoogleOAuth:
 class AuthService(BaseService[Session]):
     repo: SessionRepository
     user_service: UserService
-    password_reset_repo: PasswordResetTokenRepository | None
-    email_verification_repo: EmailVerificationTokenRepository | None
+    password_reset_repo: PasswordResetTokenRepository
+    email_verification_repo: EmailVerificationTokenRepository
 
     def __init__(
         self,
         user_service: UserService,
         repo: SessionRepository,
-        password_reset_repo: PasswordResetTokenRepository | None = None,
-        email_verification_repo: EmailVerificationTokenRepository | None = None,
+        password_reset_repo: PasswordResetTokenRepository,
+        email_verification_repo: EmailVerificationTokenRepository,
     ) -> None:
         self.user_service = user_service
         self.repo = repo
@@ -159,7 +159,6 @@ class AuthService(BaseService[Session]):
         )
         if session.expires_at < datetime.now():
             raise SessionExpiredError()
-        # Return the user from the session
         return session.user
 
     async def logout(self, session_id: str) -> None:
@@ -180,9 +179,6 @@ class AuthService(BaseService[Session]):
         Returns None if user not found (to prevent email enumeration).
         Raises OAuthUserPasswordResetError if user is OAuth-only.
         """
-        if not self.password_reset_repo:
-            raise RuntimeError("Password reset repository not configured")
-
         user = await self.user_service.get(
             email, filter_field="email", raise_error=False
         )
@@ -215,9 +211,6 @@ class AuthService(BaseService[Session]):
 
         Raises InvalidTokenError if token is invalid or expired.
         """
-        if not self.password_reset_repo:
-            raise RuntimeError("Password reset repository not configured")
-
         token_record = await self.password_reset_repo.get_valid_token(token)
         if not token_record:
             raise InvalidTokenError()
@@ -239,9 +232,6 @@ class AuthService(BaseService[Session]):
         Raises UserNotFoundError if user not found.
         Raises EmailAlreadyVerifiedError if already verified.
         """
-        if not self.email_verification_repo:
-            raise RuntimeError("Email verification repository not configured")
-
         user = await self.user_service.get(user_id, raise_error=False)
         if not user:
             raise UserNotFoundError()
@@ -269,9 +259,6 @@ class AuthService(BaseService[Session]):
 
         Raises InvalidTokenError if token is invalid or expired.
         """
-        if not self.email_verification_repo:
-            raise RuntimeError("Email verification repository not configured")
-
         token_record = await self.email_verification_repo.get_valid_token(token)
         if not token_record:
             raise InvalidTokenError()

@@ -54,10 +54,15 @@ class TestAuthServiceAuthenticate:
         return service
 
     @pytest.fixture
-    def auth_service(self, mock_user_service, mock_session_repository):
+    def auth_service(
+        self, mock_user_service, mock_session_repository,
+        mock_password_reset_repository, mock_email_verification_repository,
+    ):
         return AuthService(
             user_service=mock_user_service,
             repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
         )
 
     async def test_authenticate_success(
@@ -107,8 +112,16 @@ class TestAuthServiceRegister:
         return service
 
     @pytest.fixture
-    def auth_service(self, mock_user_service, mock_session_repository):
-        return AuthService(user_service=mock_user_service, repo=mock_session_repository)
+    def auth_service(
+        self, mock_user_service, mock_session_repository,
+        mock_password_reset_repository, mock_email_verification_repository,
+    ):
+        return AuthService(
+            user_service=mock_user_service,
+            repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
+        )
 
     async def test_register_success(
         self, auth_service, mock_user_service, mock_session_repository
@@ -132,9 +145,17 @@ class TestAuthServiceCheckSession:
     """Tests for AuthService.check_session method."""
 
     @pytest.fixture
-    def auth_service(self, mock_session_repository):
+    def auth_service(
+        self, mock_session_repository,
+        mock_password_reset_repository, mock_email_verification_repository,
+    ):
         mock_user_service = MagicMock(spec=UserService)
-        return AuthService(user_service=mock_user_service, repo=mock_session_repository)
+        return AuthService(
+            user_service=mock_user_service,
+            repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
+        )
 
     async def test_check_session_valid(self, auth_service, mock_session_repository):
         """Test checking valid session."""
@@ -164,9 +185,17 @@ class TestAuthServiceLogout:
     """Tests for AuthService.logout method."""
 
     @pytest.fixture
-    def auth_service(self, mock_session_repository):
+    def auth_service(
+        self, mock_session_repository,
+        mock_password_reset_repository, mock_email_verification_repository,
+    ):
         mock_user_service = MagicMock(spec=UserService)
-        return AuthService(user_service=mock_user_service, repo=mock_session_repository)
+        return AuthService(
+            user_service=mock_user_service,
+            repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
+        )
 
     async def test_logout_success(self, auth_service, mock_session_repository):
         """Test successful logout."""
@@ -199,11 +228,13 @@ class TestAuthServicePasswordReset:
         mock_user_service,
         mock_session_repository,
         mock_password_reset_repository,
+        mock_email_verification_repository,
     ):
         return AuthService(
             user_service=mock_user_service,
             repo=mock_session_repository,
             password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
         )
 
     async def test_initiate_password_reset_success(
@@ -284,11 +315,13 @@ class TestAuthServiceEmailVerification:
         self,
         mock_user_service,
         mock_session_repository,
+        mock_password_reset_repository,
         mock_email_verification_repository,
     ):
         return AuthService(
             user_service=mock_user_service,
             repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
             email_verification_repo=mock_email_verification_repository,
         )
 
