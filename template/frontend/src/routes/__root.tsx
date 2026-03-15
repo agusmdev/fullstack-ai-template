@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -27,17 +27,6 @@ import { initWebVitals } from '@/lib/web-vitals'
 
 import appCss from '@/styles/app.css?url'
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000, // 1 minute
-      gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-})
-
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -64,6 +53,17 @@ export const Route = createRootRoute({
 })
 
 function RootDocument() {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000, // 1 minute
+        gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+    },
+  }))
+
   useEffect(() => {
     initWebVitals()
   }, [])
