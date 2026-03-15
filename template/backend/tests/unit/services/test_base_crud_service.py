@@ -68,7 +68,9 @@ class TestBaseServiceGetAll:
 
         result = await service.get_all()
 
-        mock_item_repository.get_all.assert_called_once_with(None, None)
+        mock_item_repository.get_all.assert_called_once_with(
+            None, None, base_query=None, return_scalars=True, response_model=None, pagination_kwargs=None
+        )
         assert result == expected
 
     async def test_get_all_with_filter(self, service, mock_item_repository):
@@ -79,7 +81,9 @@ class TestBaseServiceGetAll:
 
         result = await service.get_all(entity_filter=mock_filter)
 
-        mock_item_repository.get_all.assert_called_once_with(mock_filter, None)
+        mock_item_repository.get_all.assert_called_once_with(
+            mock_filter, None, base_query=None, return_scalars=True, response_model=None, pagination_kwargs=None
+        )
         assert result == expected
 
     async def test_get_all_with_pagination(self, service, mock_item_repository):
@@ -92,7 +96,9 @@ class TestBaseServiceGetAll:
 
         result = await service.get_all(pagination_params=params)
 
-        mock_item_repository.get_all.assert_called_once_with(None, params)
+        mock_item_repository.get_all.assert_called_once_with(
+            None, params, base_query=None, return_scalars=True, response_model=None, pagination_kwargs=None
+        )
         assert result == mock_page
 
 

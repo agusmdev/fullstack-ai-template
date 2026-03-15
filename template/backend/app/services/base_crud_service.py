@@ -7,6 +7,7 @@ from typing import Any, Generic
 from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
 from pydantic import BaseModel
+from sqlalchemy import Select
 
 from app.repositories.base_repository import BaseRepository, T
 from app.repositories.clauses import OnConflictClause, do_default_on_conflict
@@ -31,9 +32,21 @@ class BaseService(Generic[T]):  # noqa: UP046
         self,
         entity_filter: BaseFilterModel | None = None,
         pagination_params: Params | None = None,
+        base_query: Select | None = None,
+        return_scalars: bool = True,
+        response_model: type[BaseModel] | None = None,
+        pagination_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> list[T] | Page[T]:
-        return await self.repo.get_all(entity_filter, pagination_params, **kwargs)
+        return await self.repo.get_all(
+            entity_filter,
+            pagination_params,
+            base_query=base_query,
+            return_scalars=return_scalars,
+            response_model=response_model,
+            pagination_kwargs=pagination_kwargs,
+            **kwargs,
+        )
 
     async def create(self, entity: BaseModel, **extra_fields: Any) -> T:
         return await self.repo.create(entity, **extra_fields)

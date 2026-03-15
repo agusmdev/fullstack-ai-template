@@ -8,7 +8,6 @@ import loguru
 from requests_oauthlib import OAuth2Session
 
 from app.core.config import settings
-from app.services.base_crud_service import BaseService
 from app.user.auth.exceptions import (
     EmailAlreadyVerifiedError,
     InvalidTokenError,
@@ -17,7 +16,6 @@ from app.user.auth.exceptions import (
     UnsupportedOAuthProviderError,
     UserNotFoundError,
 )
-from app.user.auth.models import Session
 from app.user.auth.repository import (
     EmailVerificationTokenRepository,
     PasswordResetTokenRepository,
@@ -68,7 +66,7 @@ class GoogleOAuth:
         )
 
 
-class AuthService(BaseService[Session]):
+class AuthService:
     repo: SessionRepository
     user_service: UserService
     password_reset_repo: PasswordResetTokenRepository
