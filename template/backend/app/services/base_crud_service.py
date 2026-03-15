@@ -56,7 +56,11 @@ class BaseService(Generic[T]):  # noqa: UP046
     async def get_by_field(
         self, field: str, value: Any, raise_error: bool = True
     ) -> T | None:
-        return await self.repo.get_by_field(field, value, raise_error=raise_error)
+        result = await self.repo.get_by_field(field, value, raise_error=raise_error)
+        if result is not None:
+            if entity_id := getattr(result, "id", None):
+                self._log_entity(entity_id)
+        return result
 
     async def get_all(
         self,
@@ -84,7 +88,11 @@ class BaseService(Generic[T]):  # noqa: UP046
         entities: Sequence[BaseModel],
         on_conflict: OnConflictClause = do_default_on_conflict,
     ) -> list[T]:
-        return await self.repo.create_many(entities, on_conflict=on_conflict)
+        results = await self.repo.create_many(entities, on_conflict=on_conflict)
+        for result in results:
+            if entity_id := getattr(result, "id", None):
+                self._log_entity(entity_id)
+        return results
 
     async def upsert(self, entity: BaseModel, **extra_fields: Any) -> T:
         result = await self.repo.upsert(entity, **extra_fields)

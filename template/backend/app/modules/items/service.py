@@ -9,17 +9,7 @@ from app.services.base_crud_service import BaseService
 
 
 class ItemService(BaseService[Item]):
-    """Service for Item entity.
-
-    Inherits all CRUD operations from BaseService:
-    - get_by_id(entity_id)
-    - get_all(filter, pagination)
-    - create(entity)
-    - create_many(entities)
-    - upsert(entity)
-    - update(entity_id, entity)
-    - delete(entity_id)
-    """
+    """Service for Item entity. Handles SKU-based inventory lookups."""
 
     def __init__(self, repo: ItemRepository) -> None:
         self.repo = repo
