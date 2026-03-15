@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, cast
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.context import get_request_context
+from app.context import ensure_request_context
 from app.core.logging import log_user
 from app.repositories.exceptions import NotFoundError
 from app.user.auth.exceptions import SessionExpiredError
@@ -60,7 +60,7 @@ class AuthenticatedUser:
                     detail=exc.detail,
                 ) from exc
             cast("Any", request.state).user = user
-            req_ctx: RequestContext = get_request_context()
+            req_ctx: RequestContext = ensure_request_context()
             req_ctx.user_id = str(user.id)
             req_ctx.email = user.email
             log_user(user.id, user.email)

@@ -34,7 +34,8 @@ _request_context_ctx: ContextVar[RequestContext | None] = ContextVar(
 )
 
 
-def get_request_context() -> RequestContext:
+def ensure_request_context() -> RequestContext:
+    """Return current RequestContext, creating one lazily if none exists."""
     ctx = _request_context_ctx.get()
     if ctx is None:
         ctx = RequestContext()

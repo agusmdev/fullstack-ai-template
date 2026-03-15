@@ -60,7 +60,7 @@ class TestAuthenticatedUserGetUser:
         """Test successful user retrieval."""
         mock_auth_service.validate_session = AsyncMock(return_value=sample_user_response)
 
-        with patch("app.user.auth.permissions.get_request_context") as mock_ctx, \
+        with patch("app.user.auth.permissions.ensure_request_context") as mock_ctx, \
              patch("app.user.auth.permissions.log_user"):
             mock_ctx.return_value = MagicMock()
             result = await AuthenticatedUser.load_user_context(
@@ -106,7 +106,7 @@ class TestAuthenticatedUserCurrentUserId:
         """Test returns user UUID."""
         mock_auth_service.validate_session = AsyncMock(return_value=sample_user_response)
 
-        with patch("app.user.auth.permissions.get_request_context") as mock_ctx, \
+        with patch("app.user.auth.permissions.ensure_request_context") as mock_ctx, \
              patch("app.user.auth.permissions.log_user"):
             mock_ctx.return_value = MagicMock()
             result = await AuthenticatedUser.current_user_id(
@@ -126,7 +126,7 @@ class TestAuthenticatedUserCurrentUserEmail:
         """Test returns user email."""
         mock_auth_service.validate_session = AsyncMock(return_value=sample_user_response)
 
-        with patch("app.user.auth.permissions.get_request_context") as mock_ctx, \
+        with patch("app.user.auth.permissions.ensure_request_context") as mock_ctx, \
              patch("app.user.auth.permissions.log_user"):
             mock_ctx.return_value = MagicMock()
             result = await AuthenticatedUser.current_user_email(

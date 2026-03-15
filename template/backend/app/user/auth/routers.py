@@ -137,7 +137,7 @@ async def request_password_reset(
     if token:
         # TODO: Send email with reset link containing the token
         # Example: send_password_reset_email(request.email, token)
-        loguru.logger.info("Password reset token generated — implement email delivery")
+        loguru.logger.debug("Password reset token generated — implement email delivery")
     return PasswordResetResponse()
 
 

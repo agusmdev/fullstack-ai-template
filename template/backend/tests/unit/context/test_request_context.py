@@ -10,7 +10,7 @@ from app.context import (
     _request_id_ctx,
     clear_request_context,
     register_request_context,
-    get_request_context,
+    ensure_request_context,
     req_or_thread_id,
     set_request_id,
 )
@@ -79,14 +79,14 @@ class TestRequestContext:
 
 
 class TestGetRequestContext:
-    """Tests for get_request_context function."""
+    """Tests for ensure_request_context function."""
 
     def test_creates_new_context_if_not_exists(self):
         """Test creates new context if not in cache."""
         # Clear any existing context
         clear_request_context()
 
-        ctx = get_request_context()
+        ctx = ensure_request_context()
 
         assert isinstance(ctx, RequestContext)
         assert ctx.user_id == "No user id"
@@ -95,9 +95,9 @@ class TestGetRequestContext:
         """Test returns existing context from cache."""
         clear_request_context()
 
-        ctx1 = get_request_context()
+        ctx1 = ensure_request_context()
         ctx1.user_id = "modified-user"
-        ctx2 = get_request_context()
+        ctx2 = ensure_request_context()
 
         assert ctx1 is ctx2
         assert ctx2.user_id == "modified-user"
@@ -125,7 +125,7 @@ class TestForkRequestContext:
         clear_request_context()
 
         # First, create an existing context
-        existing = get_request_context()
+        existing = ensure_request_context()
         existing.user_id = "existing-user"
 
         # Now try to fork
@@ -144,14 +144,14 @@ class TestClearRequestContext:
     def test_clears_context_from_cache(self):
         """Test that context is removed from cache."""
         # Create a context
-        ctx = get_request_context()
+        ctx = ensure_request_context()
         ctx.user_id = "to-be-cleared"
 
         # Clear it
         clear_request_context()
 
         # Getting context now should create a new one
-        new_ctx = get_request_context()
+        new_ctx = ensure_request_context()
         assert new_ctx.user_id == "No user id"
 
         clear_request_context()
