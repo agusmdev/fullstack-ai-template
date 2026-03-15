@@ -1,6 +1,7 @@
 import abc
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
 from fastapi_filter.base.filter import BaseFilterModel
@@ -12,6 +13,16 @@ from app.database.base import Base
 from app.repositories.clauses import OnConflictClause, do_default_on_conflict
 
 T = TypeVar("T", bound=Base)
+
+
+@dataclass
+class QueryOptions:
+    """Optional modifiers for get_all queries."""
+
+    base_query: Any | None = None
+    return_scalars: bool = True
+    response_model: type[BaseModel] | None = None
+    pagination_kwargs: dict[str, Any] = field(default_factory=dict)
 
 
 class BaseRepository[T: Base](abc.ABC):
@@ -46,11 +57,7 @@ class BaseRepository[T: Base](abc.ABC):
         self,
         entity_filter: BaseFilterModel | None = None,
         pagination_params: Params | None = None,
-        base_query: Any | None = None,
-        return_scalars: bool = True,
-        response_model: type[BaseModel] | None = None,
-        pagination_kwargs: dict[str, Any] | None = None,
-        **kwargs: Any,
+        options: QueryOptions | None = None,
     ) -> list[T] | Page[T]:
         raise NotImplementedError
 

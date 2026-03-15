@@ -169,15 +169,14 @@ class SQLAlchemyRepository(BaseRepository[T]):
         self,
         entity_filter: BaseFilterModel | None = None,
         pagination_params: Params | None = None,
-        base_query: Selectable | None = None,
-        return_scalars: bool = True,
-        response_model: type[BaseModel] | None = None,
-        pagination_kwargs: dict[str, Any] | None = None,
-        **kwargs: Any,
+        options: "QueryOptions | None" = None,
     ) -> list[T] | Page[T]:
-        query = base_query if base_query is not None else self._base_query(**kwargs)
-        if response_model:
-            query = self._generate_select_from_pydantic(response_model, query)
+        from app.repositories.base_repository import QueryOptions as _QueryOptions
+
+        opts = options or _QueryOptions()
+        query = opts.base_query if opts.base_query is not None else self._base_query()
+        if opts.response_model:
+            query = self._generate_select_from_pydantic(opts.response_model, query)
         if entity_filter:
             query = entity_filter.filter(query)
             if hasattr(entity_filter, "sort"):
@@ -189,10 +188,10 @@ class SQLAlchemyRepository(BaseRepository[T]):
                 self._session,
                 query,
                 params=pagination_params,
-                **(pagination_kwargs or {}),
+                **opts.pagination_kwargs,
             )
 
-        if return_scalars:
+        if opts.return_scalars:
             result = await self._session.execute(query)  # type: ignore[call-overload]
             return list(result.scalars().all())
 
