@@ -31,8 +31,6 @@ class QueryBuilder:
             A select statement with appropriate eager loading options
         """
         options = select_from_pydantic(self.model, pydantic_model)
-        # select_from_pydantic returns Sequence[Load | None] which mypy doesn't recognize
-        # as compatible with ExecutableOption. This is a known limitation of the Load types.
         base_select: Select[Any] = select(self.model).options(*options)
         if query is not None:
             return query.options(*options)  # type: ignore[attr-defined, no-any-return]

@@ -23,8 +23,8 @@ class StatementGenerator:
         self.model = model
         self.graph = graph
 
-    def generate_query(self) -> Sequence[Load]:
-        """Generate the SQLAlchemy select statement."""
+    def generate_load_options(self) -> Sequence[Load]:
+        """Generate SQLAlchemy ORM load options for this model/schema combination."""
         ast = self._build_ast()
         generator = QueryOptionGenerator()
 
@@ -122,6 +122,4 @@ def select_from_pydantic(
 ) -> Sequence[Load]:
     graph = PydanticGraph.from_model(schema)
     generator = StatementGenerator(graph, model)
-    query = generator.generate_query()
-
-    return query
+    return generator.generate_load_options()

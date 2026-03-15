@@ -48,7 +48,7 @@ def app():
     def mock_user_email():
         return "test@example.com"
 
-    from app.core.permissions.auth import AuthenticatedUser
+    from app.user.auth.permissions import AuthenticatedUser
 
     test_app.dependency_overrides[AuthenticatedUser.current_user_id] = mock_user_id
     test_app.dependency_overrides[AuthenticatedUser.current_user_email] = mock_user_email

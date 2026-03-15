@@ -186,5 +186,5 @@ def test_statement_generator_sql(schema, model, expected):
     generator = StatementGenerator(graph, model)
 
     assert flatten_sql(
-        str(select(model).options(*generator.generate_query()))
+        str(select(model).options(*generator.generate_load_options()))
     ) == flatten_sql(expected)
