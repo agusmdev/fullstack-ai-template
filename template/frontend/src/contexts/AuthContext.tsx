@@ -45,7 +45,6 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
 
   const login = useCallback((response: AuthSessionResponse) => {
     setAuthToken(response.id)
-    setTokenState(response.id)
   }, [])
 
   const logout = useCallback(async () => {
