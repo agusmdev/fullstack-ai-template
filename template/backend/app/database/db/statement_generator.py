@@ -23,13 +23,12 @@ class StatementGenerator:
         self.model = model
         self.graph = graph
 
-    def generate_query(self) -> Sequence[Load | None]:
+    def generate_query(self) -> Sequence[Load]:
         """Generate the SQLAlchemy select statement."""
         ast = self._build_ast()
         generator = QueryOptionGenerator()
 
-        options = [generator.visit(node) for node in ast.children]
-        return options
+        return [generator.visit(node) for node in ast.children]
 
     def _build_ast(self) -> ASTNode:
         return ASTNode(
@@ -64,10 +63,11 @@ class StatementGenerator:
     ) -> Sequence[ASTNode]:
         columns, _ = self._categorize_columns(model, graph.columns)
 
-        return [
-            LoadOnlyNode(model, [], columns),
-            *self._build_relationship_nodes(model, graph),
-        ]
+        nodes: list[ASTNode] = []
+        if columns:
+            nodes.append(LoadOnlyNode(model, [], columns))
+        nodes.extend(self._build_relationship_nodes(model, graph))
+        return nodes
 
     def _get_orm_relation(
         self, model: type[DeclarativeBase], relationship_name: str
@@ -119,7 +119,7 @@ class StatementGenerator:
 
 def select_from_pydantic(
     model: type[DeclarativeBase], schema: type[BaseModel]
-) -> Sequence[Load | None]:
+) -> Sequence[Load]:
     graph = PydanticGraph.from_model(schema)
     generator = StatementGenerator(graph, model)
     query = generator.generate_query()

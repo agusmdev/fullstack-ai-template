@@ -32,14 +32,14 @@ class QueryOptionGenerator:
     on the node types.
     """
 
-    def visit(self, node: ASTNode) -> Load | None:
+    def visit(self, node: ASTNode) -> Load:
         """Visit an AST node and dispatch to the appropriate visit method.
 
         Args:
             node: The AST node to visit.
 
         Returns:
-            The SQLAlchemy query option for this node, or None for LoadOnlyNode.
+            The SQLAlchemy query option for this node.
 
         Raises:
             QueryOptimizerError: If no visit method exists for the node type.
@@ -59,7 +59,7 @@ class QueryOptionGenerator:
         """
         raise QueryOptimizerError(f"No visit_{type(node).__name__} method")
 
-    def visit_LoadOnlyNode(self, node: LoadOnlyNode) -> Load | None:
+    def visit_LoadOnlyNode(self, node: LoadOnlyNode) -> Load:
         """Generate a load_only option for a LoadOnlyNode.
 
         Args:
@@ -73,12 +73,11 @@ class QueryOptionGenerator:
         """
         orm_columns = [safe_getattr(node.model, col) for col in node.columns]
 
-        if orm_columns:
-            try:
-                return load_only(*orm_columns)  # type: ignore[return-value]
-            except exc.ArgumentError as e:
-                self._argument_error(e, node)
-        return None
+        try:
+            return load_only(*orm_columns)  # type: ignore[return-value]
+        except exc.ArgumentError as e:
+            self._argument_error(e, node)
+            raise  # unreachable, _argument_error always raises
 
     def visit_RelationshipLoadNode(self, node: RelationshipLoadNode) -> Load:
         """Generate a joinedload option for a RelationshipLoadNode.
@@ -94,10 +93,8 @@ class QueryOptionGenerator:
         loader = joinedload(relationship)
         if node.children:
             child_loaders = [self.visit(child) for child in node.children]
-            # Filter out None values from LoadOnlyNode visits
-            child_loaders_filtered = [c for c in child_loaders if c is not None]
-            if child_loaders_filtered:
-                loader = loader.options(*child_loaders_filtered)
+            if child_loaders:
+                loader = loader.options(*child_loaders)
 
         return loader  # type: ignore[return-value]
 
