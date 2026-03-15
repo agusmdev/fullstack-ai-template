@@ -51,6 +51,7 @@ src/
 ├── routes/                  # TanStack Router file-based routes
 │   ├── __root.tsx           # Root layout & providers
 │   ├── index.tsx            # Home page
+│   ├── home.css             # Home page styles (co-located; plain CSS, complex animations)
 │   ├── login.tsx            # Login page
 │   ├── register.tsx         # Register page
 │   └── items.tsx            # Items list page (auth-guarded via beforeLoad)
@@ -60,8 +61,7 @@ src/
 │   └── item.ts              # Item, ItemsResponse, ItemsParams
 │
 ├── styles/                  # Global styles
-│   ├── app.css              # Main stylesheet (Tailwind imports + CSS vars)
-│   └── home.css             # Home page styles (glassmorphism demo)
+│   └── app.css              # Main stylesheet (Tailwind imports + CSS vars)
 │
 ├── test/                    # Testing utilities
 │   └── setup.ts             # Vitest setup
@@ -327,7 +327,7 @@ function Header() {
   }
   
   return (
-    <button onClick={() => logout()}>
+    <button onClick={logout}>
       Logout
     </button>
   )
