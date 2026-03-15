@@ -1,11 +1,11 @@
 import threading
 from contextvars import ContextVar
-from uuid import uuid4
 
 from pydantic import BaseModel
 
-# Local ContextVar for request_id (replaces fastapi_injector's _request_id_ctx)
-_request_id_ctx: ContextVar[str] = ContextVar("request_id", default=str(uuid4()))
+# Local ContextVar for request_id — no default so req_or_thread_id falls back
+# to thread ID when called outside an HTTP request context (e.g., CLI, tests).
+_request_id_ctx: ContextVar[str] = ContextVar("request_id")
 
 
 def set_request_id(request_id: str) -> None:
