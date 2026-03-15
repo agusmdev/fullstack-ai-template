@@ -24,13 +24,13 @@ class TestAuthServiceSessionId:
 
     def test_session_id_format(self):
         """Test session_id format."""
-        session_id = AuthService.session_id()
+        session_id = AuthService.generate_session_id()
         assert session_id.startswith("s_")
         assert len(session_id) > 10
 
     def test_session_id_unique(self):
         """Test session_id generates unique values."""
-        ids = [AuthService.session_id() for _ in range(100)]
+        ids = [AuthService.generate_session_id() for _ in range(100)]
         assert len(set(ids)) == 100
 
     def test_generate_token_format(self):
@@ -142,7 +142,7 @@ class TestAuthServiceRegister:
 
 
 class TestAuthServiceCheckSession:
-    """Tests for AuthService.check_session method."""
+    """Tests for AuthService.validate_session method."""
 
     @pytest.fixture
     def auth_service(
@@ -157,7 +157,7 @@ class TestAuthServiceCheckSession:
             email_verification_repo=mock_email_verification_repository,
         )
 
-    async def test_check_session_valid(self, auth_service, mock_session_repository):
+    async def test_validate_session_valid(self, auth_service, mock_session_repository):
         """Test checking valid session."""
         mock_session = MagicMock()
         mock_session.expires_at = datetime.now() + timedelta(days=1)
@@ -166,11 +166,11 @@ class TestAuthServiceCheckSession:
         )
         mock_session_repository.get.return_value = mock_session
 
-        result = await auth_service.check_session("s_valid_session")
+        result = await auth_service.validate_session("s_valid_session")
 
         assert result == mock_session.user
 
-    async def test_check_session_expired(self, auth_service, mock_session_repository):
+    async def test_validate_session_expired(self, auth_service, mock_session_repository):
         """Test checking expired session."""
         mock_session = MagicMock()
         mock_session.expires_at = datetime.now() - timedelta(days=1)
@@ -178,7 +178,7 @@ class TestAuthServiceCheckSession:
         mock_session_repository.get.return_value = mock_session
 
         with pytest.raises(SessionExpiredError):
-            await auth_service.check_session("s_expired_session")
+            await auth_service.validate_session("s_expired_session")
 
 
 class TestAuthServiceLogout:

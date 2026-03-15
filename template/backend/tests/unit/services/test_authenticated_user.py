@@ -58,7 +58,7 @@ class TestAuthenticatedUserGetUser:
         self, mock_request, mock_http_auth, mock_auth_service, sample_user_response
     ):
         """Test successful user retrieval."""
-        mock_auth_service.check_session = AsyncMock(return_value=sample_user_response)
+        mock_auth_service.validate_session = AsyncMock(return_value=sample_user_response)
 
         with patch("app.user.auth.permissions.get_request_context") as mock_ctx, \
              patch("app.user.auth.permissions.log_user"):
@@ -68,13 +68,13 @@ class TestAuthenticatedUserGetUser:
             )
 
         assert result is sample_user_response
-        mock_auth_service.check_session.assert_called_once_with("s_test_session_token")
+        mock_auth_service.validate_session.assert_called_once_with("s_test_session_token")
 
     async def test_get_user_raises_401_on_exception(
         self, mock_request, mock_http_auth, mock_auth_service
     ):
         """Test that any exception raises 401 HTTPException."""
-        mock_auth_service.check_session = AsyncMock(side_effect=SessionExpiredError())
+        mock_auth_service.validate_session = AsyncMock(side_effect=SessionExpiredError())
 
         with pytest.raises(HTTPException) as exc_info:
             await AuthenticatedUser.get_user(
@@ -93,7 +93,7 @@ class TestAuthenticatedUserGetUser:
             mock_request, mock_http_auth, mock_auth_service
         )
 
-        mock_auth_service.check_session.assert_not_called()
+        mock_auth_service.validate_session.assert_not_called()
         assert result is sample_user_response
 
 
@@ -104,7 +104,7 @@ class TestAuthenticatedUserCurrentUserId:
         self, mock_request, mock_http_auth, mock_auth_service, sample_user_response
     ):
         """Test returns user UUID."""
-        mock_auth_service.check_session = AsyncMock(return_value=sample_user_response)
+        mock_auth_service.validate_session = AsyncMock(return_value=sample_user_response)
 
         with patch("app.user.auth.permissions.get_request_context") as mock_ctx, \
              patch("app.user.auth.permissions.log_user"):
@@ -124,7 +124,7 @@ class TestAuthenticatedUserCurrentUserEmail:
         self, mock_request, mock_http_auth, mock_auth_service, sample_user_response
     ):
         """Test returns user email."""
-        mock_auth_service.check_session = AsyncMock(return_value=sample_user_response)
+        mock_auth_service.validate_session = AsyncMock(return_value=sample_user_response)
 
         with patch("app.user.auth.permissions.get_request_context") as mock_ctx, \
              patch("app.user.auth.permissions.log_user"):

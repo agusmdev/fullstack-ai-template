@@ -55,7 +55,7 @@ class AuthenticatedUser:
     ) -> User:
         try:
             if not getattr(request.state, "user", None):
-                user = await auth_service.check_session(http_auth.credentials)
+                user = await auth_service.validate_session(http_auth.credentials)
                 cast("Any", request.state).user = user
                 req_ctx: RequestContext = get_request_context()
                 req_ctx.user_id = str(user.id)

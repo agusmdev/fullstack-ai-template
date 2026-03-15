@@ -90,7 +90,7 @@ class AuthService(BaseService[Session]):
         }
 
     @staticmethod
-    def session_id() -> str:
+    def generate_session_id() -> str:
         return f"s_{secrets.token_urlsafe(64)}"
 
     @staticmethod
@@ -103,7 +103,7 @@ class AuthService(BaseService[Session]):
 
         created_session = await self.repo.create(
             SessionCreate(
-                id=self.session_id(),
+                id=self.generate_session_id(),
                 user_id=user.id,
                 expires_at=datetime.now() + timedelta(days=365),
             )
@@ -139,7 +139,7 @@ class AuthService(BaseService[Session]):
 
         created_session = await self.repo.create(
             SessionCreate(
-                id=self.session_id(),
+                id=self.generate_session_id(),
                 user_id=user.id,
                 expires_at=datetime.now() + timedelta(days=365),
             )
@@ -150,7 +150,7 @@ class AuthService(BaseService[Session]):
             expires_at=created_session.expires_at,
         )
 
-    async def check_session(self, session_id: str) -> UserResponse:
+    async def validate_session(self, session_id: str) -> UserResponse:
         session = cast(
             "UserSessionResponse",
             await self.repo.get(
