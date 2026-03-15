@@ -8,7 +8,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.core.config import settings
-from app.core.permissions.auth import AuthenticatedUser
+from app.user.auth.permissions import AuthenticatedUser
 from app.user.auth.schemas import (
     EmailVerificationConfirm,
     EmailVerificationConfirmResponse,

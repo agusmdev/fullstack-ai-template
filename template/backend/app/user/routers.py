@@ -4,7 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Body, Depends, status
 
-from app.core.permissions.auth import AuthenticatedUser
+from app.user.auth.permissions import AuthenticatedUser
 from app.user.models import User
 
 from .dependencies import get_user_service

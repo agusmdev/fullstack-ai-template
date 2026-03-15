@@ -17,7 +17,6 @@ dependencies = [
     "httpx>=0.27.0",
     "fastapi-filter>=2.0.0",
     "fastapi-pagination>=0.12.27",
-    "python-multipart>=0.0.11",
     "alembic>=1.14.0",
     "alembic-postgresql-enum>=1.5.0",
     "loguru>=0.7.3",
@@ -134,13 +133,6 @@ respect-type-ignore-comments = true
 allowed-unresolved-imports = [
     "fastapi_filter.**",
     "fastapi_pagination.**",
-    "pdfplumber.**",
-    "genson.**",
-    "datamodel_code_generator.**",
-    "discord_webhook.**",
-    "boto3.**",
-    "instructor.**",
-    "argon2_cffi.**",
 ]
 
 [tool.pylint]

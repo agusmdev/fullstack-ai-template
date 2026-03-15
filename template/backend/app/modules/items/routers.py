@@ -7,7 +7,7 @@ from fastapi import APIRouter, Body, Depends, status
 from fastapi_pagination import Page, Params
 
 from app.core.logging import log_action, log_entity
-from app.core.permissions.auth import AuthenticatedUser
+from app.user.auth.permissions import AuthenticatedUser
 from app.modules.items.dependencies import get_item_service
 from app.modules.items.filters import ItemFilter
 from app.modules.items.schemas import ItemCreate, ItemResponse, ItemUpdate
