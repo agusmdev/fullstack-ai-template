@@ -36,7 +36,7 @@ class ItemService(BaseService[Item]):
         Raises:
             NotFoundError: If no item with the SKU exists
         """
-        item = await self.repo.get(sku, filter_field="sku", raise_error=False)  # type: ignore[arg-type]
+        item = await self.repo.get_by_field("sku", sku, raise_error=False)
         if not item:
             raise NotFoundError(detail=f"Item with SKU '{sku}' not found")
         return item

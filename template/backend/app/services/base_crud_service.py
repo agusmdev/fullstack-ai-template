@@ -28,6 +28,11 @@ class BaseService(Generic[T]):  # noqa: UP046
     ) -> T | None:
         return await self.repo.get(entity_id, raise_error=raise_error)
 
+    async def get_by_field(
+        self, field: str, value: Any, raise_error: bool = True
+    ) -> T | None:
+        return await self.repo.get_by_field(field, value, raise_error=raise_error)
+
     async def get_all(
         self,
         entity_filter: BaseFilterModel | None = None,

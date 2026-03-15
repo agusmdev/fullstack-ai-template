@@ -18,9 +18,6 @@ from app.user.schemas import (
 
 from .repository import UserRepository
 
-# The UserRepository.get method accepts str for email lookups
-# which is a narrowing of the base UUID type.
-
 
 class UserService(BaseService[User]):
     """Service to interact with user collection.
@@ -37,27 +34,12 @@ class UserService(BaseService[User]):
     ) -> None:
         self.repo = repo
 
-    async def get(
-        self,
-        entity_id: str | uuid.UUID,
-        filter_field: str = "id",
-        raise_error: bool = True,
-    ) -> User | None:
-        """Get a user by ID or other field."""
-        return await self.repo.get(
-            entity_id, raise_error=raise_error, filter_field=filter_field
-        )
-
     @override
     async def create(self, entity: BaseModel, **extra_fields: Any) -> User:
         return await self.repo.create(entity, **extra_fields)
 
-    async def get_or_create(
-        self, user_id: str, create_fields: BaseModel, filter_field: str = "id"
-    ) -> User:
-        user = await self.repo.get(
-            user_id, raise_error=False, filter_field=filter_field
-        )
+    async def get_or_create(self, field: str, value: str, create_fields: BaseModel) -> User:
+        user = await self.repo.get_by_field(field, value, raise_error=False)
         if not user:
             user = await self.create(create_fields)
         return user
@@ -71,7 +53,7 @@ class UserService(BaseService[User]):
         )
 
     async def authenticate(self, email: str, password: str) -> User:
-        user = await self.repo.get(email, raise_error=False, filter_field="email")
+        user = await self.repo.get_by_field("email", email, raise_error=False)
         if not user:
             raise AuthenticationError(
                 detail="User does not exist or is not allowed to login"

@@ -12,6 +12,7 @@ def mock_user_repository():
     """Create a mock user repository."""
     repo = MagicMock()
     repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
     repo.get_all = AsyncMock()
     repo.create = AsyncMock()
     repo.update = AsyncMock()
@@ -26,6 +27,7 @@ def mock_item_repository():
     """Create a mock item repository."""
     repo = MagicMock()
     repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
     repo.get_all = AsyncMock()
     repo.create = AsyncMock()
     repo.update = AsyncMock()
@@ -40,6 +42,7 @@ def mock_session_repository():
     """Create a mock session repository."""
     repo = MagicMock()
     repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
     repo.get_all = AsyncMock()
     repo.create = AsyncMock()
     repo.update = AsyncMock()

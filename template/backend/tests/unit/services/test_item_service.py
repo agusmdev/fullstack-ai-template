@@ -21,18 +21,18 @@ class TestItemServiceGetBySku:
         self, service, mock_item_repository, sample_item_model
     ):
         """Test successful get_by_sku."""
-        mock_item_repository.get.return_value = sample_item_model
+        mock_item_repository.get_by_field.return_value = sample_item_model
 
         result = await service.get_by_sku("TEST-SKU-001")
 
-        mock_item_repository.get.assert_called_once_with(
-            "TEST-SKU-001", filter_field="sku", raise_error=False
+        mock_item_repository.get_by_field.assert_called_once_with(
+            "sku", "TEST-SKU-001", raise_error=False
         )
         assert result == sample_item_model
 
     async def test_get_by_sku_not_found(self, service, mock_item_repository):
         """Test get_by_sku when SKU doesn't exist."""
-        mock_item_repository.get.return_value = None
+        mock_item_repository.get_by_field.return_value = None
 
         with pytest.raises(NotFoundError) as exc_info:
             await service.get_by_sku("NONEXISTENT-SKU")

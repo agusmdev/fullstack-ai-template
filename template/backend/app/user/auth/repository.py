@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
 from sqlalchemy import delete, select, update
 
 from app.repositories.sql_repository import SQLAlchemyRepository
@@ -10,20 +9,6 @@ from app.user.auth.models import EmailVerificationToken, PasswordResetToken, Ses
 
 class SessionRepository(SQLAlchemyRepository[Session]):
     model = Session
-
-    async def get(
-        self,
-        entity_id: uuid.UUID | str,
-        raise_error: bool = True,
-        filter_field: str = "id",
-        response_model: type[BaseModel] | None = None,
-    ) -> Session | None:
-        return await super().get(
-            entity_id,
-            raise_error=raise_error,
-            filter_field=filter_field,
-            response_model=response_model,
-        )
 
     async def delete_by_id(self, session_id: str) -> None:
         """Delete a session by its string ID."""

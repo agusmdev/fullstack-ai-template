@@ -128,9 +128,9 @@ class AuthService:
 
         oauth_user = await asyncio.to_thread(provider.callback, payload)
         user = await self.user_service.get_or_create(
+            "email",
             oauth_user.email,
-            filter_field="email",
-            create_fields=UserCreate(
+            UserCreate(
                 email=oauth_user.email,
                 display_name=oauth_user.display_name or "",
             ),
@@ -152,8 +152,8 @@ class AuthService:
     async def validate_session(self, session_id: str) -> UserResponse:
         session = cast(
             "UserSessionResponse",
-            await self.repo.get(
-                session_id, response_model=UserSessionResponse, raise_error=True
+            await self.repo.get_by_field(
+                "id", session_id, response_model=UserSessionResponse, raise_error=True
             ),
         )
         if session.expires_at < datetime.now():
@@ -178,9 +178,7 @@ class AuthService:
         Returns None if user not found (to prevent email enumeration).
         Raises OAuthUserPasswordResetError if user is OAuth-only.
         """
-        user = await self.user_service.get(
-            email, filter_field="email", raise_error=False
-        )
+        user = await self.user_service.get_by_field("email", email, raise_error=False)
         if not user:
             # Prevent email enumeration: return None rather than raising
             loguru.logger.info("Password reset requested for non-existent email")
@@ -231,7 +229,7 @@ class AuthService:
         Raises UserNotFoundError if user not found.
         Raises EmailAlreadyVerifiedError if already verified.
         """
-        user = await self.user_service.get(user_id, raise_error=False)
+        user = await self.user_service.get_by_id(user_id, raise_error=False)
         if not user:
             raise UserNotFoundError()
 

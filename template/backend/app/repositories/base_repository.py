@@ -25,9 +25,18 @@ class BaseRepository[T: Base](abc.ABC):
     @abc.abstractmethod
     async def get(
         self,
-        entity_id: uuid.UUID | str,
+        entity_id: uuid.UUID,
         raise_error: bool = True,
-        filter_field: str = "id",
+        response_model: type[BaseModel] | None = None,
+    ) -> T | None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def get_by_field(
+        self,
+        field: str,
+        value: Any,
+        raise_error: bool = True,
         response_model: type[BaseModel] | None = None,
     ) -> T | None:
         raise NotImplementedError

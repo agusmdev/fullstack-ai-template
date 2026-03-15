@@ -123,27 +123,45 @@ class SQLAlchemyRepository(BaseRepository[T]):
     @handle_commit_errors
     async def get(
         self,
-        entity_id: uuid.UUID | str,
+        entity_id: uuid.UUID,
         raise_error: bool = True,
-        filter_field: str = "id",
         response_model: type[BaseModel] | None = None,
     ) -> T | None:
-        if not (filter_model_field := getattr(self.model, filter_field, None)):
+        return await self._get_by_field_value("id", entity_id, raise_error, response_model)
+
+    @handle_commit_errors
+    async def get_by_field(
+        self,
+        field: str,
+        value: Any,
+        raise_error: bool = True,
+        response_model: type[BaseModel] | None = None,
+    ) -> T | None:
+        return await self._get_by_field_value(field, value, raise_error, response_model)
+
+    async def _get_by_field_value(
+        self,
+        field: str,
+        value: Any,
+        raise_error: bool,
+        response_model: type[BaseModel] | None,
+    ) -> T | None:
+        if not (filter_model_field := getattr(self.model, field, None)):
             raise AttributeError(
-                f"Field '{filter_field}' not found in {self.model._display_name()}"
+                f"Field '{field}' not found in {self.model._display_name()}"
             )
         query: Select[Any] = select(self.model)
         if response_model:
             query = self._generate_select_from_pydantic(response_model)
 
         result = await self._session.execute(
-            query.where(filter_model_field == entity_id)
+            query.where(filter_model_field == value)
         )
         item = result.scalar()
 
         if item is None and raise_error:
             raise NotFoundError(
-                detail=f"{self.model._display_name()} {entity_id} not found"
+                detail=f"{self.model._display_name()} {value} not found"
             )
         return item
 
