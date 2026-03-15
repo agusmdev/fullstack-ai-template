@@ -123,28 +123,31 @@ export const API = {
 
 ### 2. Server State with React Query
 
-**Pattern: queryOptions Factory**
+**Pattern: Query hook**
 
-File: `src/hooks/queries/useItemsQuery.ts`
+File: `src/hooks/useItems.ts`
 
 ```tsx
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { API } from '@/lib/api-endpoints'
-import type { ItemResponse } from '@/lib/schemas/items'
+import { queryKeys } from '@/lib/query-keys'
+import type { ItemsResponse, ItemsParams } from '@/types/item'
 
-// Factory function that returns queryOptions
-export const itemsQueryOptions = () =>
-  queryOptions({
-    queryKey: ['items', 'list'],
-    queryFn: () => api.get<ItemResponse[]>(API.ITEMS.LIST),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    retry: 1,
+export function useItems(params?: ItemsParams, enabled = true) {
+  const queryParams = new URLSearchParams()
+  if (params?.page) queryParams.append('page', params.page.toString())
+  if (params?.size) queryParams.append('size', params.size.toString())
+  if (params?.name) queryParams.append('name__ilike', params.name)
+
+  const queryString = queryParams.toString()
+  const url = queryString ? `${API.ITEMS.LIST}?${queryString}` : API.ITEMS.LIST
+
+  return useQuery({
+    queryKey: queryKeys.items.list(params),
+    queryFn: () => api.get<ItemsResponse>(url),
+    enabled,
   })
-
-// Hook that uses the factory
-export function useItemsQuery() {
-  return useQuery(itemsQueryOptions())
 }
 ```
 
@@ -152,7 +155,7 @@ Usage in components:
 
 ```tsx
 function ItemsList() {
-  const { data, isLoading, error } = useItemsQuery()
+  const { data, isLoading, error } = useItems()
   
   if (isLoading) return <LoadingSpinner />
   if (error) return <ErrorMessage error={error} />
@@ -171,21 +174,21 @@ function ItemsList() {
 
 ### 3. Mutations
 
-File: `src/hooks/mutations/useCreateItem.ts`
+File: `src/hooks/useItems.ts` (mutations are co-located with queries)
 
 ```tsx
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { API } from '@/lib/api-endpoints'
 import { queryKeys } from '@/lib/query-keys'
-import type { ItemResponse, ItemCreate } from '@/lib/schemas/items'
+import type { Item } from '@/types/item'
 
 export function useCreateItem() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
-    mutationFn: (data: ItemCreate) =>
-      api.post<ItemResponse>(API.ITEMS.CREATE, data),
+    mutationFn: (data: CreateItemData) =>
+      api.post<Item>(API.ITEMS.CREATE, data),
     
     onSuccess: () => {
       // Invalidate list to trigger refetch
@@ -240,55 +243,51 @@ function CreateItemDialog() {
 
 ### 4. Forms with Validation
 
-File: `src/lib/schemas/items.ts`
+File: `src/lib/schemas/index.ts`
 
 ```tsx
 import { z } from 'zod'
 
-export const itemCreateSchema = z.object({
+export const itemSchema = z.object({
   name: z.string()
     .min(1, 'Name is required')
     .max(255, 'Name must be less than 255 characters'),
   description: z.string()
     .max(1000, 'Description must be less than 1000 characters')
-    .optional()
-    .nullable(),
+    .optional(),
 })
 
-export type ItemCreate = z.infer<typeof itemCreateSchema>
-
-export const itemUpdateSchema = itemCreateSchema.partial()
-export type ItemUpdate = z.infer<typeof itemUpdateSchema>
+export type ItemFormData = z.infer<typeof itemSchema>
 ```
 
-File: `src/hooks/useItemForm.ts` (optional, if reused)
+Usage in component (see `src/components/ItemFormDialog.tsx`):
 
 ```tsx
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { itemCreateSchema, type ItemCreate } from '@/lib/schemas/items'
+import { itemSchema, type ItemFormData } from '@/lib/schemas'
 
-export function useItemForm(defaultValues?: Partial<ItemCreate>) {
-  return useForm<ItemCreate>({
-    resolver: zodResolver(itemCreateSchema),
+export function useItemForm(defaultValues?: Partial<ItemFormData>) {
+  return useForm<ItemFormData>({
+    resolver: zodResolver(itemSchema),
     defaultValues: defaultValues || { name: '', description: '' },
   })
 }
 ```
 
-Usage in component:
+Usage in component (see `src/components/ItemFormDialog.tsx`):
 
 ```tsx
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { itemCreateSchema, type ItemCreate } from '@/lib/schemas/items'
+import { itemSchema, type ItemFormData } from '@/lib/schemas'
 import { Form, FormField, FormItem } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
-function ItemForm({ onSubmit }: { onSubmit: (data: ItemCreate) => void }) {
-  const form = useForm<ItemCreate>({
-    resolver: zodResolver(itemCreateSchema),
+function ItemFormDialog() {
+  const form = useForm<ItemFormData>({
+    resolver: zodResolver(itemSchema),
     defaultValues: { name: '', description: '' },
   })
   
@@ -422,8 +421,8 @@ try {
 **Component Error Handling:**
 
 ```tsx
-function ItemsList() {
-  const { data, isLoading, error } = useItemsQuery()
+function ItemsPage() {
+  const { data, isLoading, error } = useItems()
   
   if (error) {
     return (
@@ -467,22 +466,19 @@ export class ErrorBoundary extends React.Component {
 **List Component:**
 
 ```tsx
-// src/components/items/ItemsList.tsx
-import { useItemsQuery } from '@/hooks/queries/useItemsQuery'
-import { ItemCard } from './ItemCard'
-import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { ErrorMessage } from '@/components/common/ErrorMessage'
+// src/routes/items.tsx — items page renders the list directly
+import { useItems } from '@/hooks/useItems'
 
-export function ItemsList() {
-  const { data, isLoading, error } = useItemsQuery()
-  
-  if (isLoading) return <LoadingSpinner />
-  if (error) return <ErrorMessage error={error} />
-  
+function ItemsPage() {
+  const { data, isLoading, error } = useItems()
+
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div>Error: {error.message}</div>
+
   return (
     <div className="grid gap-4">
-      {data?.map(item => (
-        <ItemCard key={item.id} item={item} />
+      {data?.items.map(item => (
+        <div key={item.id}>{item.name}</div>
       ))}
     </div>
   )
@@ -492,32 +488,26 @@ export function ItemsList() {
 **Dialog Component:**
 
 ```tsx
-// src/components/items/dialogs/CreateItemDialog.tsx
+// src/components/CreateItemDialog.tsx
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
-import { ItemForm } from '../ItemForm'
-import { useCreateItem } from '@/hooks/mutations/useCreateItem'
+import { useCreateItem } from '@/hooks/useItems'
 
-export function CreateItemDialog({ open, onOpenChange }) {
-  const { mutate, isPending } = useCreateItem()
-  
-  const handleSubmit = (data) => {
-    mutate(data, {
-      onSuccess: () => {
-        toast.success('Item created')
-        onOpenChange(false)
-      },
-      onError: (error) => {
-        toast.error(error.message)
-      },
-    })
+export function CreateItemDialog() {
+  const [open, setOpen] = useState(false)
+  const { mutateAsync, isPending } = useCreateItem()
+
+  const handleSubmit = async (data) => {
+    await mutateAsync(data)
+    toast.success('Item created')
+    setOpen(false)
   }
-  
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogHeader>Create Item</DialogHeader>
-        <ItemForm onSubmit={handleSubmit} isLoading={isPending} />
+        {/* form */}
       </DialogContent>
     </Dialog>
   )
@@ -531,28 +521,20 @@ export function CreateItemDialog({ open, onOpenChange }) {
 **Unit Test Example:**
 
 ```tsx
-// src/components/items/__tests__/ItemCard.test.tsx
-import { render, screen } from '@testing-library/react'
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
-import { ItemCard } from '../ItemCard'
+// src/hooks/useItems.test.ts
+import { describe, it, expect } from 'vitest'
+import { QueryClient } from '@tanstack/react-query'
+import type { ItemsResponse } from '@/types/item'
 
-describe('ItemCard', () => {
-  const queryClient = new QueryClient()
-  const mockItem = {
-    id: '1',
-    name: 'Test Item',
-    description: 'Test Description',
-    createdAt: new Date().toISOString(),
-  }
-  
-  it('renders item name', () => {
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ItemCard item={mockItem} />
-      </QueryClientProvider>
-    )
-    
-    expect(screen.getByText('Test Item')).toBeInTheDocument()
+describe('useDeleteItem optimistic rollback', () => {
+  it('removes item from cache optimistically', async () => {
+    const qc = new QueryClient()
+    // set up cache and simulate onMutate logic
+    qc.setQueriesData<ItemsResponse>({ queryKey: ['items'] }, (old) => {
+      if (!old) return old
+      return { ...old, items: old.items.filter((i) => i.id !== 'item-1'), total: old.total - 1 }
+    })
+    // verify rollback on error
   })
 })
 ```
