@@ -1,12 +1,17 @@
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, type NavigateOptions } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { api } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleApiError } from '@/lib/error-handler'
 import type { AuthSessionResponse } from '@/types/auth'
 
-export function useAuthSubmit(endpoint: string, successMessage: string, errorMessage: string) {
+export function useAuthSubmit(
+  endpoint: string,
+  successMessage: string,
+  errorMessage: string,
+  redirect: NavigateOptions = { to: '/' },
+) {
   const navigate = useNavigate()
   const { login } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
@@ -17,7 +22,7 @@ export function useAuthSubmit(endpoint: string, successMessage: string, errorMes
       const result = await api.post<AuthSessionResponse>(endpoint, payload)
       login(result)
       toast.success(successMessage)
-      navigate({ to: '/' })
+      navigate(redirect)
     } catch (err) {
       handleApiError(err, errorMessage)
     } finally {
