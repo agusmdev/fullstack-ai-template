@@ -36,7 +36,9 @@ class ApiClient {
 
     if (response.status === 401) {
       clearAuthToken()
-      window.location.href = '/login'
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
       throw new ApiError(401, 'Session expired')
     }
 

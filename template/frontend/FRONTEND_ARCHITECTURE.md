@@ -603,18 +603,23 @@ function ProtectedFeature() {
 ```tsx
 const { mutate } = useCreateItem()
 
+// Prefer handleApiError for centralized error handling:
+try {
+  await mutateAsync(data)
+} catch (error) {
+  handleApiError(error, 'Failed to save item')
+}
+
+// Or in catch blocks for field-level errors from ApiError.fields:
 mutate(data, {
   onError: (error) => {
-    if (error.status === 422 && error.fields) {
+    if (error instanceof ApiError && error.fields) {
       // Field-level errors
       Object.entries(error.fields).forEach(([field, messages]) => {
-        form.setError(field as any, { 
-          message: messages[0] 
-        })
+        form.setError(field as keyof typeof data, { message: messages[0] })
       })
     } else {
-      // General error
-      toast.error(error.message)
+      handleApiError(error, 'Failed to save item')
     }
   },
 })
