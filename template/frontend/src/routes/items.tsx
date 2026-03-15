@@ -94,7 +94,7 @@ function Items() {
               {total === 0 ? 'No items found' : `${total} ${total === 1 ? 'item' : 'items'} total`}
             </p>
           </div>
-          <CreateItemDialog />
+          <CreateItemDialog trigger={<Button>Create Item</Button>} />
         </div>
 
         <div className="flex gap-2 mb-6">

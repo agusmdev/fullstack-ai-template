@@ -1,13 +1,13 @@
-import { Button } from '@/components/ui/button'
+import React from 'react'
 import { useCreateItem } from '@/hooks/useItems'
 import { ItemFormDialog } from './ItemFormDialog'
 import { itemFormToPayload, type ItemFormData } from '@/lib/schemas'
 
 interface CreateItemDialogProps {
-  trigger?: React.ReactNode
+  trigger: React.ReactNode
 }
 
-export function CreateItemDialog({ trigger = <Button>Create Item</Button> }: CreateItemDialogProps) {
+export function CreateItemDialog({ trigger }: CreateItemDialogProps) {
   const createItem = useCreateItem()
 
   const handleSubmit = (data: ItemFormData) =>
