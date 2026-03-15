@@ -41,6 +41,9 @@ docker-compose.override.yml
 .cache/
 tmp/
 
+# ---------- Desloppify ----------
+.desloppify/
+
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,macos
@@ -95,7 +98,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ (disabled: would incorrectly ignore template/frontend/src/lib)
 lib64/
 parts/
 sdist/
