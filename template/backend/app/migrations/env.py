@@ -5,8 +5,13 @@ from sqlalchemy import engine_from_config, pool
 import alembic_postgresql_enum  # noqa
 
 from app.core.config import settings
-from app.main import create_app  # noqa
 from app.database.base import Base
+
+# Import all model modules so their tables are registered on Base.metadata.
+# This is an explicit registry — add new model modules here when created.
+import app.user.models  # noqa: F401, E402
+import app.user.auth.models  # noqa: F401, E402
+import app.modules.items.models  # noqa: F401, E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
