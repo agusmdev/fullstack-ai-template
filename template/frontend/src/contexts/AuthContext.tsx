@@ -44,9 +44,6 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
   }, [queryClient, router])
 
   const login = useCallback((response: AuthSessionResponse) => {
-    if (!response.id) {
-      throw new Error('No session token returned from server')
-    }
     setAuthToken(response.id)
     setTokenState(response.id)
   }, [])

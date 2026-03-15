@@ -7,7 +7,7 @@ import { AuthFormShell } from '@/components/AuthFormShell'
 import { EmailField, PasswordField } from '@/components/AuthFormFields'
 import { API } from '@/lib/api-endpoints'
 import { useAuthSubmit } from '@/hooks/useAuthSubmit'
-import { loginSchema, type LoginFormData } from '@/lib/schemas'
+import { loginSchema, loginFormToPayload, type LoginFormData } from '@/lib/schemas'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -26,7 +26,7 @@ function Login() {
   })
 
   const onSubmit = (data: LoginFormData) =>
-    submit({ email: data.email, password: data.password })
+    submit(loginFormToPayload(data))
 
   return (
     <AuthFormShell

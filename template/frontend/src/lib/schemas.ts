@@ -30,3 +30,13 @@ export type ItemFormData = z.infer<typeof itemSchema>
 export function itemFormToPayload(data: ItemFormData) {
   return { name: data.name, description: data.description || undefined }
 }
+
+/** Maps login form values to the API payload (field names match the login endpoint). */
+export function loginFormToPayload(data: LoginFormData) {
+  return { email: data.email, password: data.password }
+}
+
+/** Maps register form values to the API payload (renames password → raw_password per backend contract). */
+export function registerFormToPayload(data: RegisterFormData) {
+  return { email: data.email, raw_password: data.password }
+}

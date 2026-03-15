@@ -7,7 +7,7 @@ import { AuthFormShell } from '@/components/AuthFormShell'
 import { EmailField, PasswordField } from '@/components/AuthFormFields'
 import { API } from '@/lib/api-endpoints'
 import { useAuthSubmit } from '@/hooks/useAuthSubmit'
-import { registerSchema, type RegisterFormData } from '@/lib/schemas'
+import { registerSchema, registerFormToPayload, type RegisterFormData } from '@/lib/schemas'
 
 export const Route = createFileRoute('/register')({
   component: Register,
@@ -26,7 +26,7 @@ function Register() {
   })
 
   const onSubmit = (data: RegisterFormData) =>
-    submit({ email: data.email, raw_password: data.password })
+    submit(registerFormToPayload(data))
 
   return (
     <AuthFormShell
