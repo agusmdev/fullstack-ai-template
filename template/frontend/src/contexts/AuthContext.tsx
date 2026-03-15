@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import { getAuthToken, setAuthToken, clearAuthToken, subscribeToAuthChanges } from '@/lib/auth'
-import { queryKeys } from '@/lib/query-keys'
 import { api } from '@/lib/api-client'
 import { API } from '@/lib/api-endpoints'
 
@@ -30,9 +29,8 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
       const currentToken = getAuthToken()
       setTokenState(currentToken)
 
-      // Clear items cache when token is cleared
       if (currentToken === null) {
-        queryClient.removeQueries({ queryKey: queryKeys.items.all })
+        queryClient.clear()
       }
     })
 
@@ -57,7 +55,6 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
       // Always clear local auth state
       clearAuthToken()
       setTokenState(null)
-      queryClient.removeQueries({ queryKey: queryKeys.items.all })
       queryClient.clear()
     }
   }, [queryClient])

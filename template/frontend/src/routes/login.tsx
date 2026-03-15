@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -57,6 +58,7 @@ function Login() {
       }
       login(result.id)
 
+      toast.success('Signed in successfully')
       navigate({ to: '/' })
     } catch (err) {
       handleApiError(err, 'Login failed')

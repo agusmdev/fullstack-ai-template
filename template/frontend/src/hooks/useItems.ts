@@ -4,9 +4,8 @@ import { API } from '@/lib/api-endpoints'
 import { queryKeys } from '@/lib/query-keys'
 import type { Item, ItemsParams, ItemsResponse } from '@/types/item'
 
-export type { ItemsParams }
 
-export function useItems(params?: ItemsParams) {
+export function useItems(params?: ItemsParams, enabled = true) {
   const queryParams = new URLSearchParams()
 
   if (params?.page) {
@@ -25,7 +24,7 @@ export function useItems(params?: ItemsParams) {
   return useQuery({
     queryKey: queryKeys.items.list(params),
     queryFn: () => api.get<ItemsResponse>(url),
-    enabled: params?.enabled ?? true,
+    enabled,
   })
 }
 
@@ -38,7 +37,7 @@ export function useCreateItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: CreateItemData) => api.post<Item>(API.ITEMS.LIST, data),
+    mutationFn: (data: CreateItemData) => api.post<Item>(API.ITEMS.CREATE, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
     },

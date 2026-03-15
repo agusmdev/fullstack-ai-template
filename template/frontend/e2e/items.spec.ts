@@ -318,7 +318,7 @@ test.describe('Items CRUD Flow', () => {
       await page.click('button:has-text("Create Item")')
       await page.fill('input[placeholder="Enter item title"]', `Item ${i}`)
       await page.click('button:has-text("Create")')
-      await expect(page.locator(`text=Item ${i}`)).isVisible()
+      await expect(page.locator(`text=Item ${i}`)).toBeVisible()
     }
 
     // Should show pagination controls

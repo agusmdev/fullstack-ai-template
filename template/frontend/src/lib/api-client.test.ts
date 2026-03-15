@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ApiError, api } from './api-client'
+import { AUTH_TOKEN_KEY } from './auth'
 
 // --- ApiError ---
 
@@ -44,8 +45,6 @@ describe('ApiError', () => {
 })
 
 // --- ApiClient.request() HTTP behavior ---
-
-const AUTH_TOKEN_KEY = 'auth_token'
 
 function mockFetch(status: number, body?: unknown, ok = status >= 200 && status < 300) {
   const response = {

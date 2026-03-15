@@ -52,7 +52,9 @@ export function ItemFormDialog({
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen)
-    if (newOpen && mode === 'edit' && item) {
+    if (!newOpen) {
+      form.reset()
+    } else if (mode === 'edit' && item) {
       form.reset({
         name: item.name,
         description: item.description || '',

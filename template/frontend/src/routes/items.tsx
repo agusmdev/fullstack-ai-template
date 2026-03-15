@@ -1,5 +1,4 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useAuth } from '@/contexts/AuthContext'
 import { useItems } from '@/hooks/useItems'
 import { isAuthenticated } from '@/lib/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,18 +28,15 @@ export const Route = createFileRoute('/items')({
 })
 
 function Items() {
-  const { isAuthenticated } = useAuth()
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const pageSize = 9
   const debouncedSearchTerm = useDebounce(searchInput, 300)
 
-  // Only fetch items when authenticated
   const { data, isLoading, isError, error } = useItems({
     page,
     size: pageSize,
     name: debouncedSearchTerm || undefined,
-    enabled: isAuthenticated,
   })
 
   const handleClearSearch = useCallback(() => {
@@ -83,7 +79,7 @@ function Items() {
     <div className="min-h-screen bg-background pt-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div role="status" aria-live="polite" className="sr-only">
-          {isLoading ? 'Loading items...' : `Showing ${items.length} of ${total} items`}
+          {`Showing ${items.length} of ${total} items`}
         </div>
 
         <div className="flex justify-between items-center mb-6">

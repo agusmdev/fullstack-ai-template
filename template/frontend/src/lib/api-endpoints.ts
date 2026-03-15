@@ -6,6 +6,7 @@ export const API = {
   },
   ITEMS: {
     LIST: '/items',
+    CREATE: '/items',
     DETAIL: (id: string) => `/items/${id}`,
   },
 } as const
