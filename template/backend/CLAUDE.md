@@ -17,6 +17,6 @@
 - **Types:** Type hints everywhere. Pydantic schemas use `@partial_model` for updates. SQLAlchemy models inherit `Base` + `TimestampMixin`
 - **Errors:** Inherit `HTTPExceptionMixin` with `status_code`, `detail`, `error_code` class attributes
 - **Logging:** `loguru.logger` (debug, info, warning, error)
-- **DI:** `Inject[ServiceClass]` in constructors, `Injected(Service)` in routers, register in `app/dependency_registry.py`
+- **DI:** Services created via `get_*_service()` factory functions in `{module}/dependencies.py`. Injected into routers via FastAPI `Depends()`. See `app/user/dependencies.py` and `app/modules/items/dependencies.py` for examples.
 - **Git:** Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`)
 - **New entities:** Create in `app/modules/` with: models.py, schemas.py, repository.py, service.py, routers.py, filters.py (see docs/02-adding-new-entity.md)

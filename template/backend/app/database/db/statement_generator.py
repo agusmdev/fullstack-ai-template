@@ -79,10 +79,10 @@ class StatementGenerator:
             mapper = inspect(model)
             relationship_prop = mapper.relationships[relationship_name]
             return relationship_prop.mapper.class_
-        except KeyError:
+        except KeyError as exc:
             raise AttributeError(
                 f"Relationship `{relationship_name}` not found in model {model}"
-            ) from None
+            ) from exc
 
     def _categorize_columns(
         self, model: type[DeclarativeBase], columns: list[str]
