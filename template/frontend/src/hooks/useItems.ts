@@ -1,28 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { API } from '@/lib/api-endpoints'
+import { API, buildItemsListUrl } from '@/lib/api-endpoints'
 import { queryKeys } from '@/lib/query-keys'
 import type { Item, ItemsParams, ItemsResponse, CreateItemData, UpdateItemData } from '@/types/item'
 
 export function useItems(params?: ItemsParams, enabled = true) {
-  const queryParams = new URLSearchParams()
-
-  if (params?.page) {
-    queryParams.append('page', params.page.toString())
-  }
-  if (params?.size) {
-    queryParams.append('size', params.size.toString())
-  }
-  if (params?.name) {
-    queryParams.append('name__ilike', params.name)
-  }
-
-  const queryString = queryParams.toString()
-  const url = queryString ? `${API.ITEMS.LIST}?${queryString}` : API.ITEMS.LIST
-
   return useQuery({
     queryKey: queryKeys.items.list(params),
-    queryFn: () => api.get<ItemsResponse>(url),
+    queryFn: () => api.get<ItemsResponse>(buildItemsListUrl(params)),
     enabled,
   })
 }
