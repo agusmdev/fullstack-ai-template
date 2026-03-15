@@ -1,6 +1,5 @@
 """Item service - business logic layer."""
 
-import uuid
 
 from app.modules.items.models import Item
 from app.modules.items.repository import ItemRepository

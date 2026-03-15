@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import inspect
 from sqlalchemy.orm import (
@@ -13,8 +14,6 @@ from sqlalchemy.orm import (
 
 from .ast import ASTNode, LoadOnlyNode, RelationshipLoadNode, safe_getattr
 from .code_generator import QueryOptionGenerator
-from loguru import logger
-
 from .pydantic_fields import PydanticGraph
 
 

@@ -7,16 +7,16 @@ from fastapi import APIRouter, Body, Depends, status
 from fastapi_pagination import Page, Params
 
 from app.core.logging import log_action, log_entity
-from app.user.auth.permissions import AuthenticatedUser
 from app.modules.items.dependencies import get_item_service
 from app.modules.items.filters import ItemFilter
 from app.modules.items.schemas import ItemCreate, ItemResponse, ItemUpdate
 from app.modules.items.service import ItemService
+from app.user.auth import require_current_user_id
 
 items_router = APIRouter(
     prefix="/items",
     tags=["items"],
-    dependencies=[Depends(AuthenticatedUser.current_user_id)],
+    dependencies=[Depends(require_current_user_id)],
 )
 
 

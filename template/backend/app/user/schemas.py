@@ -3,13 +3,11 @@
 import uuid
 from datetime import datetime
 
-from argon2 import PasswordHasher
 from pydantic import BaseModel, EmailStr, Field, computed_field
 
 from app.core.optional_model import partial_model
 from app.database.mixins import OrmBaseModel
-
-ph = PasswordHasher()
+from app.user.models import _ph
 
 
 class UserBase(BaseModel):
@@ -25,7 +23,7 @@ class UserRegister(UserBase):
 
     @computed_field
     def password(self) -> str:
-        return ph.hash(self.raw_password)
+        return _ph.hash(self.raw_password)
 
 
 @partial_model

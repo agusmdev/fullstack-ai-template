@@ -1,4 +1,4 @@
-"""Tests for OAuth flow: GoogleOAuth.callback(), AuthService.oauth_login(), and oauth_callback router."""
+"""Tests for OAuth flow: GoogleOAuth, AuthService.oauth_login(), and oauth_callback router."""
 
 import uuid
 from datetime import datetime, timedelta
@@ -13,11 +13,11 @@ from app.user.auth.service import GoogleOAuth
 
 
 # ---------------------------------------------------------------------------
-# GoogleOAuth.callback()
+# GoogleOAuth._fetch_user() — the sync core that does the actual HTTP work
 # ---------------------------------------------------------------------------
 
 
-class TestGoogleOAuthCallback:
+class TestGoogleOAuthFetchUser:
     def _make_callback(self) -> OAuthCallback:
         return OAuthCallback(code="auth_code_123", state="state_abc")
 
@@ -31,7 +31,7 @@ class TestGoogleOAuthCallback:
             "name": "Test User",
         }
 
-        result = GoogleOAuth().callback(self._make_callback())
+        result = GoogleOAuth()._fetch_user(self._make_callback())
 
         assert result.token == "tok_xyz"
         assert result.email == "user@example.com"
@@ -42,12 +42,9 @@ class TestGoogleOAuthCallback:
         mock_session = MagicMock()
         mock_session_cls.return_value = mock_session
         mock_session.fetch_token.return_value = {"access_token": "tok"}
-        mock_session.get.return_value.json.return_value = {
-            "email": "a@b.com",
-            "name": "A",
-        }
+        mock_session.get.return_value.json.return_value = {"email": "a@b.com", "name": "A"}
 
-        GoogleOAuth().callback(self._make_callback())
+        GoogleOAuth()._fetch_user(self._make_callback())
 
         call_kwargs = mock_session_cls.call_args.kwargs
         assert call_kwargs["state"] == "state_abc"
@@ -62,11 +59,11 @@ class TestGoogleOAuthCallback:
         mock_session.fetch_token.return_value = {"access_token": "tok"}
         mock_session.get.return_value.json.return_value = {
             "email": "user@example.com",
-            # "name" intentionally absent — Google may omit this field
+            # "name" intentionally absent
         }
 
         with pytest.raises(ValidationError):
-            GoogleOAuth().callback(self._make_callback())
+            GoogleOAuth()._fetch_user(self._make_callback())
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +92,7 @@ def auth_service_with_mocks(mock_user, mock_session_response):
     from app.user.auth.service import AuthService
 
     user_service = MagicMock()
-    user_service.find_or_create = AsyncMock(return_value=mock_user)
+    user_service.find_or_create_by_email = AsyncMock(return_value=mock_user)
 
     repo = MagicMock()
     repo.create = AsyncMock(
@@ -124,33 +121,30 @@ class TestAuthServiceOAuthLogin:
         self, auth_service_with_mocks, mock_user
     ):
         mock_provider = MagicMock()
-        mock_provider.callback.return_value = OAuthUser(
-            token="tok", email="u@example.com", display_name="U"
+        mock_provider.callback = AsyncMock(
+            return_value=OAuthUser(token="tok", email="u@example.com", display_name="U")
         )
         auth_service_with_mocks.providers["google"] = mock_provider
 
         callback = OAuthCallback(code="code", state="state")
         result = await auth_service_with_mocks.oauth_login("google", callback)
 
-        mock_provider.callback.assert_called_once_with(callback)
-        auth_service_with_mocks.user_service.find_or_create.assert_awaited_once()
+        mock_provider.callback.assert_awaited_once_with(callback)
+        auth_service_with_mocks.user_service.find_or_create_by_email.assert_awaited_once()
         assert result.id == "s_test_session"
 
-    async def test_find_or_create_called_with_email(
-        self, auth_service_with_mocks
-    ):
+    async def test_find_or_create_called_with_email(self, auth_service_with_mocks):
         mock_provider = MagicMock()
-        mock_provider.callback.return_value = OAuthUser(
-            token="tok", email="hello@example.com", display_name="Hello"
+        mock_provider.callback = AsyncMock(
+            return_value=OAuthUser(token="tok", email="hello@example.com", display_name="Hello")
         )
         auth_service_with_mocks.providers["google"] = mock_provider
 
         callback = OAuthCallback(code="code", state="state")
         await auth_service_with_mocks.oauth_login("google", callback)
 
-        call_args = auth_service_with_mocks.user_service.find_or_create.call_args
-        assert call_args.args[0] == "email"
-        assert call_args.args[1] == "hello@example.com"
+        call_args = auth_service_with_mocks.user_service.find_or_create_by_email.call_args
+        assert call_args.args[0] == "hello@example.com"
 
 
 # ---------------------------------------------------------------------------
@@ -166,9 +160,7 @@ def mock_auth_service_for_router(mock_session_response):
 
 
 class TestOAuthCallbackRouter:
-    async def test_redirects_to_frontend_on_success(
-        self, mock_auth_service_for_router
-    ):
+    async def test_redirects_to_frontend_on_success(self, mock_auth_service_for_router):
         callback = OAuthCallback(code="code", state="state")
         response = await oauth_callback(
             provider="google",
@@ -179,12 +171,9 @@ class TestOAuthCallbackRouter:
         assert response.status_code == 302
         assert "session=" in response.headers["location"]
 
-    async def test_redirects_to_error_on_unsupported_provider(
-        self, mock_auth_service_for_router
-    ):
-        mock_auth_service_for_router.oauth_login.side_effect = UnsupportedOAuthProviderError()
+    async def test_redirects_to_error_on_unknown_provider(self, mock_auth_service_for_router):
+        """Providers not in _ALLOWED_OAUTH_PROVIDERS are rejected before calling the service."""
         callback = OAuthCallback(code="code", state="state")
-
         response = await oauth_callback(
             provider="unsupported",
             auth_service=mock_auth_service_for_router,
@@ -193,18 +182,16 @@ class TestOAuthCallbackRouter:
 
         assert response.status_code == 302
         assert "unsupported_provider" in response.headers["location"]
+        mock_auth_service_for_router.oauth_login.assert_not_called()
 
-    async def test_redirects_to_error_on_generic_exception(
-        self, mock_auth_service_for_router
-    ):
+    async def test_unexpected_exceptions_propagate(self, mock_auth_service_for_router):
+        """Unexpected errors propagate to middleware for structured logging."""
         mock_auth_service_for_router.oauth_login.side_effect = RuntimeError("network error")
         callback = OAuthCallback(code="code", state="state")
 
-        response = await oauth_callback(
-            provider="google",
-            auth_service=mock_auth_service_for_router,
-            callback=callback,
-        )
-
-        assert response.status_code == 302
-        assert "oauth_login_failed" in response.headers["location"]
+        with pytest.raises(RuntimeError, match="network error"):
+            await oauth_callback(
+                provider="google",
+                auth_service=mock_auth_service_for_router,
+                callback=callback,
+            )

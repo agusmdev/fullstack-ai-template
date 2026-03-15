@@ -8,7 +8,9 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.core.config import settings
-from app.user.auth.exceptions import OAuthUserPasswordResetError, UnsupportedOAuthProviderError
+from app.user.auth.exceptions import (
+    OAuthUserPasswordResetError,
+)
 from app.user.auth.permissions import AuthenticatedUser
 from app.user.auth.schemas import (
     EmailVerificationConfirm,
@@ -25,6 +27,9 @@ from app.user.auth.schemas import (
 from app.user.auth.service import AuthService
 from app.user.dependencies import get_auth_service
 from app.user.schemas import UserRegister
+
+# Explicit allowlist — reject unknown providers before hitting the service layer
+_ALLOWED_OAUTH_PROVIDERS: frozenset[str] = frozenset({"google"})
 
 auth_router = APIRouter()
 
@@ -90,25 +95,16 @@ async def oauth_callback(
     auth_service: AuthService = Depends(get_auth_service),
     callback: OAuthCallback = Query(...),
 ) -> RedirectResponse:
-    try:
-        session = await auth_service.oauth_login(
-            provider_name=provider, payload=callback
-        )
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/oauth/callback?session={session.id}",
-            status_code=status.HTTP_302_FOUND,
-        )
-    except UnsupportedOAuthProviderError:
+    if provider not in _ALLOWED_OAUTH_PROVIDERS:
         return RedirectResponse(
             url=f"{settings.FRONTEND_URL}/oauth/error?error=unsupported_provider",
             status_code=status.HTTP_302_FOUND,
         )
-    except Exception:
-        loguru.logger.exception("OAuth login failed for provider %s", provider)
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/oauth/error?error=oauth_login_failed",
-            status_code=status.HTTP_302_FOUND,
-        )
+    session = await auth_service.oauth_login(provider_name=provider, payload=callback)
+    return RedirectResponse(
+        url=f"{settings.FRONTEND_URL}/oauth/callback?session={session.id}",
+        status_code=status.HTTP_302_FOUND,
+    )
 
 
 # Password Reset Endpoints

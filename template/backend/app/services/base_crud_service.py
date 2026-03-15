@@ -8,8 +8,6 @@ from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
 from pydantic import BaseModel
 
-
-
 from app.core.logging import log_entity
 from app.repositories.base_repository import BaseRepository, QueryOptions, T
 from app.repositories.clauses import OnConflictClause, do_default_on_conflict

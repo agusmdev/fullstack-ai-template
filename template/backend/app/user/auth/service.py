@@ -38,7 +38,11 @@ EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS = 24
 
 
 class GoogleOAuth:
-    def callback(self, callback: OAuthCallback) -> OAuthUser:
+    async def callback(self, callback: OAuthCallback) -> OAuthUser:
+        """Exchange OAuth callback code for user info. Network I/O runs in a thread pool."""
+        return await asyncio.to_thread(self._fetch_user, callback)
+
+    def _fetch_user(self, callback: OAuthCallback) -> OAuthUser:
         google = OAuth2Session(
             client_id=settings.GOOGLE_CLIENT_ID,
             redirect_uri=settings.GOOGLE_REDIRECT_URI,
@@ -52,16 +56,12 @@ class GoogleOAuth:
             code=callback.code,
         )
 
-        user_info_response = google.get(settings.GOOGLE_USER_INFO_URL)
-        user_info = user_info_response.json()
-
-        user_email = user_info.get("email")
-        user_name = user_info.get("name")
+        user_info = google.get(settings.GOOGLE_USER_INFO_URL).json()
 
         return OAuthUser(
             token=token["access_token"],
-            email=user_email,
-            display_name=user_name,
+            email=user_info.get("email"),
+            display_name=user_info.get("name"),
         )
 
 
@@ -127,9 +127,8 @@ class AuthService:
         if not provider:
             raise UnsupportedOAuthProviderError()
 
-        oauth_user = await asyncio.to_thread(provider.callback, payload)
-        user = await self.user_service.find_or_create(
-            "email",
+        oauth_user = await provider.callback(payload)
+        user = await self.user_service.find_or_create_by_email(
             oauth_user.email,
             UserCreate(
                 email=oauth_user.email,

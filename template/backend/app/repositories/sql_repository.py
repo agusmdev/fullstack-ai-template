@@ -1,4 +1,3 @@
-from loguru import logger
 import uuid
 from collections.abc import Callable, Sequence
 from functools import wraps
@@ -7,6 +6,7 @@ from typing import Any, TypeVar
 from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
+from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import Selectable, delete, select
 from sqlalchemy import update as sql_update

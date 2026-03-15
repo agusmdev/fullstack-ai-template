@@ -4,22 +4,18 @@ import uuid
 from datetime import datetime
 from typing import Any, override
 
-from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from pydantic import BaseModel
 
 from app.services.base_crud_service import BaseService
 from app.user.auth.exceptions import AuthenticationError, InvalidPasswordError
-from app.user.models import User
+from app.user.models import User, _ph
+from app.user.repository import UserRepository
 from app.user.schemas import (
+    UserCreate,
     UserRegister,
     UserResponse,
 )
-
-from app.user.repository import UserRepository
-
-
-_ph = PasswordHasher()
 
 
 class UserService(BaseService[User]):
@@ -46,6 +42,10 @@ class UserService(BaseService[User]):
         if not user:
             user = await self.create(create_fields)
         return user
+
+    async def find_or_create_by_email(self, email: str, create_fields: UserCreate) -> User:
+        """Find a user by email or create one with the given fields."""
+        return await self.find_or_create("email", email, create_fields)
 
     async def register(self, user: UserRegister) -> UserResponse:
         created_user = await self.create(user)

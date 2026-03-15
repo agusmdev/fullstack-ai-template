@@ -20,3 +20,16 @@
 - **DI:** Services created via `get_*_service()` factory functions in `{module}/dependencies.py`. Injected into routers via FastAPI `Depends()`. See `app/user/dependencies.py` and `app/modules/items/dependencies.py` for examples.
 - **Git:** Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`)
 - **New entities:** Create in `app/modules/` with: models.py, schemas.py, repository.py, service.py, routers.py, filters.py (see docs/02-adding-new-entity.md)
+
+## Package `__init__.py` Convention
+- Packages with a **public API** (re-exported symbols): define `__all__` and list exports (see `app/repositories/__init__.py`, `app/modules/items/__init__.py`).
+- Packages that are **internal namespaces** with no re-exports: empty `__init__.py` (one-line docstring is acceptable).
+- **Never omit `__init__.py`** — missing init files cause inconsistent import behavior. Every package directory must have one.
+- Auth boundary: domain modules import from `app.user.auth` (the package), not from `app.user.auth.permissions` directly.
+
+## Error Boundary Strategy
+Consistent error handling across layers:
+- **Services/repositories:** raise domain exceptions (`NotFoundError`, `AuthenticationError`, etc.) with `from original_exc` to preserve context.
+- **Routers:** do NOT catch exceptions — let them propagate to FastAPI exception handlers and middleware (which logs them). Exception: redirect-based OAuth endpoints may handle specific known exceptions at the router level.
+- **External I/O (HTTP clients, OAuth):** catch protocol-level exceptions and wrap in domain exceptions with `from err`.
+- **Never use `raise ... from None`** — always preserve original exception context for debugging.

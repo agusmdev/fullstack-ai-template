@@ -132,7 +132,16 @@ def clear_wide_event_context() -> None:
 
 
 def add_entity_to_context(entity_type: str, entity_id: str | UUID) -> None:
-    """Add entity context to the current wide event."""
+    """Add entity context to the current wide event.
+
+    Uses a lazy-promote strategy to avoid pre-allocating a list for the common
+    single-entity case:
+    - First entity: stored in ctx.entity_id (scalar, no list overhead).
+    - Second+ entity: the scalar is promoted into ctx.entity_ids and cleared,
+      then all subsequent entities are appended to the list.
+
+    Duplicate IDs are silently ignored to keep the log line compact.
+    """
     ctx = get_wide_event_context()
     if ctx is None:
         return
@@ -140,11 +149,11 @@ def add_entity_to_context(entity_type: str, entity_id: str | UUID) -> None:
     entity_id_str = str(entity_id)
     ctx.entity_type = entity_type
 
-    # If single entity, set entity_id; if multiple, use entity_ids
     if ctx.entity_id is None and not ctx.entity_ids:
+        # First entity — use the scalar slot
         ctx.entity_id = entity_id_str
     else:
-        # Move single to list if needed
+        # Multiple entities — promote scalar to list, then append
         if ctx.entity_id and ctx.entity_id not in ctx.entity_ids:
             ctx.entity_ids.append(ctx.entity_id)
             ctx.entity_id = None
