@@ -11,8 +11,9 @@ interface EditItemDialogProps {
 export function EditItemDialog({ item, trigger }: EditItemDialogProps) {
   const updateItem = useUpdateItem(item.id)
 
-  const handleSubmit = (data: ItemFormData) =>
-    updateItem.mutateAsync(itemFormToPayload(data))
+  const handleSubmit = async (data: ItemFormData): Promise<void> => {
+    await updateItem.mutateAsync(itemFormToPayload(data))
+  }
 
   return (
     <ItemFormDialog

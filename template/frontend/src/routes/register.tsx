@@ -7,14 +7,14 @@ import { AuthFormShell } from '@/components/AuthFormShell'
 import { EmailField, PasswordField } from '@/components/AuthFormFields'
 import { API } from '@/lib/api-endpoints'
 import { useAuthSubmit } from '@/hooks/useAuthSubmit'
-import { registerSchema, registerFormToPayload, type RegisterFormData } from '@/lib/schemas'
+import { registerSchema, registerFormToPayload, type RegisterFormData, type RegisterPayload } from '@/lib/schemas'
 
 export const Route = createFileRoute('/register')({
   component: Register,
 })
 
 function Register() {
-  const { submit, isLoading } = useAuthSubmit(
+  const { submit, isLoading } = useAuthSubmit<RegisterPayload>(
     API.AUTH.REGISTER,
     'Account created successfully',
     'Registration failed',

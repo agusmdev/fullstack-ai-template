@@ -11,8 +11,8 @@ function makeQueryClient() {
 function makeItemsResponse(overrides?: Partial<ItemsResponse>): ItemsResponse {
   return {
     items: [
-      { id: 'item-1', name: 'First', description: null, created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z', user_id: 'u1' },
-      { id: 'item-2', name: 'Second', description: null, created_at: '2024-01-02T00:00:00Z', updated_at: '2024-01-02T00:00:00Z', user_id: 'u1' },
+      { id: 'item-1', name: 'First', description: null, created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z', deleted_at: null, user_id: 'u1' },
+      { id: 'item-2', name: 'Second', description: null, created_at: '2024-01-02T00:00:00Z', updated_at: '2024-01-02T00:00:00Z', deleted_at: null, user_id: 'u1' },
     ],
     total: 2,
     page: 1,

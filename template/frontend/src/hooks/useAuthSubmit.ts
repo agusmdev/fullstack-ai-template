@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toastApiError } from '@/lib/error-handler'
 import type { AuthSessionResponse } from '@/types/auth'
 
-export function useAuthSubmit(
+export function useAuthSubmit<TPayload extends Record<string, unknown>>(
   endpoint: string,
   successMessage: string,
   errorMessage: string,
@@ -16,7 +16,7 @@ export function useAuthSubmit(
   const { login } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
-  const submit = async (payload: Record<string, string>) => {
+  const submit = async (payload: TPayload) => {
     setIsLoading(true)
     try {
       const result = await api.post<AuthSessionResponse>(endpoint, payload)

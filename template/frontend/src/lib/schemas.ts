@@ -35,3 +35,5 @@ export function itemFormToPayload(data: ItemFormData) {
 export function registerFormToPayload(data: RegisterFormData) {
   return { email: data.email, raw_password: data.password }
 }
+
+export type RegisterPayload = ReturnType<typeof registerFormToPayload>

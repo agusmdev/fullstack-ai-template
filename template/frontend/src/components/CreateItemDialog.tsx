@@ -10,8 +10,9 @@ interface CreateItemDialogProps {
 export function CreateItemDialog({ trigger }: CreateItemDialogProps) {
   const createItem = useCreateItem()
 
-  const handleSubmit = (data: ItemFormData) =>
-    createItem.mutateAsync(itemFormToPayload(data))
+  const handleSubmit = async (data: ItemFormData): Promise<void> => {
+    await createItem.mutateAsync(itemFormToPayload(data))
+  }
 
   return (
     <ItemFormDialog
