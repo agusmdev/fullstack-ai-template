@@ -29,13 +29,16 @@
 ```
 src/
 ├── components/
-│   ├── ui/              ← shadcn/ui components ONLY
-│   ├── Navigation.tsx   ← Top nav bar
-│   ├── Layout.tsx       ← Page layout wrapper
+│   ├── ui/                  ← shadcn/ui components ONLY
+│   ├── Navigation.tsx       ← Top nav bar
+│   ├── Layout.tsx           ← Page layout wrapper
 │   ├── ErrorBoundary.tsx
+│   ├── AuthFormShell.tsx    ← Card wrapper for auth pages
+│   ├── AuthFormFields.tsx   ← EmailField and PasswordField form field components
 │   ├── CreateItemDialog.tsx
 │   ├── EditItemDialog.tsx
-│   └── DeleteItemDialog.tsx
+│   ├── DeleteItemDialog.tsx
+│   └── ItemFormDialog.tsx   ← Shared form shell for create/edit item dialogs
 ├── contexts/            ← React Context (AuthContext, etc.)
 ├── hooks/               ← All hooks flat (useItems.ts, useDebounce.ts, etc.)
 ├── lib/
@@ -45,7 +48,8 @@ src/
 │   ├── query-keys.ts    ← Query key factory
 │   ├── config.ts        ← Runtime configuration
 │   ├── error-handler.ts ← Error handling utilities
-│   ├── schemas.ts       ← Zod validation schemas
+│   ├── auth-schemas.ts  ← Auth Zod schemas + payload helpers
+│   ├── item-schemas.ts  ← Item Zod schemas + payload helpers
 │   └── utils.ts         ← Helper utilities
 ├── routes/              ← TanStack file-based routes
 │   ├── __root.tsx       ← Root layout with providers
