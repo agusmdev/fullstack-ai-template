@@ -41,7 +41,7 @@ class UserService(BaseService[User]):
     async def create(self, entity: BaseModel, **extra_fields: Any) -> User:
         return await self.repo.create(entity, **extra_fields)
 
-    async def get_or_create(self, field: str, value: str, create_fields: BaseModel) -> User:
+    async def find_or_create(self, field: str, value: str, create_fields: BaseModel) -> User:
         user = await self.repo.get_by_field(field, value, raise_error=False)
         if not user:
             user = await self.create(create_fields)

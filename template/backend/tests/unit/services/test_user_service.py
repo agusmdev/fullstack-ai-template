@@ -64,7 +64,7 @@ class TestUserServiceGetOrCreate:
         mock_user_repository.get_by_field.return_value = sample_user_model
         create_fields = MagicMock()
 
-        result = await service.get_or_create("email", sample_user_model.email, create_fields)
+        result = await service.find_or_create("email", sample_user_model.email, create_fields)
 
         mock_user_repository.get_by_field.assert_called_once()
         mock_user_repository.create.assert_not_called()
@@ -76,7 +76,7 @@ class TestUserServiceGetOrCreate:
         mock_user_repository.create.return_value = sample_user_model
         create_fields = MagicMock()
 
-        result = await service.get_or_create("email", "new@example.com", create_fields)
+        result = await service.find_or_create("email", "new@example.com", create_fields)
 
         mock_user_repository.get_by_field.assert_called_once()
         mock_user_repository.create.assert_called_once_with(create_fields)

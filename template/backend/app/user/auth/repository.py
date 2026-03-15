@@ -10,8 +10,8 @@ from app.user.auth.models import EmailVerificationToken, PasswordResetToken, Ses
 class SessionRepository(SQLAlchemyRepository[Session]):
     model = Session
 
-    async def delete(self, session_id: str) -> None:  # type: ignore[override]
-        """Delete a session by its string ID (overrides base delete with str instead of UUID)."""
+    async def delete_session(self, session_id: str) -> None:
+        """Delete a session by its string ID."""
         await self._session.execute(delete(Session).where(Session.id == session_id))
         await self._session.commit()
 

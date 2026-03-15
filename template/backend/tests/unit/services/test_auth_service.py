@@ -201,7 +201,7 @@ class TestAuthServiceLogout:
         """Test successful logout."""
         await auth_service.logout("s_session_to_delete")
 
-        mock_session_repository.delete.assert_called_once_with("s_session_to_delete")
+        mock_session_repository.delete_session.assert_called_once_with("s_session_to_delete")
 
     async def test_logout_all_success(self, auth_service, mock_session_repository):
         """Test logout all sessions for user."""

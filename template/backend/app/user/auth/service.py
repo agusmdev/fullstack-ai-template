@@ -128,7 +128,7 @@ class AuthService:
             raise UnsupportedOAuthProviderError()
 
         oauth_user = await asyncio.to_thread(provider.callback, payload)
-        user = await self.user_service.get_or_create(
+        user = await self.user_service.find_or_create(
             "email",
             oauth_user.email,
             UserCreate(
@@ -151,7 +151,7 @@ class AuthService:
 
     async def logout(self, session_id: str) -> None:
         """Invalidate a session by deleting it."""
-        await self.repo.delete(session_id)
+        await self.repo.delete_session(session_id)
 
     async def logout_all(self, user_id: uuid.UUID) -> None:
         """Invalidate all sessions for a user (logout from all devices)."""
