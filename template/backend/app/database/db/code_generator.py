@@ -74,7 +74,7 @@ class QueryOptionGenerator:
         orm_columns = [safe_getattr(node.model, col) for col in node.columns]
 
         try:
-            return load_only(*orm_columns)  # type: ignore[return-value]
+            return load_only(*orm_columns)  # type: ignore[return-value]  # SQLAlchemy's load_only returns Load[Model], not the generic Load[Column]
         except exc.ArgumentError as e:
             self._argument_error(e, node)
             raise  # unreachable, _argument_error always raises
@@ -96,7 +96,7 @@ class QueryOptionGenerator:
             if child_loaders:
                 loader = loader.options(*child_loaders)
 
-        return loader  # type: ignore[return-value]
+        return loader  # type: ignore[return-value]  # joinedload() returns JoinedLoad which is narrower than generic Load
 
     def _argument_error(self, e: exc.ArgumentError, node: LoadOnlyNode) -> None:
         """

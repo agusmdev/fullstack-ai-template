@@ -3,7 +3,7 @@
 import time
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Request, Response
 from loguru import logger
@@ -117,6 +117,7 @@ class WideEventMiddleware(BaseHTTPMiddleware):
         event_data = ctx.to_dict()
 
         # Determine log level based on status code
+        level: Literal["ERROR", "WARNING", "INFO"]
         if ctx.error or ctx.status_code >= 500:
             level = "ERROR"
         elif ctx.status_code >= 400:

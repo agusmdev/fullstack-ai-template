@@ -118,7 +118,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
                     raise parsed_error from e
                 raise
 
-        return exception_wrapper  # type: ignore[return-value]
+        return exception_wrapper  # type: ignore[return-value]  # Inner wrapper has same signature as func but type checker can't verify through the closure
 
     @handle_commit_errors
     async def get(
@@ -190,10 +190,10 @@ class SQLAlchemyRepository(BaseRepository[T]):
         query, opts = self._build_filtered_query(entity_filter, options)
 
         if opts.return_scalars:
-            result = await self._session.execute(query)  # type: ignore[call-overload]
+            result = await self._session.execute(query)  # type: ignore[call-overload]  # execute() overloads don't include generic Select[Any]; runtime is correct
             return list(result.scalars().all())
 
-        result = await self._session.execute(query)  # type: ignore[call-overload]
+        result = await self._session.execute(query)  # type: ignore[call-overload]  # execute() overloads don't include generic Select[Any]; runtime is correct
         return list(result.all())
 
     async def get_all_paginated(
@@ -204,7 +204,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
     ) -> Page[T]:
         query, opts = self._build_filtered_query(entity_filter, options)
         # paginate returns Any due to dynamic params typing - explicit cast needed
-        return await paginate(  # type: ignore[no-any-return, call-overload]
+        return await paginate(  # type: ignore[no-any-return, call-overload]  # paginate() returns Any due to generic params; runtime returns Page[T]
             self._session,
             query,
             params=pagination_params,
@@ -247,7 +247,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
 
         stmt = (
             sql_update(self.model)
-            .where(self.model.id == entity_id)  # type: ignore[attr-defined]
+            .where(self.model.id == entity_id)  # type: ignore[attr-defined]  # model is TypeVar bound to Base; .id attr exists at runtime via mapped_column
             .values(**updated_values)
             .returning(self.model)
         )
@@ -265,7 +265,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
     @handle_commit_errors
     async def delete(self, entity_id: uuid.UUID) -> None:
         await self._session.execute(
-            delete(self.model).where(self.model.id == entity_id)  # type: ignore[attr-defined]
+            delete(self.model).where(self.model.id == entity_id)  # type: ignore[attr-defined]  # model TypeVar bound to Base; .id exists via mapped_column at runtime  # model is TypeVar bound to Base; .id attr exists at runtime via mapped_column
         )
         await self._session.commit()
 
@@ -292,5 +292,5 @@ class SQLAlchemyRepository(BaseRepository[T]):
 
     @handle_commit_errors
     async def delete_many(self, delete_filter_query: Selectable) -> None:
-        await self._session.execute(delete_filter_query)  # type: ignore[call-overload]
+        await self._session.execute(delete_filter_query)  # type: ignore[call-overload]  # Selectable base type accepted by execute() at runtime but not in overloads
         await self._session.commit()

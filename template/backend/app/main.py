@@ -49,15 +49,15 @@ def create_app(
     #
     # RequestContextMiddleware reads the request_id from WideEventContext, so it must
     # run AFTER WideEventMiddleware (i.e., be added FIRST = innermost).
-    app.add_middleware(RequestContextMiddleware)  # type: ignore[invalid-argument-type]
+    app.add_middleware(RequestContextMiddleware)  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
 
     # WideEventMiddleware generates the canonical request_id and emits the wide log.
     # Must wrap RequestContextMiddleware so the ID is set before context middleware runs.
     # Inject clear_request_context so core middleware doesn't import app-level modules.
-    app.add_middleware(WideEventMiddleware, on_request_cleanup=clear_request_context)  # type: ignore[invalid-argument-type]
+    app.add_middleware(WideEventMiddleware, on_request_cleanup=clear_request_context)  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
 
     app.add_middleware(
-        CORSMiddleware,  # type: ignore[invalid-argument-type]
+        CORSMiddleware,  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
         allow_origins=[
             settings.FRONTEND_URL,
             "http://localhost:3000",

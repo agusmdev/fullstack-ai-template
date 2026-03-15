@@ -33,5 +33,5 @@ class QueryBuilder:
         options = select_from_pydantic(self.model, pydantic_model)
         base_select: Select[Any] = select(self.model).options(*options)
         if query is not None:
-            return query.options(*options)  # type: ignore[attr-defined, no-any-return]
+            return query.options(*options)  # type: ignore[attr-defined, no-any-return]  # Selectable base type lacks .options(); Select subtype has it but static type checker cannot narrow
         return base_select
