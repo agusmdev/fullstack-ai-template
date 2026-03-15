@@ -7,7 +7,7 @@ import { AuthFormShell } from '@/components/AuthFormShell'
 import { EmailField, PasswordField } from '@/components/AuthFormFields'
 import { API } from '@/lib/api-endpoints'
 import { useAuthSubmit } from '@/hooks/useAuthSubmit'
-import { loginSchema, type LoginFormData } from '@/lib/schemas'
+import { loginSchema, type LoginFormData } from '@/lib/auth-schemas'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({

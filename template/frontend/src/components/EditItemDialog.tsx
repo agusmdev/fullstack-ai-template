@@ -1,7 +1,7 @@
 import { useUpdateItem } from '@/hooks/useItems'
 import type { Item } from '@/types/item'
 import { ItemFormDialog } from './ItemFormDialog'
-import { itemFormToPayload, type ItemFormData } from '@/lib/schemas'
+import { itemFormToPayload, type ItemFormData } from '@/lib/item-schemas'
 
 interface EditItemDialogProps {
   item: Item

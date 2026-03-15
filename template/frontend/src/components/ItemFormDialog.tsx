@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Item } from '@/types/item'
 import { toastApiError } from '@/lib/error-handler'
-import { itemSchema, type ItemFormData } from '@/lib/schemas'
+import { itemSchema, type ItemFormData } from '@/lib/item-schemas'
 
 interface ItemFormDialogProps {
   mode: 'create' | 'edit'

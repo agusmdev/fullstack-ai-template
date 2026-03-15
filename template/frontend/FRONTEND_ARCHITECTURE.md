@@ -44,7 +44,8 @@ src/
 │   ├── config.ts            # Runtime config
 │   ├── error-handler.ts     # Error handling utilities
 │   ├── query-keys.ts        # Query key factory
-│   ├── schemas.ts           # Zod validation schemas (loginSchema, registerSchema, itemSchema)
+│   ├── auth-schemas.ts      # Auth Zod schemas + payload helpers (loginSchema, registerSchema)
+│   ├── item-schemas.ts      # Item Zod schemas + payload helpers (itemSchema)
 │   ├── utils.ts             # General utilities
 │   └── web-vitals.ts        # Web Vitals tracking (DEV-only logging)
 │
@@ -239,7 +240,7 @@ function CreateItemDialog() {
 
 ### 4. Forms with Validation
 
-File: `src/lib/schemas.ts`
+File: `src/lib/item-schemas.ts`
 
 ```tsx
 import { z } from 'zod'
@@ -261,7 +262,7 @@ Usage in component (see `src/components/ItemFormDialog.tsx`):
 ```tsx
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { itemSchema, type ItemFormData } from '@/lib/schemas'
+import { itemSchema, type ItemFormData } from '@/lib/item-schemas'
 import { Form, FormField, FormItem } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -560,7 +561,7 @@ test.describe('Items Feature', () => {
 | Components | `components/` | `*.tsx` (named exports) | `Navigation.tsx` |
 | Dialogs | `components/` | `*Dialog.tsx` | `CreateItemDialog.tsx` |
 | Route Pages | `routes/` | `*.tsx` | `items.tsx` |
-| Schemas | `lib/` | `schemas.ts` | `schemas.ts` |
+| Schemas | `lib/` | `*-schemas.ts` | `auth-schemas.ts` |
 | Types | `types/` | `*.ts` | `item.ts` |
 | Utils | `lib/` | `*.ts` (named exports) | `utils.ts` |
 
@@ -571,7 +572,7 @@ test.describe('Items Feature', () => {
 ### Adding a New Feature
 
 1. **Create API endpoints** in `lib/api-endpoints.ts`
-2. **Create Zod schemas** in `lib/schemas.ts`
+2. **Create Zod schemas** in `lib/{feature}-schemas.ts`
 3. **Create hook** in `hooks/use{Feature}.ts` (queries and mutations together)
 4. **Create components** in `components/` (flat — no subdirectory)
 5. **Create route** in `routes/{feature}.tsx`
@@ -655,7 +656,7 @@ const baseUrl = config.apiBaseUrl
 - [ ] Errors are handled with try/catch or onError callbacks
 - [ ] Protected routes check `isAuthenticated`
 - [ ] Tests are co-located with source files (`use*.test.ts`, `*.test.ts`)
-- [ ] Types are defined in `lib/schemas.ts` or `types/`
+- [ ] Types are defined in `lib/{feature}-schemas.ts` or `types/`
 - [ ] Components follow shadcn/ui patterns
 
 ---
