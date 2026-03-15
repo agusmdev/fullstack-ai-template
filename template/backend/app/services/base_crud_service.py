@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from app.core.logging import log_entity
 from app.repositories.base_repository import BaseRepository, QueryOptions, T
-from app.repositories.clauses import OnConflictClause, do_default_on_conflict
+from app.repositories.clauses import OnConflictClause, conflict_passthrough
 
 
 class BaseService(Generic[T]):  # noqa: UP046
@@ -90,7 +90,7 @@ class BaseService(Generic[T]):  # noqa: UP046
     async def create_many(
         self,
         entities: Sequence[BaseModel],
-        on_conflict: OnConflictClause = do_default_on_conflict,
+        on_conflict: OnConflictClause = conflict_passthrough,
     ) -> list[T]:
         results = await self.repo.create_many(entities, on_conflict=on_conflict)
         for result in results:

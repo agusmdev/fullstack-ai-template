@@ -1,3 +1,11 @@
+"""HTTP client integration layer.
+
+All direct HTTP operations in the application use `ExternalApiService` (backed by httpx).
+The `requests` library is NOT imported directly here. It is a transitive dependency pulled
+in by `requests-oauthlib`, which is used exclusively for the OAuth2 session flow in
+`app/user/auth/service.py`. Keep these two HTTP client surfaces separate.
+"""
+
 from typing import Any
 
 import httpx

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import Select, Selectable
 
 from app.database.base import Base
-from app.repositories.clauses import OnConflictClause, do_default_on_conflict
+from app.repositories.clauses import OnConflictClause, conflict_passthrough
 
 T = TypeVar("T", bound=Base)
 
@@ -123,7 +123,7 @@ class BaseRepository[T: Base](abc.ABC):
     async def create_many(
         self,
         entities: Sequence[BaseModel],
-        on_conflict: OnConflictClause = do_default_on_conflict,
+        on_conflict: OnConflictClause = conflict_passthrough,
     ) -> list[T]:
         """Create multiple entities using bulk INSERT ... RETURNING."""
         raise NotImplementedError

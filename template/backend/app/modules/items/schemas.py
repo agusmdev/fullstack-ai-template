@@ -32,3 +32,4 @@ class ItemResponse(ItemBase, OrmBaseModel):
     """Schema for item response (includes timestamps and id)."""
 
     id: uuid.UUID
+    user_id: uuid.UUID

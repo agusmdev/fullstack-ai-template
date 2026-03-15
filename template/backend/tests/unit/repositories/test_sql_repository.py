@@ -174,8 +174,8 @@ class TestSQLAlchemyRepositoryBaseQuery:
         assert result is not None
 
 
-class TestSQLAlchemyRepositoryHandleCommitErrors:
-    """Tests for handle_commit_errors decorator."""
+class TestSQLAlchemyRepositoryTranslateCommitErrors:
+    """Tests for translate_commit_errors decorator."""
 
     @pytest.fixture
     def repository(self, mock_session):

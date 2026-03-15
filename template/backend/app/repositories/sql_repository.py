@@ -16,7 +16,7 @@ from sqlalchemy.sql import Select
 from app.repositories.base_repository import BaseRepository, T
 from app.repositories.clauses import (
     OnConflictClause,
-    do_default_on_conflict,
+    conflict_passthrough,
 )
 from app.repositories.exceptions import DuplicateError, NotFoundError, ReferencedError
 from app.repositories.query_builder import QueryBuilder
@@ -85,7 +85,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
 
         Returns:
             A RepositoryError subclass if recognized, otherwise the original error unchanged.
-            The caller (handle_commit_errors) is responsible for re-raising unparsed errors.
+            The caller (translate_commit_errors) is responsible for re-raising unparsed errors.
         """
         import sqlalchemy.exc as sqlalchemy_exc
 
@@ -105,7 +105,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
         return error
 
     @staticmethod
-    def handle_commit_errors(func: F) -> F:
+    def translate_commit_errors(func: F) -> F:
         @wraps(func)
         async def exception_wrapper(
             self: "SQLAlchemyRepository[T]", *args: Any, **kwargs: Any
@@ -120,7 +120,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
 
         return exception_wrapper  # type: ignore[return-value]  # Inner wrapper has same signature as func but type checker can't verify through the closure
 
-    @handle_commit_errors
+    @translate_commit_errors
     async def get(
         self,
         entity_id: uuid.UUID,
@@ -129,7 +129,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
     ) -> T | None:
         return await self._get_by_field_value("id", entity_id, raise_error, response_model)
 
-    @handle_commit_errors
+    @translate_commit_errors
     async def get_by_field(
         self,
         field: str,
@@ -188,13 +188,8 @@ class SQLAlchemyRepository(BaseRepository[T]):
         options: "QueryOptions | None" = None,
     ) -> list[T]:
         query, opts = self._build_filtered_query(entity_filter, options)
-
-        if opts.return_scalars:
-            result = await self._session.execute(query)  # type: ignore[call-overload]  # execute() overloads don't include generic Select[Any]; runtime is correct
-            return list(result.scalars().all())
-
         result = await self._session.execute(query)  # type: ignore[call-overload]  # execute() overloads don't include generic Select[Any]; runtime is correct
-        return list(result.all())
+        return list(result.scalars().all() if opts.return_scalars else result.all())
 
     async def get_all_paginated(
         self,
@@ -211,7 +206,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
             **opts.pagination_kwargs,
         )
 
-    @handle_commit_errors
+    @translate_commit_errors
     async def create(self, entity: BaseModel, **extra_fields: Any) -> T:
         """Create a single entity using INSERT ... RETURNING."""
         insert_dialect = self._get_insert_dialect()
@@ -222,7 +217,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
         await self._session.commit()
         return result.scalar_one()
 
-    @handle_commit_errors
+    @translate_commit_errors
     async def upsert(self, entity: BaseModel, **extra_fields: Any) -> T:
         """Insert or update based on primary key using INSERT ... ON CONFLICT DO UPDATE."""
         insert_dialect = self._get_insert_dialect()
@@ -238,7 +233,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
         await self._session.commit()
         return result.scalar_one()
 
-    @handle_commit_errors
+    @translate_commit_errors
     async def update(
         self, entity_id: uuid.UUID, updated_entity: BaseModel | dict[str, Any]
     ) -> T:
@@ -262,18 +257,18 @@ class SQLAlchemyRepository(BaseRepository[T]):
             )
         return updated
 
-    @handle_commit_errors
+    @translate_commit_errors
     async def delete(self, entity_id: uuid.UUID) -> None:
         await self._session.execute(
             delete(self.model).where(self.model.id == entity_id)  # type: ignore[attr-defined]  # model TypeVar bound to Base; .id exists via mapped_column at runtime  # model is TypeVar bound to Base; .id attr exists at runtime via mapped_column
         )
         await self._session.commit()
 
-    @handle_commit_errors
+    @translate_commit_errors
     async def create_many(
         self,
         entities: Sequence[BaseModel],
-        on_conflict: OnConflictClause = do_default_on_conflict,
+        on_conflict: OnConflictClause = conflict_passthrough,
     ) -> list[T]:
         """Create multiple entities using bulk INSERT ... RETURNING."""
         if not entities:
@@ -290,7 +285,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
         await self._session.commit()
         return list(result.scalars().all())
 
-    @handle_commit_errors
+    @translate_commit_errors
     async def delete_many(self, delete_filter_query: Selectable) -> None:
         await self._session.execute(delete_filter_query)  # type: ignore[call-overload]  # Selectable base type accepted by execute() at runtime but not in overloads
         await self._session.commit()

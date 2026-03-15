@@ -1,10 +1,13 @@
 import uuid
 from datetime import datetime
+from typing import Generic, TypeVar
 
 from sqlalchemy import delete, select, update
 
 from app.repositories.sql_repository import SQLAlchemyRepository
 from app.user.auth.models import EmailVerificationToken, PasswordResetToken, Session
+
+T_Token = TypeVar("T_Token", PasswordResetToken, EmailVerificationToken)
 
 
 class SessionRepository(SQLAlchemyRepository[Session]):
@@ -21,73 +24,47 @@ class SessionRepository(SQLAlchemyRepository[Session]):
         await self._session.commit()
 
 
-class PasswordResetTokenRepository(SQLAlchemyRepository[PasswordResetToken]):
+class _TokenRepository(SQLAlchemyRepository[T_Token], Generic[T_Token]):  # noqa: UP046
+    """Base repository for time-limited, single-use tokens (password reset, email verification).
+
+    Both token types share identical validation, mark-as-used, and invalidation logic.
+    Subclasses provide only the concrete model via the class-level `model` attribute.
+    """
+
+    async def get_valid_token(self, token_id: str) -> T_Token | None:
+        """Return the token if it exists, has not expired, and has not been used."""
+        model = self.model  # type: ignore[attr-defined]
+        result = await self._session.execute(
+            select(model).where(
+                model.id == token_id,
+                model.expires_at > datetime.now(),
+                model.used_at.is_(None),
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def mark_as_used(self, token_id: str) -> None:
+        """Stamp `used_at` on the token, permanently invalidating it."""
+        model = self.model  # type: ignore[attr-defined]
+        await self._session.execute(
+            update(model).where(model.id == token_id).values(used_at=datetime.now())
+        )
+        await self._session.commit()
+
+    async def invalidate_user_tokens(self, user_id: uuid.UUID) -> None:
+        """Invalidate all unused tokens for the given user."""
+        model = self.model  # type: ignore[attr-defined]
+        await self._session.execute(
+            update(model)
+            .where(model.user_id == user_id, model.used_at.is_(None))
+            .values(used_at=datetime.now())
+        )
+        await self._session.commit()
+
+
+class PasswordResetTokenRepository(_TokenRepository[PasswordResetToken]):
     model = PasswordResetToken
 
-    async def get_valid_token(self, token_id: str) -> PasswordResetToken | None:
-        """Get a valid (unexpired, unused) password reset token."""
-        result = await self._session.execute(
-            select(PasswordResetToken).where(
-                PasswordResetToken.id == token_id,
-                PasswordResetToken.expires_at > datetime.now(),
-                PasswordResetToken.used_at.is_(None),
-            )
-        )
-        return result.scalar_one_or_none()
 
-    async def mark_as_used(self, token_id: str) -> None:
-        """Mark a token as used."""
-        await self._session.execute(
-            update(PasswordResetToken)
-            .where(PasswordResetToken.id == token_id)
-            .values(used_at=datetime.now())
-        )
-        await self._session.commit()
-
-    async def invalidate_user_tokens(self, user_id: uuid.UUID) -> None:
-        """Invalidate all password reset tokens for a user."""
-        await self._session.execute(
-            update(PasswordResetToken)
-            .where(
-                PasswordResetToken.user_id == user_id,
-                PasswordResetToken.used_at.is_(None),
-            )
-            .values(used_at=datetime.now())
-        )
-        await self._session.commit()
-
-
-class EmailVerificationTokenRepository(SQLAlchemyRepository[EmailVerificationToken]):
+class EmailVerificationTokenRepository(_TokenRepository[EmailVerificationToken]):
     model = EmailVerificationToken
-
-    async def get_valid_token(self, token_id: str) -> EmailVerificationToken | None:
-        """Get a valid (unexpired, unused) email verification token."""
-        result = await self._session.execute(
-            select(EmailVerificationToken).where(
-                EmailVerificationToken.id == token_id,
-                EmailVerificationToken.expires_at > datetime.now(),
-                EmailVerificationToken.used_at.is_(None),
-            )
-        )
-        return result.scalar_one_or_none()
-
-    async def mark_as_used(self, token_id: str) -> None:
-        """Mark a token as used."""
-        await self._session.execute(
-            update(EmailVerificationToken)
-            .where(EmailVerificationToken.id == token_id)
-            .values(used_at=datetime.now())
-        )
-        await self._session.commit()
-
-    async def invalidate_user_tokens(self, user_id: uuid.UUID) -> None:
-        """Invalidate all email verification tokens for a user."""
-        await self._session.execute(
-            update(EmailVerificationToken)
-            .where(
-                EmailVerificationToken.user_id == user_id,
-                EmailVerificationToken.used_at.is_(None),
-            )
-            .values(used_at=datetime.now())
-        )
-        await self._session.commit()

@@ -1,9 +1,9 @@
 from app.repositories.base_repository import BaseRepository, T
 from app.repositories.clauses import (
     OnConflictClause,
-    do_default_on_conflict,
-    do_nothing_on_conflict,
-    do_update_on_conflict,
+    conflict_do_nothing,
+    conflict_do_update,
+    conflict_passthrough,
 )
 from app.repositories.exceptions import (
     DuplicateError,
@@ -18,9 +18,9 @@ __all__ = [
     "BaseRepository",
     "T",
     "OnConflictClause",
-    "do_default_on_conflict",
-    "do_nothing_on_conflict",
-    "do_update_on_conflict",
+    "conflict_do_nothing",
+    "conflict_do_update",
+    "conflict_passthrough",
     "DuplicateError",
     "NotFoundError",
     "ReferencedError",
