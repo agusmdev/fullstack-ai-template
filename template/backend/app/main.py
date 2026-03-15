@@ -5,6 +5,7 @@ import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.context import clear_request_context
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.logging.middleware import WideEventMiddleware
@@ -44,7 +45,8 @@ def create_app(
     app = FastAPI(lifespan=lifespan)
 
     # WideEventMiddleware FIRST (outermost) - handles request logging
-    app.add_middleware(WideEventMiddleware)  # type: ignore[invalid-argument-type]
+    # Inject clear_request_context so core middleware doesn't import app-level modules
+    app.add_middleware(WideEventMiddleware, on_request_cleanup=clear_request_context)  # type: ignore[invalid-argument-type]
 
     # RequestContextMiddleware sets request_id in context
     app.add_middleware(RequestContextMiddleware)  # type: ignore[invalid-argument-type]
