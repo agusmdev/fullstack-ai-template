@@ -1,6 +1,6 @@
 from fastapi_filter.contrib.sqlalchemy import Filter
 
-from .models import User
+from app.user.models import User
 
 
 class UserFilter(Filter):

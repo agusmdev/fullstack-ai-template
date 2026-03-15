@@ -7,9 +7,9 @@ from fastapi import APIRouter, Body, Depends, status
 from app.user.auth.permissions import AuthenticatedUser
 from app.user.models import User
 
-from .dependencies import get_user_service
-from .schemas import UserResponse, UserUpdate
-from .service import UserService
+from app.user.dependencies import get_user_service
+from app.user.schemas import UserResponse, UserUpdate
+from app.user.service import UserService
 
 user_router = APIRouter(dependencies=[Depends(AuthenticatedUser.current_user_id)])
 

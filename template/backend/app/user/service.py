@@ -16,7 +16,7 @@ from app.user.schemas import (
     UserResponse,
 )
 
-from .repository import UserRepository
+from app.user.repository import UserRepository
 
 
 _ph = PasswordHasher()
