@@ -25,3 +25,8 @@ export const itemSchema = z.object({
 export type LoginFormData = z.infer<typeof loginSchema>
 export type RegisterFormData = z.infer<typeof registerSchema>
 export type ItemFormData = z.infer<typeof itemSchema>
+
+/** Maps form values to the mutation payload shape expected by item API hooks. */
+export function itemFormToPayload(data: ItemFormData) {
+  return { name: data.name, description: data.description || undefined }
+}
