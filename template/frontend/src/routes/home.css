@@ -2,6 +2,17 @@
 
 /* ========== LINEAR-INSPIRED DARK THEME ========== */
 
+/* Component-local tokens for colors with no exact design-system equivalent */
+:root {
+  --home-primary-hover: oklch(0.63 0.15 275);  /* #6E7BE3 — primary hover state */
+  --home-primary-accent: oklch(0.65 0.22 295);  /* #8B5CF6 — violet accent for gradient */
+  --home-terminal-close: #ff5f56;               /* macOS close dot */
+  --home-terminal-minimize: #ffbd2e;            /* macOS minimize dot */
+  --home-terminal-maximize: #27c93f;            /* macOS maximize dot */
+  --home-terminal-label: oklch(0.53 0.01 285);  /* #6B6C7E — terminal dim text */
+  --home-terminal-success: oklch(0.74 0.2 150); /* #4ADE80 — terminal success green */
+}
+
 /* Base Demo Page Styles */
 .demo-page {
   min-height: 100vh;
@@ -128,7 +139,7 @@
 }
 
 .hero-title-line.accent {
-  background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 50%, var(--primary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--home-primary-accent) 50%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -190,7 +201,7 @@
 }
 
 .cta-primary:hover {
-  background: #6E7BE3;
+  background: var(--home-primary-hover);
   transform: translateY(-2px);
 }
 
@@ -273,22 +284,22 @@
 }
 
 .terminal-dots span:nth-child(1) {
-  background: #ff5f56;
+  background: var(--home-terminal-close);
 }
 
 .terminal-dots span:nth-child(2) {
-  background: #ffbd2e;
+  background: var(--home-terminal-minimize);
 }
 
 .terminal-dots span:nth-child(3) {
-  background: #27c93f;
+  background: var(--home-terminal-maximize);
 }
 
 .terminal-title {
   margin-left: auto;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.8125rem;
-  color: #6B6C7E;
+  color: var(--home-terminal-label);
 }
 
 .terminal-body {
@@ -318,7 +329,7 @@
 }
 
 .terminal-line.success {
-  color: #4ADE80;
+  color: var(--home-terminal-success);
 }
 
 /* ========== FEATURES SECTION ========== */
@@ -512,7 +523,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #6B6C7E;
+  color: var(--home-terminal-label);
   margin-bottom: 1.5rem;
 }
 
@@ -628,7 +639,7 @@
 }
 
 .cta-btn-primary:hover {
-  background: #6E7BE3;
+  background: var(--home-primary-hover);
   transform: translateY(-2px);
 }
 
