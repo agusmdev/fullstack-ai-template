@@ -14,7 +14,7 @@ export async function executeAuthSubmit(
   endpoint: string,
   payload: Record<string, unknown>,
   deps: {
-    login: (result: AuthSessionResponse) => void
+    login: (token: string) => void
     navigate: (opts: NavigateOptions) => void
     successMessage: string
     errorMessage: string
@@ -23,7 +23,7 @@ export async function executeAuthSubmit(
 ): Promise<void> {
   try {
     const result = await api.post<AuthSessionResponse>(endpoint, payload)
-    deps.login(result)
+    deps.login(result.id)
     toast.success(deps.successMessage)
     deps.navigate(deps.redirect)
   } catch (err) {

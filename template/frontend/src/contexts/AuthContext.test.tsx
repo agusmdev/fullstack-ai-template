@@ -16,6 +16,7 @@ import {
   clearAuthToken,
   subscribeToAuthChanges,
   isAuthenticated,
+  clearAllAuthListeners,
 } from '@/lib/auth'
 import { createAuthChangeHandler } from './AuthContext'
 
@@ -27,6 +28,7 @@ function makeQueryClient() {
 
 describe('AuthContext: login path', () => {
   beforeEach(() => localStorage.clear())
+  afterEach(() => clearAllAuthListeners())
 
   it('stores token on login', () => {
     setAuthToken('login-token')
@@ -45,6 +47,7 @@ describe('AuthContext: login path', () => {
 
 describe('AuthContext: logout path', () => {
   beforeEach(() => localStorage.clear())
+  afterEach(() => clearAllAuthListeners())
 
   it('clears token and marks unauthenticated', () => {
     setAuthToken('active-token')
@@ -81,7 +84,7 @@ describe('AuthContext: logout path', () => {
 
 describe('AuthContext: 401 path', () => {
   beforeEach(() => localStorage.clear())
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => { vi.unstubAllGlobals(); clearAllAuthListeners() })
 
   it('api-client 401 triggers auth change notification', async () => {
     const { api } = await import('@/lib/api-client')
@@ -120,6 +123,7 @@ describe('AuthContext: 401 path', () => {
 
 describe('createAuthChangeHandler', () => {
   beforeEach(() => localStorage.clear())
+  afterEach(() => clearAllAuthListeners())
 
   it('calls navigate({ to: /login }) when token is cleared', () => {
     const navigate = vi.fn()

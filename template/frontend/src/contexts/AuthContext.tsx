@@ -4,13 +4,12 @@ import type { QueryClient } from '@tanstack/react-query'
 import { getAuthToken, setAuthToken, clearAuthToken, subscribeToAuthChanges } from '@/lib/auth'
 import { api } from '@/lib/api-client'
 import { API } from '@/lib/api-endpoints'
-import type { AuthSessionResponse } from '@/types/auth'
 
 interface AuthContextValue {
   isAuthenticated: boolean
   token: string | null
   /** Sync — sets the auth token and updates state. Do not await. */
-  login: (response: AuthSessionResponse) => void
+  login: (token: string) => void
   /** Async — calls the backend logout endpoint then clears local state. Must be awaited. */
   logout: () => Promise<void>
 }
@@ -54,8 +53,8 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
     )
   }, [queryClient, router])
 
-  const login = useCallback((response: AuthSessionResponse) => {
-    setAuthToken(response.id)
+  const login = useCallback((token: string) => {
+    setAuthToken(token)
   }, [])
 
   const logout = useCallback(async () => {

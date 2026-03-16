@@ -32,14 +32,14 @@ describe('executeAuthSubmit', () => {
     vi.unstubAllGlobals()
   })
 
-  it('calls login() with the API response on success', async () => {
+  it('calls login() with the session token on success', async () => {
     mockFetch(200, mockSession)
 
     await executeAuthSubmit('/auth/login', { email: 'a@b.com', password: 'pw' }, {
       login, navigate, successMessage, errorMessage, redirect,
     })
 
-    expect(login).toHaveBeenCalledWith(mockSession)
+    expect(login).toHaveBeenCalledWith(mockSession.id)
   })
 
   it('calls navigate() with the redirect option on success', async () => {
