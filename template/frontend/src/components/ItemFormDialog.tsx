@@ -25,13 +25,9 @@ import type { Item } from '@/types/item'
 import { toastApiError } from '@/lib/error-handler'
 import { itemSchema, type ItemFormData } from '@/lib/item-schemas'
 
-interface ItemFormDialogProps {
-  mode: 'create' | 'edit'
-  item?: Item
-  trigger: React.ReactNode
-  onSubmit: (data: ItemFormData) => Promise<void>
-  isPending: boolean
-}
+type ItemFormDialogProps =
+  | { mode: 'create'; trigger: React.ReactNode; onSubmit: (data: ItemFormData) => Promise<void>; isPending: boolean; item?: never }
+  | { mode: 'edit'; item: Item; trigger: React.ReactNode; onSubmit: (data: ItemFormData) => Promise<void>; isPending: boolean }
 
 export function ItemFormDialog({
   mode,

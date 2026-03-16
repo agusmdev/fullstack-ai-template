@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { executeAuthSubmit } from './useAuthSubmit'
 import type { AuthSessionResponse } from '@/types/auth'
 
-const mockSession: AuthSessionResponse = { id: 'session-token-123' }
+const mockSession: AuthSessionResponse = { id: 'session-token-123', expires_at: '2099-01-01T00:00:00Z', expires_in: 3600 }
 
 function mockFetch(status: number, body?: unknown) {
   const response = {
