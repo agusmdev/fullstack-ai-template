@@ -6,6 +6,31 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toastApiError } from '@/lib/error-handler'
 import type { AuthSessionResponse } from '@/types/auth'
 
+/**
+ * Core auth submit logic — extracted for unit testing without React mounting.
+ * Handles the api.post → login → toast → navigate orchestration.
+ */
+export async function executeAuthSubmit(
+  endpoint: string,
+  payload: Record<string, unknown>,
+  deps: {
+    login: (result: AuthSessionResponse) => void
+    navigate: (opts: NavigateOptions) => void
+    successMessage: string
+    errorMessage: string
+    redirect: NavigateOptions
+  },
+): Promise<void> {
+  try {
+    const result = await api.post<AuthSessionResponse>(endpoint, payload)
+    deps.login(result)
+    toast.success(deps.successMessage)
+    deps.navigate(deps.redirect)
+  } catch (err) {
+    toastApiError(err, deps.errorMessage)
+  }
+}
+
 export function useAuthSubmit<TPayload extends Record<string, unknown>>(
   endpoint: string,
   successMessage: string,
@@ -19,12 +44,7 @@ export function useAuthSubmit<TPayload extends Record<string, unknown>>(
   const submit = async (payload: TPayload) => {
     setIsLoading(true)
     try {
-      const result = await api.post<AuthSessionResponse>(endpoint, payload)
-      login(result)
-      toast.success(successMessage)
-      navigate(redirect)
-    } catch (err) {
-      toastApiError(err, errorMessage)
+      await executeAuthSubmit(endpoint, payload, { login, navigate, successMessage, errorMessage, redirect })
     } finally {
       setIsLoading(false)
     }
