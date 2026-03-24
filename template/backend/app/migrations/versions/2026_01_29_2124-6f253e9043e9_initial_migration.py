@@ -62,7 +62,7 @@ def upgrade() -> None:
         sa.Column('expires_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['user_id'], ['user'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('email_verification_token_created_at_idx', 'email_verification_token', ['created_at'])
@@ -78,7 +78,7 @@ def upgrade() -> None:
         sa.Column('expires_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['user_id'], ['user'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('password_reset_token_created_at_idx', 'password_reset_token', ['created_at'])
@@ -94,7 +94,7 @@ def upgrade() -> None:
         sa.Column('expires_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['user_id'], ['user'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('session_created_at_idx', 'session', ['created_at'])

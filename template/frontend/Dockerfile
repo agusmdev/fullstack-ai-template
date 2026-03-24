@@ -3,13 +3,11 @@ FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package manifest (fresh resolve for correct platform binaries)
+COPY package.json ./
 
-# Install dependencies (workaround for npm optional deps bug)
-RUN npm install && \
-    rm -rf node_modules package-lock.json && \
-    npm install --no-audit --no-fund
+# Install dependencies
+RUN npm install --no-audit --no-fund
 
 # Copy source files
 COPY . .
@@ -30,7 +28,7 @@ WORKDIR /app
 COPY --from=builder /app/.output ./.output
 
 # Expose port
-EXPOSE 3150
+EXPOSE 3000
 
 # Start the application
 CMD ["node", ".output/server/index.mjs"]
