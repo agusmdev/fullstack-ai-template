@@ -5,6 +5,7 @@ from uuid import UUID
 
 from app.core.logging.context import add_entity_to_context, get_wide_event_context
 
+
 def log_entity(entity_type: str, entity_id: str | UUID) -> None:
     """Add a single entity to the current wide event."""
     add_entity_to_context(entity_type, entity_id)

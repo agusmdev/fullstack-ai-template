@@ -45,8 +45,9 @@ class ItemService(BaseService[Item]):
         user_id: uuid.UUID,
     ) -> Any:
         """List items, scoped to the requesting user."""
-        from app.repositories.base_repository import QueryOptions
         from sqlalchemy import select
+
+        from app.repositories.base_repository import QueryOptions
 
         base_query = select(self.repo.model).where(  # type: ignore[attr-defined]
             self.repo.model.user_id == user_id  # type: ignore[attr-defined]

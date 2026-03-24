@@ -1,12 +1,8 @@
 """Tests for database base module."""
 
-from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
-
-import pytest
 from sqlalchemy import MetaData
 
-from app.database.base import Base, _convert_url_to_async
+from app.database.base import Base, _convert_url_to_async, _convert_url_to_sync
 
 
 class TestConvertUrlToAsync:
@@ -39,6 +35,27 @@ class TestConvertUrlToAsync:
     def test_sqlite_memory_url(self):
         result = _convert_url_to_async("sqlite:///:memory:")
         assert result == "sqlite+aiosqlite:///:memory:"
+
+
+class TestConvertUrlToSync:
+    """Tests for _convert_url_to_sync function."""
+
+    def test_converts_postgres_url(self):
+        result = _convert_url_to_sync("postgres://user:pass@host/db")
+        assert result == "postgresql+psycopg://user:pass@host/db"
+
+    def test_converts_postgresql_url(self):
+        result = _convert_url_to_sync("postgresql://user:pass@host/db")
+        assert result == "postgresql+psycopg://user:pass@host/db"
+
+    def test_returns_sqlite_unchanged(self):
+        result = _convert_url_to_sync("sqlite:///./local.db")
+        assert result == "sqlite:///./local.db"
+
+    def test_returns_unknown_url_unchanged(self):
+        url = "mysql://user:pass@host/db"
+        result = _convert_url_to_sync(url)
+        assert result == url
 
 
 class TestBase:

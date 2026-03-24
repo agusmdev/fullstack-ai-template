@@ -1,5 +1,4 @@
-from sqlalchemy import MetaData, create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     create_async_engine,
@@ -43,14 +42,18 @@ def _convert_url_to_async(db_url: str) -> str:
     return db_url
 
 
-def create_sqlalchemy_engine(*, db_url: str, pool_size: int) -> Engine:
-    """Create sync SQLAlchemy engine (for Alembic migrations)."""
-    return create_engine(
-        db_url,
-        pool_pre_ping=settings.DB_POOL_PRE_PING,
-        echo=settings.DEBUG_MODE,
-        pool_size=pool_size,
-    )
+def _convert_url_to_sync(db_url: str) -> str:
+    """Convert plain database URL to sync driver.
+
+    - postgres:// → postgresql+psycopg://
+    - postgresql:// → postgresql+psycopg://
+    - sqlite:// stays as-is (stdlib driver)
+    """
+    if db_url.startswith("postgres://"):
+        return db_url.replace("postgres://", "postgresql+psycopg://", 1)
+    if db_url.startswith("postgresql://"):
+        return db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return db_url
 
 
 def create_async_sqlalchemy_engine(*, db_url: str, pool_size: int) -> AsyncEngine:
