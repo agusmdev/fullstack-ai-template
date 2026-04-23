@@ -2,9 +2,7 @@
 
 from datetime import UTC, datetime
 
-import pytest
-
-from app.database.mixins import OrmBaseModel, TimestampOrmBaseModel, JsonOrmBaseModel
+from app.database.mixins import JsonOrmBaseModel, OrmBaseModel, TimestampOrmBaseModel
 
 
 class TestOrmBaseModel:

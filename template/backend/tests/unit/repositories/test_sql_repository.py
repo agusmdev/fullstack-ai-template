@@ -1,13 +1,13 @@
 """Tests for SQLAlchemyRepository."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
-from app.repositories.exceptions import DuplicateError, NotFoundError, ReferencedError
+from app.repositories.exceptions import DuplicateError, ReferencedError
 from app.repositories.sql_repository import SQLAlchemyRepository
 
 
@@ -164,7 +164,6 @@ class TestSQLAlchemyRepositoryBaseQuery:
 
     def test_base_query_returns_select(self, mock_session):
         """Test that _base_query returns a select statement."""
-        from app.modules.items.models import Item
         from app.modules.items.repository import ItemRepository
 
         repo = ItemRepository(session=mock_session)

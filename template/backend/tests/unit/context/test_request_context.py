@@ -1,16 +1,13 @@
 """Tests for request context module."""
 
-import threading
-from unittest.mock import patch
 
-import pytest
 
 from app.context import (
     RequestContext,
     _request_id_ctx,
     clear_request_context,
-    register_request_context,
     ensure_request_context,
+    register_request_context,
     req_or_thread_id,
     set_request_id,
 )

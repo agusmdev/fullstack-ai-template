@@ -1,10 +1,9 @@
 """Tests for Auth router endpoint functions."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi.security import HTTPAuthorizationCredentials
 
 from app.user.auth.exceptions import InvalidTokenError, OAuthUserPasswordResetError
 from app.user.auth.routers import (

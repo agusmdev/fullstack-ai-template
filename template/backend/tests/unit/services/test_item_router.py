@@ -13,7 +13,7 @@ from app.modules.items.routers import (
     list_items,
     update_item,
 )
-from app.modules.items.schemas import ItemCreate, ItemResponse, ItemUpdate
+from app.modules.items.schemas import ItemCreate, ItemUpdate
 
 
 @pytest.fixture

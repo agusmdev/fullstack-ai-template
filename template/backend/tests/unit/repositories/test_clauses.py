@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.repositories.clauses import (
     conflict_do_nothing,
     conflict_do_update,

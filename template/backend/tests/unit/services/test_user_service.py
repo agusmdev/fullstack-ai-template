@@ -1,11 +1,10 @@
 """Tests for UserService."""
 
 import uuid
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime
+from unittest.mock import MagicMock
 
 import pytest
-from argon2.exceptions import VerifyMismatchError
 
 from app.user.auth.exceptions import AuthenticationError, InvalidPasswordError
 from app.user.schemas import UserRegister, UserResponse

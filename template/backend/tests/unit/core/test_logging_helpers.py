@@ -1,7 +1,6 @@
 """Tests for logging helper functions."""
 
 import uuid
-from unittest.mock import MagicMock, patch
 
 import pytest
 

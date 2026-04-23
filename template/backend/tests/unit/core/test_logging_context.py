@@ -1,9 +1,6 @@
 """Tests for wide event logging context."""
 
 import uuid
-from datetime import UTC, datetime
-
-import pytest
 
 from app.core.logging.context import (
     WideEventContext,

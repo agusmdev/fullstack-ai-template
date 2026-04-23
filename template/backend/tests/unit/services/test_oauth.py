@@ -11,7 +11,6 @@ from app.user.auth.routers import oauth_callback
 from app.user.auth.schemas import OAuthCallback, OAuthUser, SessionResponse
 from app.user.auth.service import GoogleOAuth
 
-
 # ---------------------------------------------------------------------------
 # GoogleOAuth._fetch_user() — the sync core that does the actual HTTP work
 # ---------------------------------------------------------------------------

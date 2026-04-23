@@ -3,7 +3,6 @@
 import uuid
 from unittest.mock import MagicMock, patch
 
-import pytest
 from pydantic import BaseModel
 
 from app.repositories.query_builder import QueryBuilder

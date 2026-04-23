@@ -2,7 +2,6 @@
 
 from datetime import UTC, date, datetime, timezone
 
-import pytest
 from pydantic import BaseModel
 
 from app.core.serialized_types import (

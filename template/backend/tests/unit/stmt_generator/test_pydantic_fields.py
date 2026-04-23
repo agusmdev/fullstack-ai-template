@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import BaseModel, Field
 from pytest import mark
@@ -19,7 +18,7 @@ class IgnoredFieldSchema(BasicSchema):
 
 
 class OptionalFieldSchema(BaseModel):
-    optional: Optional[list[str]] | None
+    optional: list[str] | None
     basic: list[BasicSchema] | None
     future_reference: "BasicSchema"
 
