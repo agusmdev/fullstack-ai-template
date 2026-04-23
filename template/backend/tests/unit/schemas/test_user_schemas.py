@@ -6,7 +6,13 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from app.user.schemas import UserBase, UserCreate, UserRegister, UserResponse, UserUpdate
+from app.user.schemas import (
+    UserBase,
+    UserCreate,
+    UserRegister,
+    UserResponse,
+    UserUpdate,
+)
 
 
 class TestUserBase:

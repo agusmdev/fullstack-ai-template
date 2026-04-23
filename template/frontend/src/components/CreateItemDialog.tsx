@@ -1,23 +1,23 @@
-import { Button } from '@/components/ui/button'
-import { useCreateItem, type CreateItemData } from '@/hooks/useItems'
+import React from 'react'
+import { useCreateItem } from '@/hooks/useItems'
 import { ItemFormDialog } from './ItemFormDialog'
-import type { ItemFormData } from '@/lib/schemas'
+import { itemFormToPayload, type ItemFormData } from '@/lib/item-schemas'
 
-export function CreateItemDialog() {
+interface CreateItemDialogProps {
+  trigger: React.ReactNode
+}
+
+export function CreateItemDialog({ trigger }: CreateItemDialogProps) {
   const createItem = useCreateItem()
 
-  const handleSubmit = async (data: ItemFormData) => {
-    const itemData: CreateItemData = {
-      name: data.name,
-      description: data.description || undefined,
-    }
-    await createItem.mutateAsync(itemData)
+  const handleSubmit = async (data: ItemFormData): Promise<void> => {
+    await createItem.mutateAsync(itemFormToPayload(data))
   }
 
   return (
     <ItemFormDialog
       mode="create"
-      trigger={<Button>Create Item</Button>}
+      trigger={trigger}
       onSubmit={handleSubmit}
       isPending={createItem.isPending}
     />

@@ -1,7 +1,7 @@
 """Tests for ItemService."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -18,26 +18,36 @@ class TestItemServiceGetBySku:
         return ItemService(repo=mock_item_repository)
 
     async def test_get_by_sku_success(
-        self, service, mock_item_repository, sample_item_model
+        self, service, mock_item_repository, sample_item_model, sample_item_owner_id
     ):
         """Test successful get_by_sku."""
-        mock_item_repository.get.return_value = sample_item_model
+        mock_item_repository.get_by_field.return_value = sample_item_model
 
-        result = await service.get_by_sku("TEST-SKU-001")
+        result = await service.get_by_sku("TEST-SKU-001", user_id=sample_item_owner_id)
 
-        mock_item_repository.get.assert_called_once_with(
-            "TEST-SKU-001", filter_field="sku", raise_error=False
+        mock_item_repository.get_by_field.assert_called_once_with(
+            "sku", "TEST-SKU-001", raise_error=False
         )
         assert result == sample_item_model
 
-    async def test_get_by_sku_not_found(self, service, mock_item_repository):
+    async def test_get_by_sku_not_found(self, service, mock_item_repository, sample_item_owner_id):
         """Test get_by_sku when SKU doesn't exist."""
-        mock_item_repository.get.return_value = None
+        mock_item_repository.get_by_field.return_value = None
 
         with pytest.raises(NotFoundError) as exc_info:
-            await service.get_by_sku("NONEXISTENT-SKU")
+            await service.get_by_sku("NONEXISTENT-SKU", user_id=sample_item_owner_id)
 
         assert "NONEXISTENT-SKU" in exc_info.value.detail
+
+    async def test_get_by_sku_wrong_owner(
+        self, service, mock_item_repository, sample_item_model
+    ):
+        """Test get_by_sku raises NotFoundError when caller is not the owner."""
+        mock_item_repository.get_by_field.return_value = sample_item_model
+        other_user_id = uuid.uuid4()
+
+        with pytest.raises(NotFoundError):
+            await service.get_by_sku("TEST-SKU-001", user_id=other_user_id)
 
 
 class TestItemServiceCreate:
@@ -47,68 +57,105 @@ class TestItemServiceCreate:
     def service(self, mock_item_repository):
         return ItemService(repo=mock_item_repository)
 
-    async def test_create_success(self, service, mock_item_repository, sample_item_model):
-        """Test successful item creation."""
-        mock_item_repository.create.return_value = sample_item_model
-        create_data = ItemCreate(
-            name="New Item",
-            description="A new item",
-            quantity=5,
-            sku="NEW-SKU-001",
-        )
-
-        result = await service.create(create_data)
-
-        mock_item_repository.create.assert_called_once_with(create_data)
-        assert result == sample_item_model
-
-    async def test_create_with_extra_fields(
-        self, service, mock_item_repository, sample_item_model
+    async def test_create_success(
+        self, service, mock_item_repository, sample_item_model, sample_item_owner_id
     ):
-        """Test create with extra fields."""
+        """Test successful item creation with user_id."""
         mock_item_repository.create.return_value = sample_item_model
-        create_data = ItemCreate(name="Test", quantity=1)
+        create_data = ItemCreate(name="New Item", description="A new item")
 
-        result = await service.create(create_data, extra_field="value")
+        result = await service.create(create_data, user_id=sample_item_owner_id)
 
         mock_item_repository.create.assert_called_once_with(
-            create_data, extra_field="value"
+            create_data, user_id=sample_item_owner_id
         )
+        assert result == sample_item_model
+
+    async def test_create_requires_user_id(self, service):
+        """Test that create requires user_id."""
+        create_data = ItemCreate(name="Test")
+
+        with pytest.raises(TypeError):
+            await service.create(create_data)  # type: ignore[call-arg]
 
 
 class TestItemServiceUpdate:
-    """Tests for ItemService.update method."""
+    """Tests for ItemService.update method (with ownership check)."""
 
     @pytest.fixture
     def service(self, mock_item_repository):
         return ItemService(repo=mock_item_repository)
 
     async def test_update_success(
-        self, service, mock_item_repository, sample_item_model, sample_item_id
+        self, service, mock_item_repository, sample_item_model, sample_item_id, sample_item_owner_id
     ):
-        """Test successful item update."""
+        """Test successful item update by owner."""
+        mock_item_repository.get.return_value = sample_item_model
         updated_item = MagicMock()
         updated_item.id = sample_item_id
         updated_item.name = "Updated Name"
         mock_item_repository.update.return_value = updated_item
         update_data = ItemUpdate(name="Updated Name")
 
-        result = await service.update(sample_item_id, update_data)
+        result = await service.update(sample_item_id, update_data, user_id=sample_item_owner_id)
 
         mock_item_repository.update.assert_called_once_with(sample_item_id, update_data)
         assert result == updated_item
 
-    async def test_update_partial(
+    async def test_update_rejected_for_non_owner(
         self, service, mock_item_repository, sample_item_model, sample_item_id
     ):
-        """Test partial item update."""
-        mock_item_repository.update.return_value = sample_item_model
-        update_data = ItemUpdate(quantity=99)
+        """Test that update raises NotFoundError when caller does not own the item."""
+        mock_item_repository.get.return_value = sample_item_model
+        other_user_id = uuid.uuid4()
 
-        result = await service.update(sample_item_id, update_data)
+        with pytest.raises(NotFoundError):
+            await service.update(sample_item_id, ItemUpdate(name="x"), user_id=other_user_id)
+
+        mock_item_repository.update.assert_not_called()
+
+    async def test_update_partial(
+        self, service, mock_item_repository, sample_item_model, sample_item_id, sample_item_owner_id
+    ):
+        """Test partial item update."""
+        mock_item_repository.get.return_value = sample_item_model
+        mock_item_repository.update.return_value = sample_item_model
+
+        result = await service.update(sample_item_id, ItemUpdate(name="x"), user_id=sample_item_owner_id)
 
         mock_item_repository.update.assert_called_once()
         assert result == sample_item_model
+
+
+class TestItemServiceDelete:
+    """Tests for ItemService.delete method (with ownership check)."""
+
+    @pytest.fixture
+    def service(self, mock_item_repository):
+        return ItemService(repo=mock_item_repository)
+
+    async def test_delete_success(
+        self, service, mock_item_repository, sample_item_model, sample_item_id, sample_item_owner_id
+    ):
+        """Test successful item deletion by owner."""
+        mock_item_repository.get.return_value = sample_item_model
+        mock_item_repository.delete.return_value = None
+
+        await service.delete(sample_item_id, user_id=sample_item_owner_id)
+
+        mock_item_repository.delete.assert_called_once_with(sample_item_id)
+
+    async def test_delete_rejected_for_non_owner(
+        self, service, mock_item_repository, sample_item_model, sample_item_id
+    ):
+        """Test that delete raises NotFoundError when caller does not own the item."""
+        mock_item_repository.get.return_value = sample_item_model
+        other_user_id = uuid.uuid4()
+
+        with pytest.raises(NotFoundError):
+            await service.delete(sample_item_id, user_id=other_user_id)
+
+        mock_item_repository.delete.assert_not_called()
 
 
 class TestItemServiceInheritedMethods:
@@ -118,11 +165,13 @@ class TestItemServiceInheritedMethods:
     def service(self, mock_item_repository):
         return ItemService(repo=mock_item_repository)
 
-    async def test_get_by_id(self, service, mock_item_repository, sample_item_model):
-        """Test inherited get_by_id method."""
+    async def test_get_by_id(
+        self, service, mock_item_repository, sample_item_model, sample_item_owner_id
+    ):
+        """Test overridden get_by_id method (enforces ownership)."""
         mock_item_repository.get.return_value = sample_item_model
 
-        result = await service.get_by_id(sample_item_model.id)
+        result = await service.get_by_id(sample_item_model.id, user_id=sample_item_owner_id)
 
         mock_item_repository.get.assert_called_once_with(
             sample_item_model.id, raise_error=True
@@ -139,18 +188,10 @@ class TestItemServiceInheritedMethods:
         mock_item_repository.get_all.assert_called_once()
         assert result == mock_items
 
-    async def test_delete(self, service, mock_item_repository, sample_item_id):
-        """Test inherited delete method."""
-        mock_item_repository.delete.return_value = None
-
-        await service.delete(sample_item_id)
-
-        mock_item_repository.delete.assert_called_once_with(sample_item_id)
-
     async def test_upsert(self, service, mock_item_repository, sample_item_model):
         """Test inherited upsert method."""
         mock_item_repository.upsert.return_value = sample_item_model
-        entity = ItemCreate(name="Upsert Item", quantity=1)
+        entity = ItemCreate(name="Upsert Item")
 
         result = await service.upsert(entity)
 
@@ -160,8 +201,8 @@ class TestItemServiceInheritedMethods:
     async def test_create_many(self, service, mock_item_repository):
         """Test inherited create_many method."""
         items_to_create = [
-            ItemCreate(name="Item 1", quantity=1),
-            ItemCreate(name="Item 2", quantity=2),
+            ItemCreate(name="Item 1"),
+            ItemCreate(name="Item 2"),
         ]
         created_items = [MagicMock(), MagicMock()]
         mock_item_repository.create_many.return_value = created_items

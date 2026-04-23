@@ -23,8 +23,7 @@ services:
     ports:
       - "${BACKEND_PORT:-9095}:9095"
     environment:
-      DB_URL: postgresql+asyncpg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-app}
-      ALEMBIC_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-app}
+      DB_URL: ${DB_URL:-postgresql://app:app@db:5432/app}
     depends_on:
       db:
         condition: service_healthy

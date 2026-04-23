@@ -1,7 +1,7 @@
 import { Outlet } from '@tanstack/react-router'
-import Navigation from './Navigation'
+import { Navigation } from './Navigation'
 
-export default function Layout() {
+export function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />

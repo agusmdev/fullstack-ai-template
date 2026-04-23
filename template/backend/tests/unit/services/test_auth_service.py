@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -24,13 +24,13 @@ class TestAuthServiceSessionId:
 
     def test_session_id_format(self):
         """Test session_id format."""
-        session_id = AuthService.session_id()
+        session_id = AuthService.generate_session_id()
         assert session_id.startswith("s_")
         assert len(session_id) > 10
 
     def test_session_id_unique(self):
         """Test session_id generates unique values."""
-        ids = [AuthService.session_id() for _ in range(100)]
+        ids = [AuthService.generate_session_id() for _ in range(100)]
         assert len(set(ids)) == 100
 
     def test_generate_token_format(self):
@@ -54,10 +54,15 @@ class TestAuthServiceAuthenticate:
         return service
 
     @pytest.fixture
-    def auth_service(self, mock_user_service, mock_session_repository):
+    def auth_service(
+        self, mock_user_service, mock_session_repository,
+        mock_password_reset_repository, mock_email_verification_repository,
+    ):
         return AuthService(
             user_service=mock_user_service,
             repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
         )
 
     async def test_authenticate_success(
@@ -107,8 +112,16 @@ class TestAuthServiceRegister:
         return service
 
     @pytest.fixture
-    def auth_service(self, mock_user_service, mock_session_repository):
-        return AuthService(user_service=mock_user_service, repo=mock_session_repository)
+    def auth_service(
+        self, mock_user_service, mock_session_repository,
+        mock_password_reset_repository, mock_email_verification_repository,
+    ):
+        return AuthService(
+            user_service=mock_user_service,
+            repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
+        )
 
     async def test_register_success(
         self, auth_service, mock_user_service, mock_session_repository
@@ -129,50 +142,66 @@ class TestAuthServiceRegister:
 
 
 class TestAuthServiceCheckSession:
-    """Tests for AuthService.check_session method."""
+    """Tests for AuthService.validate_session method."""
 
     @pytest.fixture
-    def auth_service(self, mock_session_repository):
+    def auth_service(
+        self, mock_session_repository,
+        mock_password_reset_repository, mock_email_verification_repository,
+    ):
         mock_user_service = MagicMock(spec=UserService)
-        return AuthService(user_service=mock_user_service, repo=mock_session_repository)
+        return AuthService(
+            user_service=mock_user_service,
+            repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
+        )
 
-    async def test_check_session_valid(self, auth_service, mock_session_repository):
+    async def test_validate_session_valid(self, auth_service, mock_session_repository):
         """Test checking valid session."""
         mock_session = MagicMock()
         mock_session.expires_at = datetime.now() + timedelta(days=1)
         mock_session.user = UserResponse(
             id=uuid.uuid4(), email="test@example.com", display_name="Test"
         )
-        mock_session_repository.get.return_value = mock_session
+        mock_session_repository.get_by_field.return_value = mock_session
 
-        result = await auth_service.check_session("s_valid_session")
+        result = await auth_service.validate_session("s_valid_session")
 
         assert result == mock_session.user
 
-    async def test_check_session_expired(self, auth_service, mock_session_repository):
+    async def test_validate_session_expired(self, auth_service, mock_session_repository):
         """Test checking expired session."""
         mock_session = MagicMock()
         mock_session.expires_at = datetime.now() - timedelta(days=1)
         mock_session.user = MagicMock()
-        mock_session_repository.get.return_value = mock_session
+        mock_session_repository.get_by_field.return_value = mock_session
 
         with pytest.raises(SessionExpiredError):
-            await auth_service.check_session("s_expired_session")
+            await auth_service.validate_session("s_expired_session")
 
 
 class TestAuthServiceLogout:
     """Tests for AuthService.logout method."""
 
     @pytest.fixture
-    def auth_service(self, mock_session_repository):
+    def auth_service(
+        self, mock_session_repository,
+        mock_password_reset_repository, mock_email_verification_repository,
+    ):
         mock_user_service = MagicMock(spec=UserService)
-        return AuthService(user_service=mock_user_service, repo=mock_session_repository)
+        return AuthService(
+            user_service=mock_user_service,
+            repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
+        )
 
     async def test_logout_success(self, auth_service, mock_session_repository):
         """Test successful logout."""
         await auth_service.logout("s_session_to_delete")
 
-        mock_session_repository.delete_by_id.assert_called_once_with("s_session_to_delete")
+        mock_session_repository.delete_session.assert_called_once_with("s_session_to_delete")
 
     async def test_logout_all_success(self, auth_service, mock_session_repository):
         """Test logout all sessions for user."""
@@ -189,7 +218,7 @@ class TestAuthServicePasswordReset:
     @pytest.fixture
     def mock_user_service(self, sample_user_model):
         service = MagicMock(spec=UserService)
-        service.get = AsyncMock(return_value=sample_user_model)
+        service.get_by_field = AsyncMock(return_value=sample_user_model)
         service.update_password = AsyncMock()
         return service
 
@@ -199,11 +228,13 @@ class TestAuthServicePasswordReset:
         mock_user_service,
         mock_session_repository,
         mock_password_reset_repository,
+        mock_email_verification_repository,
     ):
         return AuthService(
             user_service=mock_user_service,
             repo=mock_session_repository,
             password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
         )
 
     async def test_initiate_password_reset_success(
@@ -223,7 +254,7 @@ class TestAuthServicePasswordReset:
         self, auth_service, mock_user_service
     ):
         """Test password reset for non-existent user returns None."""
-        mock_user_service.get.return_value = None
+        mock_user_service.get_by_field.return_value = None
 
         result = await auth_service.initiate_password_reset("nonexistent@example.com")
 
@@ -234,7 +265,7 @@ class TestAuthServicePasswordReset:
     ):
         """Test password reset for OAuth user raises error."""
         sample_user_model.password = None
-        mock_user_service.get.return_value = sample_user_model
+        mock_user_service.get_by_field.return_value = sample_user_model
 
         with pytest.raises(OAuthUserPasswordResetError):
             await auth_service.initiate_password_reset("oauth@example.com")
@@ -275,7 +306,7 @@ class TestAuthServiceEmailVerification:
     @pytest.fixture
     def mock_user_service(self, sample_user_model):
         service = MagicMock(spec=UserService)
-        service.get = AsyncMock(return_value=sample_user_model)
+        service.get_by_id = AsyncMock(return_value=sample_user_model)
         service.mark_email_verified = AsyncMock()
         return service
 
@@ -284,11 +315,13 @@ class TestAuthServiceEmailVerification:
         self,
         mock_user_service,
         mock_session_repository,
+        mock_password_reset_repository,
         mock_email_verification_repository,
     ):
         return AuthService(
             user_service=mock_user_service,
             repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
             email_verification_repo=mock_email_verification_repository,
         )
 
@@ -307,7 +340,7 @@ class TestAuthServiceEmailVerification:
         self, auth_service, mock_user_service
     ):
         """Test email verification for non-existent user."""
-        mock_user_service.get.return_value = None
+        mock_user_service.get_by_id.return_value = None
 
         with pytest.raises(UserNotFoundError):
             await auth_service.initiate_email_verification(uuid.uuid4())
@@ -317,7 +350,7 @@ class TestAuthServiceEmailVerification:
     ):
         """Test email verification when already verified."""
         sample_user_model.email_verified_at = datetime.now(tz=UTC)
-        mock_user_service.get.return_value = sample_user_model
+        mock_user_service.get_by_id.return_value = sample_user_model
 
         with pytest.raises(EmailAlreadyVerifiedError):
             await auth_service.initiate_email_verification(sample_user_model.id)

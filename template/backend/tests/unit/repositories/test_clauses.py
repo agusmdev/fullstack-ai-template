@@ -2,24 +2,22 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.repositories.clauses import (
-    do_default_on_conflict,
-    do_nothing_on_conflict,
-    do_update_on_conflict,
+    conflict_do_nothing,
+    conflict_do_update,
+    conflict_passthrough,
 )
 
 
-class TestDoNothingOnConflict:
-    """Tests for do_nothing_on_conflict clause."""
+class TestConflictDoNothing:
+    """Tests for conflict_do_nothing clause."""
 
     def test_returns_insert_with_on_conflict_do_nothing(self):
         """Test that on_conflict_do_nothing is called on insert."""
         mock_insert = MagicMock()
         mock_insert.on_conflict_do_nothing.return_value = mock_insert
 
-        result = do_nothing_on_conflict(mock_insert)
+        result = conflict_do_nothing(mock_insert)
 
         mock_insert.on_conflict_do_nothing.assert_called_once_with()
         assert result == mock_insert
@@ -29,20 +27,20 @@ class TestDoNothingOnConflict:
         mock_insert = MagicMock()
         mock_insert.on_conflict_do_nothing.return_value = mock_insert
 
-        result = do_nothing_on_conflict(mock_insert, index_elements=["id"])
+        result = conflict_do_nothing(mock_insert, index_elements=["id"])
 
         mock_insert.on_conflict_do_nothing.assert_called_once_with(index_elements=["id"])
 
 
-class TestDoUpdateOnConflict:
-    """Tests for do_update_on_conflict clause."""
+class TestConflictDoUpdate:
+    """Tests for conflict_do_update clause."""
 
     def test_returns_insert_with_on_conflict_do_update(self):
         """Test that on_conflict_do_update is called on insert."""
         mock_insert = MagicMock()
         mock_insert.on_conflict_do_update.return_value = mock_insert
 
-        result = do_update_on_conflict(mock_insert)
+        result = conflict_do_update(mock_insert)
 
         mock_insert.on_conflict_do_update.assert_called_once_with()
         assert result == mock_insert
@@ -52,7 +50,7 @@ class TestDoUpdateOnConflict:
         mock_insert = MagicMock()
         mock_insert.on_conflict_do_update.return_value = mock_insert
 
-        result = do_update_on_conflict(
+        result = conflict_do_update(
             mock_insert, index_elements=["id"], set_={"name": "updated"}
         )
 
@@ -61,14 +59,14 @@ class TestDoUpdateOnConflict:
         )
 
 
-class TestDoDefaultOnConflict:
-    """Tests for do_default_on_conflict clause."""
+class TestConflictPassthrough:
+    """Tests for conflict_passthrough clause."""
 
     def test_returns_insert_unchanged(self):
         """Test that insert is returned without modification."""
         mock_insert = MagicMock()
 
-        result = do_default_on_conflict(mock_insert)
+        result = conflict_passthrough(mock_insert)
 
         assert result == mock_insert
         # Should not call any on_conflict methods
@@ -81,9 +79,9 @@ class TestClausesAreCallable:
 
     def test_all_clauses_are_callable(self):
         """Test that all clause functions are callable."""
-        assert callable(do_nothing_on_conflict)
-        assert callable(do_update_on_conflict)
-        assert callable(do_default_on_conflict)
+        assert callable(conflict_do_nothing)
+        assert callable(conflict_do_update)
+        assert callable(conflict_passthrough)
 
     def test_clauses_return_insert(self):
         """Test that all clauses return the insert statement."""
@@ -91,6 +89,6 @@ class TestClausesAreCallable:
         mock_insert.on_conflict_do_nothing.return_value = mock_insert
         mock_insert.on_conflict_do_update.return_value = mock_insert
 
-        assert do_nothing_on_conflict(mock_insert) == mock_insert
-        assert do_update_on_conflict(mock_insert) == mock_insert
-        assert do_default_on_conflict(mock_insert) == mock_insert
+        assert conflict_do_nothing(mock_insert) == mock_insert
+        assert conflict_do_update(mock_insert) == mock_insert
+        assert conflict_passthrough(mock_insert) == mock_insert

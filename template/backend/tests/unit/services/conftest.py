@@ -12,6 +12,7 @@ def mock_user_repository():
     """Create a mock user repository."""
     repo = MagicMock()
     repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
     repo.get_all = AsyncMock()
     repo.create = AsyncMock()
     repo.update = AsyncMock()
@@ -26,6 +27,7 @@ def mock_item_repository():
     """Create a mock item repository."""
     repo = MagicMock()
     repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
     repo.get_all = AsyncMock()
     repo.create = AsyncMock()
     repo.update = AsyncMock()
@@ -40,11 +42,12 @@ def mock_session_repository():
     """Create a mock session repository."""
     repo = MagicMock()
     repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
     repo.get_all = AsyncMock()
     repo.create = AsyncMock()
     repo.update = AsyncMock()
     repo.delete = AsyncMock()
-    repo.delete_by_id = AsyncMock()
+    repo.delete_session = AsyncMock()
     repo.delete_all_for_user = AsyncMock()
     return repo
 
@@ -93,13 +96,9 @@ def sample_user_model(sample_user_id):
     user.created_at = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     user.updated_at = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
 
-    # Mock check_password method
+    # Mock check_password method - always returns bool (never raises)
     def check_password(password):
-        from argon2.exceptions import VerifyMismatchError
-
-        if password == "correct_password":
-            return True
-        raise VerifyMismatchError()
+        return password == "correct_password"
 
     user.check_password = check_password
     return user
@@ -112,10 +111,17 @@ def sample_item_id():
 
 
 @pytest.fixture
-def sample_item_model(sample_item_id):
+def sample_item_owner_id():
+    """Generate a sample item owner UUID."""
+    return uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+
+
+@pytest.fixture
+def sample_item_model(sample_item_id, sample_item_owner_id):
     """Create a mock Item model instance."""
     item = MagicMock()
     item.id = sample_item_id
+    item.user_id = sample_item_owner_id
     item.name = "Test Item"
     item.description = "A test item description"
     item.quantity = 10

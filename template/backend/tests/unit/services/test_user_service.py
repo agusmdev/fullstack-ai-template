@@ -1,11 +1,10 @@
 """Tests for UserService."""
 
 import uuid
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
+from unittest.mock import MagicMock
 
 import pytest
-from argon2.exceptions import VerifyMismatchError
 
 from app.user.auth.exceptions import AuthenticationError, InvalidPasswordError
 from app.user.schemas import UserRegister, UserResponse
@@ -13,31 +12,31 @@ from app.user.service import UserService
 
 
 class TestUserServiceGet:
-    """Tests for UserService.get method."""
+    """Tests for UserService.get_by_id and get_by_field methods."""
 
     @pytest.fixture
     def service(self, mock_user_repository):
         return UserService(repo=mock_user_repository)
 
     async def test_get_by_id(self, service, mock_user_repository, sample_user_model):
-        """Test get user by id."""
+        """Test get user by UUID id."""
         mock_user_repository.get.return_value = sample_user_model
 
-        result = await service.get(sample_user_model.id)
+        result = await service.get_by_id(sample_user_model.id)
 
         mock_user_repository.get.assert_called_once_with(
-            sample_user_model.id, raise_error=True, filter_field="id"
+            sample_user_model.id, raise_error=True
         )
         assert result == sample_user_model
 
     async def test_get_by_email(self, service, mock_user_repository, sample_user_model):
-        """Test get user by email."""
-        mock_user_repository.get.return_value = sample_user_model
+        """Test get user by email via get_by_field."""
+        mock_user_repository.get_by_field.return_value = sample_user_model
 
-        result = await service.get("test@example.com", filter_field="email")
+        result = await service.get_by_field("email", "test@example.com")
 
-        mock_user_repository.get.assert_called_once_with(
-            "test@example.com", raise_error=True, filter_field="email"
+        mock_user_repository.get_by_field.assert_called_once_with(
+            "email", "test@example.com", raise_error=True, response_model=None
         )
         assert result == sample_user_model
 
@@ -45,7 +44,7 @@ class TestUserServiceGet:
         """Test get user not found with raise_error=False."""
         mock_user_repository.get.return_value = None
 
-        result = await service.get(uuid.uuid4(), raise_error=False)
+        result = await service.get_by_id(uuid.uuid4(), raise_error=False)
 
         assert result is None
 
@@ -61,28 +60,24 @@ class TestUserServiceGetOrCreate:
         self, service, mock_user_repository, sample_user_model
     ):
         """Test get_or_create returns existing user."""
-        mock_user_repository.get.return_value = sample_user_model
+        mock_user_repository.get_by_field.return_value = sample_user_model
         create_fields = MagicMock()
 
-        result = await service.get_or_create(
-            str(sample_user_model.id), create_fields, filter_field="id"
-        )
+        result = await service.find_or_create("email", sample_user_model.email, create_fields)
 
-        mock_user_repository.get.assert_called_once()
+        mock_user_repository.get_by_field.assert_called_once()
         mock_user_repository.create.assert_not_called()
         assert result == sample_user_model
 
     async def test_get_or_create_new_user(self, service, mock_user_repository, sample_user_model):
         """Test get_or_create creates new user when not found."""
-        mock_user_repository.get.return_value = None
+        mock_user_repository.get_by_field.return_value = None
         mock_user_repository.create.return_value = sample_user_model
         create_fields = MagicMock()
 
-        result = await service.get_or_create(
-            "new@example.com", create_fields, filter_field="email"
-        )
+        result = await service.find_or_create("email", "new@example.com", create_fields)
 
-        mock_user_repository.get.assert_called_once()
+        mock_user_repository.get_by_field.assert_called_once()
         mock_user_repository.create.assert_called_once_with(create_fields)
         assert result == sample_user_model
 
@@ -132,18 +127,18 @@ class TestUserServiceAuthenticate:
 
     async def test_authenticate_success(self, service, mock_user_repository, sample_user_model):
         """Test successful authentication."""
-        mock_user_repository.get.return_value = sample_user_model
+        mock_user_repository.get_by_field.return_value = sample_user_model
 
         result = await service.authenticate("test@example.com", "correct_password")
 
-        mock_user_repository.get.assert_called_once_with(
-            "test@example.com", raise_error=False, filter_field="email"
+        mock_user_repository.get_by_field.assert_called_once_with(
+            "email", "test@example.com", raise_error=False
         )
         assert result == sample_user_model
 
     async def test_authenticate_user_not_found(self, service, mock_user_repository):
         """Test authentication with non-existent user."""
-        mock_user_repository.get.return_value = None
+        mock_user_repository.get_by_field.return_value = None
 
         with pytest.raises(AuthenticationError) as exc_info:
             await service.authenticate("nonexistent@example.com", "password")
@@ -154,7 +149,7 @@ class TestUserServiceAuthenticate:
         self, service, mock_user_repository, sample_user_model
     ):
         """Test authentication with wrong password."""
-        mock_user_repository.get.return_value = sample_user_model
+        mock_user_repository.get_by_field.return_value = sample_user_model
 
         with pytest.raises(InvalidPasswordError):
             await service.authenticate("test@example.com", "wrong_password")

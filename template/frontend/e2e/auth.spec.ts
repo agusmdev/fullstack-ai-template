@@ -40,8 +40,8 @@ test.describe('Authentication Flow', () => {
     // Submit the form
     await page.click('button[type="submit"]')
 
-    // After successful registration, should redirect to login page
-    await expect(page).toHaveURL(/\/login/)
+    // After successful registration, should redirect to home page (user is logged in)
+    await expect(page).toHaveURL('/')
   })
 
   test('registration validates email format', async ({ page }) => {
@@ -102,16 +102,20 @@ test.describe('Authentication Flow', () => {
     await page.fill('input[name="confirmPassword"]', testPassword)
     await page.click('button[type="submit"]')
 
-    // Wait for redirect to login
-    await expect(page).toHaveURL(/\/login/)
+    // Registration logs the user in and redirects to home
+    await expect(page).toHaveURL('/')
 
-    // Now login with the same credentials
+    // Log out so we can test the login flow separately
+    await page.click('button:has-text("Sign out")')
+
+    // Now test login with the registered credentials
+    await page.goto('/login')
     await page.fill('input[type="email"]', testEmail)
     await page.fill('input[type="password"]', testPassword)
     await page.click('button[type="submit"]')
 
     // After successful login, should redirect to home page
-    await expect(page).toHaveURL(/\//)
+    await expect(page).toHaveURL('/')
   })
 
   test('login shows error with invalid credentials', async ({ page }) => {
@@ -122,9 +126,8 @@ test.describe('Authentication Flow', () => {
     await page.fill('input[type="password"]', 'WrongPassword123!')
     await page.click('button[type="submit"]')
 
-    // Should show an error message
-    const errorDiv = page.locator('div.bg-destructive')
-    await expect(errorDiv).toBeVisible()
+    // Should show an error toast notification
+    await expect(page.locator('[data-sonner-toast]')).toBeVisible()
   })
 
   test('login validates required fields', async ({ page }) => {

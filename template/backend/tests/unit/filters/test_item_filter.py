@@ -1,6 +1,5 @@
 """Tests for ItemFilter."""
 
-import pytest
 
 from app.modules.items.filters import ItemFilter
 from app.modules.items.models import Item
@@ -15,7 +14,7 @@ class TestItemFilterConstants:
 
     def test_search_model_fields(self):
         """Test that search fields are configured correctly."""
-        expected_fields = ["name", "description", "sku"]
+        expected_fields = ["name", "description"]
         assert ItemFilter.Constants.search_model_fields == expected_fields
 
 
@@ -68,7 +67,6 @@ class TestItemFilterInstantiation:
 
     def test_filter_is_pydantic_model(self):
         """Test that filter is a Pydantic model."""
-        from pydantic import BaseModel
 
         filter_instance = ItemFilter()
         assert hasattr(filter_instance, "model_dump")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 from sqlalchemy import exc
 from sqlalchemy.inspection import inspect
@@ -32,91 +32,39 @@ class QueryOptionGenerator:
     on the node types.
     """
 
-    def visit(self, node: ASTNode) -> Load | None:
-        """Visit an AST node and dispatch to the appropriate visit method.
-
-        Args:
-            node: The AST node to visit.
-
-        Returns:
-            The SQLAlchemy query option for this node, or None for LoadOnlyNode.
-
-        Raises:
-            QueryOptimizerError: If no visit method exists for the node type.
-        """
+    def visit(self, node: ASTNode) -> Load:
+        """Dispatch to the appropriate visit_<NodeType> method."""
         method_name = f"visit_{type(node).__name__}"
         visitor = getattr(self, method_name, self.generic_visit)
         return visitor(node)
 
     def generic_visit(self, node: ASTNode) -> None:
-        """Fallback method if no visit method is found for a node.
-
-        Args:
-            node: The AST node that couldn't be visited.
-
-        Raises:
-            QueryOptimizerError: Always, with a descriptive message.
-        """
+        """Raise QueryOptimizerError when no visit method exists for a node type."""
         raise QueryOptimizerError(f"No visit_{type(node).__name__} method")
 
-    def visit_LoadOnlyNode(self, node: LoadOnlyNode) -> Load | None:
-        """Generate a load_only option for a LoadOnlyNode.
+    def visit_LoadOnlyNode(self, node: LoadOnlyNode) -> Load:
+        """Generate a load_only option; raises QueryOptimizerError for non-column fields."""
+        orm_columns = [safe_getattr(node.model, col) for col in node.columns]
 
-        Args:
-            node: The LoadOnlyNode containing columns to load.
-
-        Returns:
-            A SQLAlchemy load_only option.
-
-        Raises:
-            QueryOptimizerError: If a column is not a valid column field.
-        """
-        orm_columns = (safe_getattr(node.model, col) for col in node.columns)
-
-        if orm_columns:
-            try:
-                return load_only(*orm_columns)  # type: ignore[return-value]
-            except exc.ArgumentError as e:
-                self._argument_error(e, node)
-        return None
+        try:
+            return load_only(*orm_columns)  # type: ignore[return-value]  # SQLAlchemy's load_only returns Load[Model], not the generic Load[Column]
+        except exc.ArgumentError as e:
+            self._argument_error(e, node)
 
     def visit_RelationshipLoadNode(self, node: RelationshipLoadNode) -> Load:
-        """Generate a joinedload option for a RelationshipLoadNode.
-
-        Args:
-            node: The RelationshipLoadNode containing relationship info.
-
-        Returns:
-            A SQLAlchemy joinedload option with nested options if applicable.
-        """
+        """Generate a joinedload option, recursively applying options for nested children."""
         relationship = safe_getattr(node.model, node.relationship)
 
         loader = joinedload(relationship)
         if node.children:
             child_loaders = [self.visit(child) for child in node.children]
-            # Filter out None values from LoadOnlyNode visits
-            child_loaders_filtered = [c for c in child_loaders if c is not None]
-            if child_loaders_filtered:
-                loader = loader.options(*child_loaders_filtered)
+            if child_loaders:
+                loader = loader.options(*child_loaders)
 
-        return loader  # type: ignore[return-value]
+        return loader  # type: ignore[return-value]  # joinedload() returns JoinedLoad which is narrower than generic Load
 
-    def _argument_error(self, e: exc.ArgumentError, node: LoadOnlyNode) -> None:
-        """
-        Handle SQLAlchemy ArgumentError with more context.
-
-        Sometimes we get an "ArgumentError" from sqlalchemy because we added a non-column field
-        into the select statement. Here we figure out which field is causing the issue and raise
-        a more informative error message.
-
-        Args:
-            e: The original ArgumentError from SQLAlchemy.
-            node: The LoadOnlyNode being processed.
-
-        Raises:
-            QueryOptimizerError: If a column is not a valid column field.
-            exc.ArgumentError: The original error if we can't identify the problematic column.
-        """
+    def _argument_error(self, e: exc.ArgumentError, node: LoadOnlyNode) -> NoReturn:
+        """Re-raise ArgumentError with a specific column name if a non-column field was passed."""
         for col in node.columns:
             orm_column = safe_getattr(node.model, col)
 

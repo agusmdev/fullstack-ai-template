@@ -2,10 +2,9 @@
 
 from datetime import UTC, date, datetime, timezone
 
-import pytest
 from pydantic import BaseModel
 
-from app.core.types.serialized_types import (
+from app.core.serialized_types import (
     UTCDate,
     UTCDatetime,
     serialize_date,
@@ -144,12 +143,12 @@ class TestTypesExported:
 
     def test_utc_datetime_exported(self):
         """Test UTCDatetime is properly exported."""
-        from app.core.types.serialized_types import UTCDatetime
+        from app.core.serialized_types import UTCDatetime
 
         assert UTCDatetime is not None
 
     def test_utc_date_exported(self):
         """Test UTCDate is properly exported."""
-        from app.core.types.serialized_types import UTCDate
+        from app.core.serialized_types import UTCDate
 
         assert UTCDate is not None

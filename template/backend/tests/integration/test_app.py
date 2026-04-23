@@ -1,6 +1,5 @@
 """Integration tests for the FastAPI application."""
 
-import pytest
 from unittest.mock import patch
 
 
@@ -64,8 +63,9 @@ class TestAppFactory:
         """Test that app has health endpoint registered."""
         from unittest.mock import MagicMock
 
-        from app.main import create_app
         from fastapi.testclient import TestClient
+
+        from app.main import create_app
 
         app = create_app(add_sentry=False)
 

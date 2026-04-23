@@ -5,6 +5,7 @@ import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.context import clear_request_context
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.logging.middleware import WideEventMiddleware
@@ -33,21 +34,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app(
-    add_sentry: bool = settings.ENVIRONMENT != "local",
+    add_sentry: bool | None = None,
 ) -> FastAPI:
+    if add_sentry is None:
+        add_sentry = settings.ENVIRONMENT != "local"
+
     # Configure logging early
     configure_logging()
 
     app = FastAPI(lifespan=lifespan)
 
-    # WideEventMiddleware FIRST (outermost) - handles request logging
-    app.add_middleware(WideEventMiddleware)  # type: ignore[invalid-argument-type]
+    # Middleware is applied LIFO: last-added = outermost (first to handle request).
+    # Desired order: CORS → WideEvent → RequestContext
+    #
+    # RequestContextMiddleware reads the request_id from WideEventContext, so it must
+    # run AFTER WideEventMiddleware (i.e., be added FIRST = innermost).
+    app.add_middleware(RequestContextMiddleware)  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
 
-    # RequestContextMiddleware sets request_id in context
-    app.add_middleware(RequestContextMiddleware)  # type: ignore[invalid-argument-type]
+    # WideEventMiddleware generates the canonical request_id and emits the wide log.
+    # Must wrap RequestContextMiddleware so the ID is set before context middleware runs.
+    # Inject clear_request_context so core middleware doesn't import app-level modules.
+    app.add_middleware(WideEventMiddleware, on_request_cleanup=clear_request_context)  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
 
     app.add_middleware(
-        CORSMiddleware,  # type: ignore[invalid-argument-type]
+        CORSMiddleware,  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
         allow_origins=[
             settings.FRONTEND_URL,
             "http://localhost:3000",

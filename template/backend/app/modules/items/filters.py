@@ -15,6 +15,7 @@ class ItemFilter(Filter):
         ?quantity__gte=10
     """
 
+    order_by: list[str] = ["created_at"]
     search: str | None = None
 
     class Constants(Filter.Constants):

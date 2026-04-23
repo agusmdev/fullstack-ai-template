@@ -1,11 +1,10 @@
 """Module for including all the app's routers"""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from app.core.permissions.auth import AuthenticatedUser
 from app.modules.items.routers import items_router
 from app.user.auth.routers import auth_router
-from app.user.routers import router as user_router
+from app.user.routers import user_router
 
 
 def get_app_router() -> APIRouter:
@@ -21,7 +20,6 @@ def get_app_router() -> APIRouter:
         user_router,
         prefix="/users",
         tags=["users"],
-        dependencies=[Depends(AuthenticatedUser.current_user_id)],
     )
 
     router.include_router(items_router)

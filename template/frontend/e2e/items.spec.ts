@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 /**
  * E2E tests for Items CRUD flow.
@@ -19,24 +19,15 @@ test.describe('Items CRUD Flow', () => {
   const testPassword = 'TestPassword123!'
 
   // Helper function to authenticate user
-  async function authenticateUser(page: any, email: string, password: string) {
-    // First register
+  async function authenticateUser(page: Page, email: string, password: string) {
     await page.goto('/register')
     await page.fill('input[type="email"]', email)
     await page.fill('input[name="password"]', password)
     await page.fill('input[name="confirmPassword"]', password)
     await page.click('button[type="submit"]')
 
-    // Wait for redirect to login
-    await expect(page).toHaveURL(/\/login/)
-
-    // Then login
-    await page.fill('input[type="email"]', email)
-    await page.fill('input[type="password"]', password)
-    await page.click('button[type="submit"]')
-
-    // Wait for redirect to home
-    await expect(page).toHaveURL(/\//)
+    // Register redirects to home on success
+    await expect(page).toHaveURL('/')
   }
 
   test.beforeEach(async ({ page }) => {
@@ -64,7 +55,7 @@ test.describe('Items CRUD Flow', () => {
     await expect(page.locator('text=Create New Item')).toBeVisible()
 
     // Fill in the title
-    await page.fill('input[placeholder="Enter item title"]', 'E2E Test Item')
+    await page.fill('input[placeholder="Enter item name"]', 'E2E Test Item')
 
     // Submit the form
     await page.click('button:has-text("Create")')
@@ -80,8 +71,8 @@ test.describe('Items CRUD Flow', () => {
     await page.click('button:has-text("Create Item")')
 
     // Fill in both title and description
-    await page.fill('input[placeholder="Enter item title"]', 'Item with Description')
-    await page.fill('input[placeholder="Enter item description"]', 'This is a test description')
+    await page.fill('input[placeholder="Enter item name"]', 'Item with Description')
+    await page.fill('textarea[placeholder="Enter item description"]', 'This is a test description')
 
     // Submit the form
     await page.click('button:has-text("Create")')
@@ -96,13 +87,13 @@ test.describe('Items CRUD Flow', () => {
 
     // Create first item
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'First Item')
+    await page.fill('input[placeholder="Enter item name"]', 'First Item')
     await page.click('button:has-text("Create")')
     await expect(page.locator('text=First Item')).toBeVisible()
 
     // Create second item
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Second Item')
+    await page.fill('input[placeholder="Enter item name"]', 'Second Item')
     await page.click('button:has-text("Create")')
     await expect(page.locator('text=Second Item')).toBeVisible()
 
@@ -120,7 +111,7 @@ test.describe('Items CRUD Flow', () => {
     await page.click('button:has-text("Create")')
 
     // Should show validation error
-    const titleInput = page.locator('input[placeholder="Enter item title"]')
+    const titleInput = page.locator('input[placeholder="Enter item name"]')
     await expect(titleInput).toBeFocused()
   })
 
@@ -131,7 +122,7 @@ test.describe('Items CRUD Flow', () => {
     await page.click('button:has-text("Create Item")')
 
     // Fill in some data
-    await page.fill('input[placeholder="Enter item title"]', 'Cancelled Item')
+    await page.fill('input[placeholder="Enter item name"]', 'Cancelled Item')
 
     // Click Cancel
     await page.click('button:has-text("Cancel")')
@@ -145,19 +136,19 @@ test.describe('Items CRUD Flow', () => {
 
     // Create an item first
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Original Title')
+    await page.fill('input[placeholder="Enter item name"]', 'Original Title')
     await page.click('button:has-text("Create")')
     await expect(page.locator('text=Original Title')).toBeVisible()
 
     // Find and click the edit button for the item
-    const itemCard = page.locator('text=Original Title').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Original Title' })
     await itemCard.locator('button:has([data-lucide="pencil"])').click()
 
     // Wait for edit dialog
     await expect(page.locator('text=Edit Item')).toBeVisible()
 
     // Update the title
-    const titleInput = page.locator('input[placeholder="Enter item title"]')
+    const titleInput = page.locator('input[placeholder="Enter item name"]')
     await titleInput.fill('')
     await titleInput.fill('Updated Title')
 
@@ -174,17 +165,17 @@ test.describe('Items CRUD Flow', () => {
 
     // Create an item with description
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Item to Edit')
-    await page.fill('input[placeholder="Enter item description"]', 'Original description')
+    await page.fill('input[placeholder="Enter item name"]', 'Item to Edit')
+    await page.fill('textarea[placeholder="Enter item description"]', 'Original description')
     await page.click('button:has-text("Create")')
     await expect(page.locator('text=Item to Edit')).toBeVisible()
 
     // Edit the item
-    const itemCard = page.locator('text=Item to Edit').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Item to Edit' })
     await itemCard.locator('button:has([data-lucide="pencil"])').click()
 
     // Update description
-    const descInput = page.locator('input[placeholder="Enter item description"]')
+    const descInput = page.locator('textarea[placeholder="Enter item description"]')
     await descInput.fill('')
     await descInput.fill('Updated description')
 
@@ -200,16 +191,16 @@ test.describe('Items CRUD Flow', () => {
 
     // Create an item
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Keep Original')
+    await page.fill('input[placeholder="Enter item name"]', 'Keep Original')
     await page.click('button:has-text("Create")')
     await expect(page.locator('text=Keep Original')).toBeVisible()
 
     // Start editing
-    const itemCard = page.locator('text=Keep Original').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Keep Original' })
     await itemCard.locator('button:has([data-lucide="pencil"])').click()
 
     // Change the title but cancel
-    await page.fill('input[placeholder="Enter item title"]', 'Changed Title')
+    await page.fill('input[placeholder="Enter item name"]', 'Changed Title')
     await page.click('button:has-text("Cancel")')
 
     // Original title should remain
@@ -222,12 +213,12 @@ test.describe('Items CRUD Flow', () => {
 
     // Create an item
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'To Be Deleted')
+    await page.fill('input[placeholder="Enter item name"]', 'To Be Deleted')
     await page.click('button:has-text("Create")')
     await expect(page.locator('text=To Be Deleted')).toBeVisible()
 
     // Click the delete button
-    const itemCard = page.locator('text=To Be Deleted').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'To Be Deleted' })
     await itemCard.locator('button:has([data-lucide="trash-2"])').click()
 
     // Confirm deletion in alert dialog
@@ -244,12 +235,12 @@ test.describe('Items CRUD Flow', () => {
 
     // Create an item
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Keep This Item')
+    await page.fill('input[placeholder="Enter item name"]', 'Keep This Item')
     await page.click('button:has-text("Create")')
     await expect(page.locator('text=Keep This Item')).toBeVisible()
 
     // Click delete but cancel
-    const itemCard = page.locator('text=Keep This Item').locator('..').locator('..').locator('..')
+    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Keep This Item' })
     await itemCard.locator('button:has([data-lucide="trash-2"])').click()
 
     // Click Cancel in the alert dialog
@@ -264,23 +255,23 @@ test.describe('Items CRUD Flow', () => {
 
     // Create multiple items
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Apple')
+    await page.fill('input[placeholder="Enter item name"]', 'Apple')
     await page.click('button:has-text("Create")')
 
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Banana')
+    await page.fill('input[placeholder="Enter item name"]', 'Banana')
     await page.click('button:has-text("Create")')
 
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Cherry')
+    await page.fill('input[placeholder="Enter item name"]', 'Cherry')
     await page.click('button:has-text("Create")')
 
     // Wait for all items to appear
     await expect(page.locator('text=3 items total')).toBeVisible()
 
-    // Search for "App"
-    await page.fill('input[placeholder="Search items by title..."]', 'App')
-    await page.click('button:has-text("Search")')
+    // Search for "App" — search is debounced on input, no button needed
+    await page.fill('input[placeholder="Search items by name..."]', 'App')
+    await page.waitForTimeout(400)
 
     // Should only show Apple
     await expect(page.locator('text=Apple')).toBeVisible()
@@ -293,12 +284,12 @@ test.describe('Items CRUD Flow', () => {
 
     // Create items
     await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item title"]', 'Searchable Item')
+    await page.fill('input[placeholder="Enter item name"]', 'Searchable Item')
     await page.click('button:has-text("Create")')
 
-    // Search
-    await page.fill('input[placeholder="Search items by title..."]', 'Search')
-    await page.click('button:has-text("Search")')
+    // Search — debounced on input
+    await page.fill('input[placeholder="Search items by name..."]', 'Search')
+    await page.waitForTimeout(400)
 
     await expect(page.locator('text=Searchable Item')).toBeVisible()
 
@@ -306,7 +297,7 @@ test.describe('Items CRUD Flow', () => {
     await page.click('button:has-text("Clear")')
 
     // Search input should be empty and Clear button should be gone
-    const searchInput = page.locator('input[placeholder="Search items by title..."]')
+    const searchInput = page.locator('input[placeholder="Search items by name..."]')
     await expect(searchInput).toHaveValue('')
   })
 
@@ -316,9 +307,9 @@ test.describe('Items CRUD Flow', () => {
     // Create more than 9 items (page size is 9)
     for (let i = 1; i <= 12; i++) {
       await page.click('button:has-text("Create Item")')
-      await page.fill('input[placeholder="Enter item title"]', `Item ${i}`)
+      await page.fill('input[placeholder="Enter item name"]', `Item ${i}`)
       await page.click('button:has-text("Create")')
-      await expect(page.locator(`text=Item ${i}`)).isVisible()
+      await expect(page.locator(`text=Item ${i}`)).toBeVisible()
     }
 
     // Should show pagination controls

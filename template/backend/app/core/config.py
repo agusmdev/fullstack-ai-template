@@ -12,9 +12,7 @@ class CommonSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    DB_NAME: str = Field(default="backend")
     DB_URL: str = Field(default="sqlite:///sql.db")
-    ALEMBIC_DATABASE_URL: str | None = Field(default=None)
     DB_POOL_SIZE: int = Field(default=100)
     DB_POOL_PRE_PING: bool = Field(default=False)
     REPOSITORY_NAME: str = Field(default="SQL")  ## For the new entities

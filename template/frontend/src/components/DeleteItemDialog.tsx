@@ -10,17 +10,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
 import { useDeleteItem } from '@/hooks/useItems'
 import type { Item } from '@/types/item'
-import { handleApiError } from '@/lib/error-handler'
+import { toastApiError } from '@/lib/error-handler'
 
 interface DeleteItemDialogProps {
   item: Item
-  children?: React.ReactNode
+  trigger: React.ReactNode
 }
 
-export function DeleteItemDialog({ item, children }: DeleteItemDialogProps) {
+export function DeleteItemDialog({ item, trigger }: DeleteItemDialogProps) {
   const [open, setOpen] = useState(false)
   const deleteItem = useDeleteItem(item.id)
 
@@ -29,20 +28,20 @@ export function DeleteItemDialog({ item, children }: DeleteItemDialogProps) {
       await deleteItem.mutateAsync()
       setOpen(false)
     } catch (error) {
-      handleApiError(error, 'Failed to delete item')
+      toastApiError(error, 'Failed to delete item')
     }
   }
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        {children || <Button variant="destructive">Delete</Button>}
+        {trigger}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Item</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{item?.name || 'this item'}"? This action cannot be undone.
+            Are you sure you want to delete "{item.name}"? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

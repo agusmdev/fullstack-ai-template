@@ -16,6 +16,26 @@ from pydantic.fields import FieldInfo
 
 
 def partial_model(model: type[BaseModel]) -> type[BaseModel]:
+    """Class decorator that makes all fields optional with a default of None.
+
+    Used on update schemas so PATCH endpoints accept partial payloads — only the
+    fields present in the request body are updated, others remain unchanged.
+
+    Args:
+        model: A Pydantic BaseModel class whose fields should all become optional.
+
+    Returns:
+        A new model class named ``Partial<OriginalName>`` where every field is
+        ``Optional[original_type]`` with ``default=None``.
+
+    Example::
+
+        @partial_model
+        class ItemUpdate(ItemBase):
+            pass
+        # ItemUpdate(name="new name")  # only name; description is None
+    """
+
     def make_field_optional(
         field: FieldInfo, default: Any = None
     ) -> tuple[Any, FieldInfo]:
@@ -149,7 +169,7 @@ def _extract_nested_basemodels(annotation: Any) -> list[type[BaseModel]]:
         for arg in args:
             if arg is not type(None):  # Skip None type
                 basemodel_types.extend(_extract_nested_basemodels(arg))
-    elif origin in (list, list):
+    elif origin is list:
         # Handle List[T]
         if args:
             basemodel_types.extend(_extract_nested_basemodels(args[0]))
@@ -161,10 +181,34 @@ def _extract_nested_basemodels(annotation: Any) -> list[type[BaseModel]]:
     return basemodel_types
 
 
+def _unwrap_if_optional(annotation: Any) -> Any:
+    """Return the inner type if annotation is Optional[T], otherwise return annotation unchanged."""
+    if get_origin(annotation) is Union and type(None) in get_args(annotation):
+        non_none = [a for a in get_args(annotation) if a is not type(None)]
+        if len(non_none) == 1:
+            return non_none[0]
+    return annotation
+
+
 def _transform_annotation_to_partial(
     annotation: Any, cache: dict[type[BaseModel], type[BaseModel]]
 ) -> Any:
-    """Transform type annotation to use partial BaseModel versions."""
+    """Recursively rewrite a type annotation so embedded BaseModels become their partial versions.
+
+    Strategy:
+    - **Direct BaseModel**: replace with ``Optional[cache[model]]`` if the model has been
+      processed (is in cache). The ``Optional`` wrapper ensures the field can be omitted.
+    - **Union[T, None] (Optional[T])**: process the inner type; re-wrap the result as Union
+      without double-nesting ``None``.
+    - **List[T]**: transform the element type; return ``Optional[list[T']]``.
+    - **Other generic types** (e.g. ``Dict[K, V]``): transform each argument and attempt to
+      reconstruct the generic; fall back to ``Optional[annotation]`` on failure.
+    - **Scalar types / forward references**: return ``Optional[annotation]`` unchanged.
+
+    The caller (``recursive_partial_model``) always wraps the final annotation in
+    ``Optional``; this function handles intermediate nesting so Union/list containers
+    do not end up with double ``None`` entries.
+    """
     # Handle string annotations (forward references)
     if isinstance(annotation, str):
         return Optional[annotation]
@@ -196,19 +240,7 @@ def _transform_annotation_to_partial(
                 new_args.append(cache[arg])
             else:
                 transformed = _transform_annotation_to_partial(arg, cache)
-                # Extract from Optional if we wrapped it
-                if get_origin(transformed) is Union and type(None) in get_args(
-                    transformed
-                ):
-                    non_none_args = [
-                        a for a in get_args(transformed) if a is not type(None)
-                    ]
-                    if len(non_none_args) == 1:
-                        new_args.append(non_none_args[0])
-                    else:
-                        new_args.append(transformed)
-                else:
-                    new_args.append(transformed)
+                new_args.append(_unwrap_if_optional(transformed))
         return (
             Optional[tuple(new_args)]
             if len(new_args) > 1
@@ -216,39 +248,18 @@ def _transform_annotation_to_partial(
             if new_args
             else Optional[annotation]
         )
-    elif origin in (list, list):
+    elif origin is list:
         # Transform BaseModels in List types
         if args:
-            transformed_arg = _transform_annotation_to_partial(args[0], cache)
-            # Extract from Optional if we wrapped it
-            if get_origin(transformed_arg) is Union and type(None) in get_args(
-                transformed_arg
-            ):
-                non_none_args = [
-                    a for a in get_args(transformed_arg) if a is not type(None)
-                ]
-                if len(non_none_args) == 1:
-                    return Optional[list[non_none_args[0]]]  # type: ignore[valid-type]
-            return Optional[list[transformed_arg]]
+            transformed_arg = _unwrap_if_optional(_transform_annotation_to_partial(args[0], cache))
+            return Optional[list[transformed_arg]]  # type: ignore[valid-type]
         return Optional[annotation]
     elif hasattr(annotation, "__origin__") and args:
         # Handle other generic types
-        new_args = []
-        for arg in args:
-            transformed_arg = _transform_annotation_to_partial(arg, cache)
-            # Extract from Optional if we wrapped it
-            if get_origin(transformed_arg) is Union and type(None) in get_args(
-                transformed_arg
-            ):
-                non_none_args = [
-                    a for a in get_args(transformed_arg) if a is not type(None)
-                ]
-                if len(non_none_args) == 1:
-                    new_args.append(non_none_args[0])
-                else:
-                    new_args.append(transformed_arg)
-            else:
-                new_args.append(transformed_arg)
+        new_args = [
+            _unwrap_if_optional(_transform_annotation_to_partial(arg, cache))
+            for arg in args
+        ]
         # Reconstruct the generic type
         try:
             return Optional[origin[tuple(new_args)]]

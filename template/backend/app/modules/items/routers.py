@@ -1,25 +1,22 @@
 """Items router - CRUD endpoints for Item entity."""
 
 import uuid
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 from fastapi import APIRouter, Body, Depends, status
 from fastapi_pagination import Page, Params
 
 from app.core.logging import log_action, log_entity
-from app.core.permissions.auth import AuthenticatedUser
 from app.modules.items.dependencies import get_item_service
 from app.modules.items.filters import ItemFilter
 from app.modules.items.schemas import ItemCreate, ItemResponse, ItemUpdate
 from app.modules.items.service import ItemService
-
-if TYPE_CHECKING:
-    from app.modules.items.models import Item
+from app.user.auth import require_current_user_id
 
 items_router = APIRouter(
     prefix="/items",
     tags=["items"],
-    dependencies=[Depends(AuthenticatedUser.current_user_id)],
+    dependencies=[Depends(require_current_user_id)],
 )
 
 
@@ -31,9 +28,10 @@ items_router = APIRouter(
 async def list_items(
     pagination: Params = Depends(),
     item_filter: ItemFilter = Depends(),
+    user_id: uuid.UUID = Depends(require_current_user_id),
     item_service: ItemService = Depends(get_item_service),
 ) -> Page[ItemResponse]:
-    """List all items with optional filtering and pagination.
+    """List items owned by the authenticated user with optional filtering and pagination.
 
     Query parameters:
         - page: Page number (default: 1)
@@ -44,9 +42,10 @@ async def list_items(
         - quantity__gte: Filter by minimum quantity
     """
     log_action("list")
-    result: Page[Item] | list[Item] = await item_service.get_all(
-        entity_filter=item_filter,
+    result = await item_service.get_all_paginated(
         pagination_params=pagination,
+        entity_filter=item_filter,
+        user_id=user_id,
     )
     return cast("Page[ItemResponse]", result)
 
@@ -58,16 +57,12 @@ async def list_items(
 )
 async def get_item(
     item_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_current_user_id),
     item_service: ItemService = Depends(get_item_service),
 ) -> ItemResponse:
-    """Get an item by ID."""
+    """Get an item by ID, enforcing ownership."""
     log_action("get")
-    log_entity("item", item_id)
-    result = await item_service.get_by_id(item_id)
-    if result is None:
-        msg = f"Item {item_id} not found"
-        raise ValueError(msg)
-    # result is now narrowed to Item, not None
+    result = await item_service.get_by_id(item_id, user_id=user_id)
     return cast("ItemResponse", result)
 
 
@@ -78,11 +73,12 @@ async def get_item(
 )
 async def get_item_by_sku(
     sku: str,
+    user_id: uuid.UUID = Depends(require_current_user_id),
     item_service: ItemService = Depends(get_item_service),
 ) -> ItemResponse:
-    """Get an item by SKU (custom endpoint example)."""
+    """Get an item by SKU (custom endpoint example), enforcing ownership."""
     log_action("get_by_sku")
-    result = await item_service.get_by_sku(sku)
+    result = await item_service.get_by_sku(sku, user_id=user_id)
     log_entity("item", result.id)
     return cast("ItemResponse", result)
 
@@ -94,11 +90,12 @@ async def get_item_by_sku(
 )
 async def create_item(
     item: ItemCreate = Body(...),
+    user_id: uuid.UUID = Depends(require_current_user_id),
     item_service: ItemService = Depends(get_item_service),
 ) -> ItemResponse:
     """Create a new item."""
     log_action("create")
-    result = await item_service.create(item)
+    result = await item_service.create(item, user_id=user_id)
     log_entity("item", result.id)
     return cast("ItemResponse", result)
 
@@ -111,12 +108,13 @@ async def create_item(
 async def update_item(
     item_id: uuid.UUID,
     item: ItemUpdate = Body(...),
+    user_id: uuid.UUID = Depends(require_current_user_id),
     item_service: ItemService = Depends(get_item_service),
 ) -> ItemResponse:
     """Update an existing item."""
     log_action("update")
     log_entity("item", item_id)
-    return cast("ItemResponse", await item_service.update(item_id, item))
+    return cast("ItemResponse", await item_service.update(item_id, item, user_id=user_id))
 
 
 @items_router.delete(
@@ -126,9 +124,10 @@ async def update_item(
 )
 async def delete_item(
     item_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_current_user_id),
     item_service: ItemService = Depends(get_item_service),
 ) -> None:
     """Delete an item by ID."""
     log_action("delete")
     log_entity("item", item_id)
-    await item_service.delete(item_id)
+    await item_service.delete(item_id, user_id=user_id)

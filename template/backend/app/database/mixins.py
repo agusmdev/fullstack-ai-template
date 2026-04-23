@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -26,15 +25,6 @@ class JSONUpdatesMixing:
 
 class OrmBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
-
-class StrEnum(str, Enum):
-    def __str__(self) -> str:
-        return str.__str__(self)
-
-    @classmethod
-    def list(cls) -> list[str]:
-        return [c.value for c in cls]
 
 
 class TimestampOrmBaseModel(OrmBaseModel):

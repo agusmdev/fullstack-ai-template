@@ -2,7 +2,6 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.dependencies import get_db_session, get_engine, get_repository

@@ -268,7 +268,7 @@ def init(
     success, message, modified_files, post_init_messages = init_project(
         project_name=normalized_name,
         target_dir=project_path,
-        force=force or dry_run,
+        force=force,
         git_init=git_init,
         install_backend=install_deps,
         install_frontend=install_deps,

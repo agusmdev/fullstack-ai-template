@@ -1,6 +1,5 @@
 """Tests for UserFilter."""
 
-import pytest
 
 from app.user.filters import UserFilter
 from app.user.models import User

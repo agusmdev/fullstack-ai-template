@@ -1,3 +1,10 @@
+export interface ItemsParams {
+  page?: number
+  size?: number
+  /** Sent to the API as `name__ilike` for case-insensitive substring match */
+  name?: string
+}
+
 export interface Item {
   id: string
   created_at: string
@@ -14,4 +21,14 @@ export interface ItemsResponse {
   page?: number
   size?: number
   pages?: number
+}
+
+export interface CreateItemData {
+  name: string
+  description?: string
+}
+
+export interface UpdateItemData {
+  name?: string
+  description?: string
 }

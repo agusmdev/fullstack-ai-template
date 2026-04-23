@@ -5,10 +5,12 @@ import uuid
 import loguru
 from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.responses import RedirectResponse
-from fastapi.security import HTTPAuthorizationCredentials
 
 from app.core.config import settings
-from app.core.permissions.auth import AuthenticatedUser
+from app.user.auth.exceptions import (
+    OAuthUserPasswordResetError,
+)
+from app.user.auth.permissions import AuthenticatedUser
 from app.user.auth.schemas import (
     EmailVerificationConfirm,
     EmailVerificationConfirmResponse,
@@ -24,6 +26,9 @@ from app.user.auth.schemas import (
 from app.user.auth.service import AuthService
 from app.user.dependencies import get_auth_service
 from app.user.schemas import UserRegister
+
+# Explicit allowlist — reject unknown providers before hitting the service layer
+_ALLOWED_OAUTH_PROVIDERS: frozenset[str] = frozenset({"google"})
 
 auth_router = APIRouter()
 
@@ -58,11 +63,11 @@ async def register_user(
     status_code=status.HTTP_200_OK,
 )
 async def logout_user(
-    http_auth: HTTPAuthorizationCredentials = Depends(AuthenticatedUser.http_auth),
+    session_id: str = Depends(AuthenticatedUser.current_session_id),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> LogoutResponse:
     """Logout the current user by invalidating their session."""
-    await auth_service.logout(http_auth.credentials)
+    await auth_service.logout(session_id)
     return LogoutResponse()
 
 
@@ -73,13 +78,10 @@ async def logout_user(
 )
 async def logout_all_devices(
     user_id: uuid.UUID = Depends(AuthenticatedUser.current_user_id),
-    http_auth: HTTPAuthorizationCredentials = Depends(AuthenticatedUser.http_auth),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> LogoutResponse:
     """Logout from all devices by invalidating all sessions for the user."""
-    # First verify the current session is valid
-    await auth_service.check_session(http_auth.credentials)
-    await auth_service.logout_all(str(user_id))
+    await auth_service.logout_all(user_id)
     return LogoutResponse(message="Successfully logged out from all devices")
 
 
@@ -92,24 +94,16 @@ async def oauth_callback(
     auth_service: AuthService = Depends(get_auth_service),
     callback: OAuthCallback = Query(...),
 ) -> RedirectResponse:
-    try:
-        session = await auth_service.oauth_login(
-            provider_name=provider, payload=callback
-        )
-
+    if provider not in _ALLOWED_OAUTH_PROVIDERS:
         return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/oauth/callback?session={session.id}",
+            url=f"{settings.FRONTEND_URL}/oauth/error?error=unsupported_provider",
             status_code=status.HTTP_302_FOUND,
         )
-    # TODO: Check exceptions
-    except Exception as e:
-        loguru.logger.exception(e)
-
-        query_params = f"error={str(e)}"
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/oauth/error?{query_params}",
-            status_code=status.HTTP_302_FOUND,
-        )
+    session = await auth_service.oauth_login(provider_name=provider, payload=callback)
+    return RedirectResponse(
+        url=f"{settings.FRONTEND_URL}/oauth/callback?session={session.id}",
+        status_code=status.HTTP_302_FOUND,
+    )
 
 
 # Password Reset Endpoints
@@ -130,13 +124,15 @@ async def request_password_reset(
     Always returns success to prevent email enumeration attacks.
     If the email exists and is not an OAuth-only account, a reset token will be generated.
     """
-    token = await auth_service.initiate_password_reset(request.email)
+    try:
+        token = await auth_service.initiate_password_reset(request.email)
+    except OAuthUserPasswordResetError:
+        # Treat OAuth-only accounts the same as missing users to prevent enumeration
+        return PasswordResetResponse()
     if token:
         # TODO: Send email with reset link containing the token
         # Example: send_password_reset_email(request.email, token)
-        loguru.logger.info(
-            f"Password reset token generated (would be sent via email): {token}"
-        )
+        loguru.logger.debug("Password reset token generated — implement email delivery")
     return PasswordResetResponse()
 
 
@@ -178,9 +174,8 @@ async def request_email_verification(
     token = await auth_service.initiate_email_verification(user_id)
     # TODO: Send email with verification link containing the token
     # Example: send_email_verification_email(user.email, token)
-    loguru.logger.info(
-        f"Email verification token generated (would be sent via email): {token}"
-    )
+    loguru.logger.debug("Email verification token generated — implement email delivery")
+    del token  # token will be used when email delivery is implemented
     return EmailVerificationResponse()
 
 

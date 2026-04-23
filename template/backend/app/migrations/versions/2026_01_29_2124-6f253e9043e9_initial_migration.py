@@ -5,10 +5,9 @@ Revises:
 Create Date: 2026-01-29 21:24:00.000000
 
 """
-from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -25,25 +24,23 @@ def upgrade() -> None:
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('sku', sa.String(), nullable=False),
-        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('sku', sa.String(100), nullable=True, unique=True),
+        sa.Column('name', sa.String(255), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('quantity', sa.Integer(), nullable=False),
-        sa.Column('is_deleted', sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('sku'),
     )
     op.create_index('item_created_at_idx', 'item', ['created_at'])
     op.create_index('item_sku_idx', 'item', ['sku'])
     op.create_index('item_updated_at_idx', 'item', ['updated_at'])
-    
+
     op.create_table(
         'user',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('email', sa.String(), nullable=False),
-        sa.Column('display_name', sa.String(), nullable=False),
+        sa.Column('display_name', sa.String(), server_default='', nullable=False),
         sa.Column('is_active', sa.Boolean(), nullable=False),
-        sa.Column('password', sa.String(), nullable=False),
+        sa.Column('password', sa.String(), nullable=True),
         sa.Column('email_verified_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
@@ -54,48 +51,47 @@ def upgrade() -> None:
     op.create_index('user_display_name_idx', 'user', ['display_name'])
     op.create_index('user_email_idx', 'user', ['email'])
     op.create_index('user_updated_at_idx', 'user', ['updated_at'])
-    
+
     op.create_table(
         'email_verification_token',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('id', sa.String(), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('token', sa.String(), nullable=False),
-        sa.Column('expires_at', sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column('expires_at', sa.TIMESTAMP(), nullable=False),
+        sa.Column('used_at', sa.TIMESTAMP(), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['user_id'], ['user'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('email_verification_token_created_at_idx', 'email_verification_token', ['created_at'])
     op.create_index('email_verification_token_expires_at_idx', 'email_verification_token', ['expires_at'])
     op.create_index('email_verification_token_updated_at_idx', 'email_verification_token', ['updated_at'])
     op.create_index('email_verification_token_user_id_idx', 'email_verification_token', ['user_id'])
-    
+
     op.create_table(
         'password_reset_token',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('id', sa.String(), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('token', sa.String(), nullable=False),
-        sa.Column('expires_at', sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column('expires_at', sa.TIMESTAMP(), nullable=False),
+        sa.Column('used_at', sa.TIMESTAMP(), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['user_id'], ['user'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('password_reset_token_created_at_idx', 'password_reset_token', ['created_at'])
     op.create_index('password_reset_token_expires_at_idx', 'password_reset_token', ['expires_at'])
     op.create_index('password_reset_token_updated_at_idx', 'password_reset_token', ['updated_at'])
     op.create_index('password_reset_token_user_id_idx', 'password_reset_token', ['user_id'])
-    
+
     op.create_table(
         'session',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('id', sa.String(), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('token', sa.String(), nullable=False),
-        sa.Column('expires_at', sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column('expires_at', sa.TIMESTAMP(), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['user_id'], ['user'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('session_created_at_idx', 'session', ['created_at'])
@@ -112,24 +108,25 @@ def downgrade() -> None:
     op.drop_index('session_expires_at_idx', table_name='session')
     op.drop_index('session_created_at_idx', table_name='session')
     op.drop_table('session')
-    
+
     op.drop_index('password_reset_token_user_id_idx', table_name='password_reset_token')
     op.drop_index('password_reset_token_updated_at_idx', table_name='password_reset_token')
     op.drop_index('password_reset_token_expires_at_idx', table_name='password_reset_token')
     op.drop_index('password_reset_token_created_at_idx', table_name='password_reset_token')
     op.drop_table('password_reset_token')
-    
+
     op.drop_index('email_verification_token_user_id_idx', table_name='email_verification_token')
     op.drop_index('email_verification_token_updated_at_idx', table_name='email_verification_token')
     op.drop_index('email_verification_token_expires_at_idx', table_name='email_verification_token')
     op.drop_index('email_verification_token_created_at_idx', table_name='email_verification_token')
     op.drop_table('email_verification_token')
-    
+
     op.drop_index('user_updated_at_idx', table_name='user')
     op.drop_index('user_email_idx', table_name='user')
     op.drop_index('user_display_name_idx', table_name='user')
+    op.drop_index('user_created_at_idx', table_name='user')
     op.drop_table('user')
-    
+
     op.drop_index('item_updated_at_idx', table_name='item')
     op.drop_index('item_sku_idx', table_name='item')
     op.drop_index('item_created_at_idx', table_name='item')

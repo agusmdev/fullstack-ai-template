@@ -1,21 +1,20 @@
+import asyncio
 import secrets
 import uuid
 from datetime import datetime, timedelta
 from typing import cast
 
-import loguru
 from requests_oauthlib import OAuth2Session
 
 from app.core.config import settings
-from app.services.base_crud_service import BaseService
 from app.user.auth.exceptions import (
     EmailAlreadyVerifiedError,
     InvalidTokenError,
     OAuthUserPasswordResetError,
     SessionExpiredError,
+    UnsupportedOAuthProviderError,
     UserNotFoundError,
 )
-from app.user.auth.models import Session
 from app.user.auth.repository import (
     EmailVerificationTokenRepository,
     PasswordResetTokenRepository,
@@ -39,7 +38,11 @@ EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS = 24
 
 
 class GoogleOAuth:
-    def callback(self, callback: OAuthCallback) -> OAuthUser:
+    async def callback(self, callback: OAuthCallback) -> OAuthUser:
+        """Exchange OAuth callback code for user info. Network I/O runs in a thread pool."""
+        return await asyncio.to_thread(self._fetch_user, callback)
+
+    def _fetch_user(self, callback: OAuthCallback) -> OAuthUser:
         google = OAuth2Session(
             client_id=settings.GOOGLE_CLIENT_ID,
             redirect_uri=settings.GOOGLE_REDIRECT_URI,
@@ -53,31 +56,27 @@ class GoogleOAuth:
             code=callback.code,
         )
 
-        user_info_response = google.get(settings.GOOGLE_USER_INFO_URL)
-        user_info = user_info_response.json()
-
-        user_email = user_info.get("email")
-        user_name = user_info.get("name")
+        user_info = google.get(settings.GOOGLE_USER_INFO_URL).json()
 
         return OAuthUser(
             token=token["access_token"],
-            email=user_email,
-            display_name=user_name,
+            email=user_info.get("email"),
+            display_name=user_info.get("name"),
         )
 
 
-class AuthService(BaseService[Session]):
+class AuthService:
     repo: SessionRepository
     user_service: UserService
-    password_reset_repo: PasswordResetTokenRepository | None
-    email_verification_repo: EmailVerificationTokenRepository | None
+    password_reset_repo: PasswordResetTokenRepository
+    email_verification_repo: EmailVerificationTokenRepository
 
     def __init__(
         self,
         user_service: UserService,
         repo: SessionRepository,
-        password_reset_repo: PasswordResetTokenRepository | None = None,
-        email_verification_repo: EmailVerificationTokenRepository | None = None,
+        password_reset_repo: PasswordResetTokenRepository,
+        email_verification_repo: EmailVerificationTokenRepository,
     ) -> None:
         self.user_service = user_service
         self.repo = repo
@@ -89,7 +88,7 @@ class AuthService(BaseService[Session]):
         }
 
     @staticmethod
-    def session_id() -> str:
+    def generate_session_id() -> str:
         return f"s_{secrets.token_urlsafe(64)}"
 
     @staticmethod
@@ -97,21 +96,23 @@ class AuthService(BaseService[Session]):
         """Generate a secure random token with a prefix."""
         return f"{prefix}_{secrets.token_urlsafe(32)}"
 
-    async def authenticate(self, email: str, password: str) -> SessionResponse:
-        user = await self.user_service.authenticate(email=email, password=password)
-
+    async def _create_session_for_user(self, user_id: uuid.UUID) -> SessionResponse:
+        """Create a new session for the given user and return the session response."""
         created_session = await self.repo.create(
             SessionCreate(
-                id=self.session_id(),
-                user_id=user.id,
+                id=self.generate_session_id(),
+                user_id=user_id,
                 expires_at=datetime.now() + timedelta(days=365),
             )
         )
-
         return SessionResponse(
             id=created_session.id,
             expires_at=created_session.expires_at,
         )
+
+    async def authenticate(self, email: str, password: str) -> SessionResponse:
+        user = await self.user_service.authenticate(email=email, password=password)
+        return await self._create_session_for_user(user.id)
 
     async def register(self, new_user: UserRegister) -> SessionResponse:
         await self.user_service.register(user=new_user)
@@ -124,52 +125,36 @@ class AuthService(BaseService[Session]):
     ) -> SessionResponse:
         provider = self.providers.get(provider_name)
         if not provider:
-            raise ValueError("Unsupported provider")
+            raise UnsupportedOAuthProviderError()
 
-        oauth_user = provider.callback(payload)
-        user = await self.user_service.get_or_create(
+        oauth_user = await provider.callback(payload)
+        user = await self.user_service.find_or_create_by_email(
             oauth_user.email,
-            filter_field="email",
-            create_fields=UserCreate(
+            UserCreate(
                 email=oauth_user.email,
                 display_name=oauth_user.display_name or "",
             ),
         )
+        return await self._create_session_for_user(user.id)
 
-        created_session = await self.repo.create(
-            SessionCreate(
-                id=self.session_id(),
-                user_id=user.id,
-                expires_at=datetime.now() + timedelta(days=365),
-            )
-        )
-
-        return SessionResponse(
-            id=created_session.id,
-            expires_at=created_session.expires_at,
-        )
-
-    async def check_session(self, session_id: str) -> UserResponse:
+    async def validate_session(self, session_id: str) -> UserResponse:
         session = cast(
             "UserSessionResponse",
-            await self.repo.get(
-                session_id, response_model=UserSessionResponse, raise_error=True
+            await self.repo.get_by_field(
+                "id", session_id, response_model=UserSessionResponse, raise_error=True
             ),
         )
-        if session is None:
-            raise SessionExpiredError()
         if session.expires_at < datetime.now():
             raise SessionExpiredError()
-        # Return the user from the session
         return session.user
 
     async def logout(self, session_id: str) -> None:
         """Invalidate a session by deleting it."""
-        await self.repo.delete_by_id(session_id)
+        await self.repo.delete_session(session_id)
 
-    async def logout_all(self, user_id: str) -> None:
+    async def logout_all(self, user_id: uuid.UUID) -> None:
         """Invalidate all sessions for a user (logout from all devices)."""
-        await self.repo.delete_all_for_user(uuid.UUID(user_id))
+        await self.repo.delete_all_for_user(user_id)
 
     # Password Reset Methods
 
@@ -181,28 +166,16 @@ class AuthService(BaseService[Session]):
         Returns None if user not found (to prevent email enumeration).
         Raises OAuthUserPasswordResetError if user is OAuth-only.
         """
-        if not self.password_reset_repo:
-            raise RuntimeError("Password reset repository not configured")
-
-        # Get user by email
-        user = await self.user_service.get(
-            email, filter_field="email", raise_error=False
-        )
+        user = await self.user_service.get_by_field("email", email, raise_error=False)
         if not user:
-            # Return None silently to prevent email enumeration
-            loguru.logger.info(
-                f"Password reset requested for non-existent email: {email}"
-            )
+            # Prevent email enumeration: return None rather than raising
             return None
 
-        # Check if user has a password (not OAuth-only)
         if user.password is None:
             raise OAuthUserPasswordResetError()
 
-        # Invalidate any existing tokens for this user
         await self.password_reset_repo.invalidate_user_tokens(user.id)
 
-        # Create new token
         token = self.generate_token("pr")
         await self.password_reset_repo.create(
             PasswordResetTokenCreate(
@@ -213,7 +186,6 @@ class AuthService(BaseService[Session]):
             )
         )
 
-        loguru.logger.info(f"Password reset token created for user: {user.id}")
         return token
 
     async def reset_password(self, token: str, new_password: str) -> None:
@@ -222,24 +194,15 @@ class AuthService(BaseService[Session]):
 
         Raises InvalidTokenError if token is invalid or expired.
         """
-        if not self.password_reset_repo:
-            raise RuntimeError("Password reset repository not configured")
-
-        # Validate token
         token_record = await self.password_reset_repo.get_valid_token(token)
         if not token_record:
             raise InvalidTokenError()
 
-        # Update user password
         await self.user_service.update_password(token_record.user_id, new_password)
-
-        # Mark token as used
         await self.password_reset_repo.mark_as_used(token)
-
-        # Optionally: logout all sessions for security
+        # Invalidate all sessions after password change as a security measure
         await self.repo.delete_all_for_user(token_record.user_id)
 
-        loguru.logger.info(f"Password reset completed for user: {token_record.user_id}")
 
     # Email Verification Methods
 
@@ -251,22 +214,14 @@ class AuthService(BaseService[Session]):
         Raises UserNotFoundError if user not found.
         Raises EmailAlreadyVerifiedError if already verified.
         """
-        if not self.email_verification_repo:
-            raise RuntimeError("Email verification repository not configured")
-
-        # Get user
-        user = await self.user_service.get(user_id, raise_error=False)
+        user = await self.user_service.get_by_id(user_id, raise_error=False)
         if not user:
             raise UserNotFoundError()
 
-        # Check if already verified
         if user.email_verified_at is not None:
             raise EmailAlreadyVerifiedError()
 
-        # Invalidate any existing tokens
         await self.email_verification_repo.invalidate_user_tokens(user_id)
-
-        # Create new token
         token = self.generate_token("ev")
         await self.email_verification_repo.create(
             EmailVerificationTokenCreate(
@@ -277,7 +232,6 @@ class AuthService(BaseService[Session]):
             )
         )
 
-        loguru.logger.info(f"Email verification token created for user: {user_id}")
         return token
 
     async def verify_email(self, token: str) -> None:
@@ -286,18 +240,10 @@ class AuthService(BaseService[Session]):
 
         Raises InvalidTokenError if token is invalid or expired.
         """
-        if not self.email_verification_repo:
-            raise RuntimeError("Email verification repository not configured")
-
-        # Validate token
         token_record = await self.email_verification_repo.get_valid_token(token)
         if not token_record:
             raise InvalidTokenError()
 
-        # Mark email as verified
         await self.user_service.mark_email_verified(token_record.user_id)
-
-        # Mark token as used
         await self.email_verification_repo.mark_as_used(token)
 
-        loguru.logger.info(f"Email verified for user: {token_record.user_id}")

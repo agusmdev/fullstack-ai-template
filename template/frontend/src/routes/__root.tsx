@@ -1,33 +1,31 @@
+import React, { useEffect, useState } from 'react'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
-import Layout from '../components/Layout'
-import { ErrorBoundary } from '../components/ErrorBoundary'
-import { Toaster } from '../components/ui/sonner'
-import { AuthProvider } from '../contexts/AuthContext'
-import { initWebVitals } from '../lib/web-vitals'
-
-import appCss from '../styles/app.css?url'
-
-// Initialize Web Vitals tracking
-if (typeof window !== 'undefined') {
-  initWebVitals()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyDev<P = any>(factory: () => Promise<React.ComponentType<P>>): React.ComponentType<P> {
+  return import.meta.env.DEV
+    ? React.lazy(() => factory().then(c => ({ default: c })))
+    : (() => null) as React.ComponentType<P>
 }
 
-// Create a QueryClient instance
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000, // 1 minute
-      gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-})
+const ReactQueryDevtools = lazyDev(
+  () => import('@tanstack/react-query-devtools').then(m => m.ReactQueryDevtools)
+)
+const TanStackDevtools = lazyDev(
+  () => import('@tanstack/react-devtools').then(m => m.TanStackDevtools)
+)
+const TanStackRouterDevtoolsPanel = lazyDev(
+  () => import('@tanstack/react-router-devtools').then(m => m.TanStackRouterDevtoolsPanel)
+)
+
+import { Layout } from '@/components/Layout'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { Toaster } from '@/components/ui/sonner'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { initWebVitals } from '@/lib/web-vitals'
+
+import appCss from '@/styles/app.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -54,7 +52,22 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument() {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000, // 1 minute
+        gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+    },
+  }))
+
+  useEffect(() => {
+    initWebVitals()
+  }, [])
+
   return (
     <html lang="en">
       <head>
@@ -64,23 +77,23 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <AuthProvider queryClient={queryClient}>
             <ErrorBoundary>
-              <Layout>
-                {children}
-              </Layout>
+              <Layout />
             </ErrorBoundary>
             <Toaster />
-            <ReactQueryDevtools initialIsOpen={false} />
-            <TanStackDevtools
-              config={{
-                position: 'bottom-right',
-              }}
-              plugins={[
-                {
-                  name: 'Tanstack Router',
-                  render: <TanStackRouterDevtoolsPanel />,
-                },
-              ]}
-            />
+            <React.Suspense>
+              <ReactQueryDevtools initialIsOpen={false} />
+              <TanStackDevtools
+                config={{
+                  position: 'bottom-right',
+                }}
+                plugins={[
+                  {
+                    name: 'Tanstack Router',
+                    render: <TanStackRouterDevtoolsPanel />,
+                  },
+                ]}
+              />
+            </React.Suspense>
           </AuthProvider>
         </QueryClientProvider>
         <Scripts />

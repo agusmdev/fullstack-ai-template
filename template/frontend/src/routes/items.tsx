@@ -1,6 +1,6 @@
-import { createFileRoute, Navigate } from '@tanstack/react-router'
-import { useAuth } from '@/contexts/AuthContext'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useItems } from '@/hooks/useItems'
+import { isAuthenticated } from '@/lib/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,7 +8,7 @@ import { CreateItemDialog } from '@/components/CreateItemDialog'
 import { EditItemDialog } from '@/components/EditItemDialog'
 import { DeleteItemDialog } from '@/components/DeleteItemDialog'
 import { Pencil, Trash2, ChevronLeft, ChevronRight, Search } from 'lucide-react'
-import { useState, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useDebounce } from '@/hooks/useDebounce'
 
 function formatDate(dateString: string | null | undefined): string {
@@ -19,27 +19,35 @@ function formatDate(dateString: string | null | undefined): string {
 }
 
 export const Route = createFileRoute('/items')({
+  beforeLoad: () => {
+    if (!isAuthenticated()) {
+      throw redirect({ to: '/login', search: { redirect: '/items' } })
+    }
+  },
   component: Items,
 })
 
+function PageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background pt-20">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function Items() {
-  const { isAuthenticated } = useAuth()
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const pageSize = 9
   const debouncedSearchTerm = useDebounce(searchInput, 300)
 
-  // Only fetch items when authenticated
   const { data, isLoading, isError, error } = useItems({
     page,
     size: pageSize,
     name: debouncedSearchTerm || undefined,
-    enabled: isAuthenticated,
   })
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" search={{ redirect: '/items' }} />
-  }
 
   const handleClearSearch = useCallback(() => {
     setSearchInput('')
@@ -48,26 +56,22 @@ function Items() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background pt-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
-          <p className="text-muted-foreground">Loading items...</p>
-        </div>
-      </div>
+      <PageShell>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
+        <p className="text-muted-foreground">Loading items...</p>
+      </PageShell>
     )
   }
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-background pt-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
-          <div className="bg-destructive/10 text-destructive p-4 rounded-md border border-destructive/20">
-            <p className="font-semibold">Error loading items</p>
-            <p className="text-sm">{error instanceof Error ? error.message : 'An unknown error occurred'}</p>
-          </div>
+      <PageShell>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
+        <div className="bg-destructive/10 text-destructive p-4 rounded-md border border-destructive/20">
+          <p className="font-semibold">Error loading items</p>
+          <p className="text-sm">{error instanceof Error ? error.message : 'An unknown error occurred'}</p>
         </div>
-      </div>
+      </PageShell>
     )
   }
 
@@ -78,10 +82,9 @@ function Items() {
   const hasPrevPage = page > 1
 
   return (
-    <div className="min-h-screen bg-background pt-20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <PageShell>
         <div role="status" aria-live="polite" className="sr-only">
-          {isLoading ? 'Loading items...' : `Showing ${items.length} of ${total} items`}
+          {`Showing ${items.length} of ${total} items`}
         </div>
 
         <div className="flex justify-between items-center mb-6">
@@ -91,7 +94,7 @@ function Items() {
               {total === 0 ? 'No items found' : `${total} ${total === 1 ? 'item' : 'items'} total`}
             </p>
           </div>
-          <CreateItemDialog />
+          <CreateItemDialog trigger={<Button>Create Item</Button>} />
         </div>
 
         <div className="flex gap-2 mb-6">
@@ -125,7 +128,7 @@ function Items() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
-              <Card key={item.id}>
+              <Card key={item.id} data-testid="item-card">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -135,26 +138,32 @@ function Items() {
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <EditItemDialog item={item}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label={`Edit ${item.name}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </EditItemDialog>
-                      <DeleteItemDialog item={item}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          aria-label={`Delete ${item.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </DeleteItemDialog>
+                      <EditItemDialog
+                        item={item}
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={`Edit ${item.name}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      <DeleteItemDialog
+                        item={item}
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            aria-label={`Delete ${item.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
                     </div>
                   </div>
                 </CardHeader>
@@ -200,7 +209,6 @@ function Items() {
             </Button>
           </div>
         )}
-      </div>
-    </div>
+    </PageShell>
   )
 }

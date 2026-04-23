@@ -1,6 +1,8 @@
-import logging
+from __future__ import annotations
+
 from collections.abc import Sequence
 
+from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import inspect
 from sqlalchemy.orm import (
@@ -14,8 +16,6 @@ from .ast import ASTNode, LoadOnlyNode, RelationshipLoadNode, safe_getattr
 from .code_generator import QueryOptionGenerator
 from .pydantic_fields import PydanticGraph
 
-logger = logging.getLogger(__name__)
-
 
 class StatementGenerator:
     """Generates SQLAlchemy select statements based on Pydantic models."""
@@ -24,13 +24,12 @@ class StatementGenerator:
         self.model = model
         self.graph = graph
 
-    def generate_query(self) -> Sequence[Load | None]:
-        """Generate the SQLAlchemy select statement."""
+    def generate_load_options(self) -> Sequence[Load]:
+        """Generate SQLAlchemy ORM load options for this model/schema combination."""
         ast = self._build_ast()
         generator = QueryOptionGenerator()
 
-        options = [generator.visit(node) for node in ast.children]
-        return options
+        return [generator.visit(node) for node in ast.children]
 
     def _build_ast(self) -> ASTNode:
         return ASTNode(
@@ -65,10 +64,11 @@ class StatementGenerator:
     ) -> Sequence[ASTNode]:
         columns, _ = self._categorize_columns(model, graph.columns)
 
-        return [
-            LoadOnlyNode(model, [], columns),
-            *self._build_relationship_nodes(model, graph),
-        ]
+        nodes: list[ASTNode] = []
+        if columns:
+            nodes.append(LoadOnlyNode(model, [], columns))
+        nodes.extend(self._build_relationship_nodes(model, graph))
+        return nodes
 
     def _get_orm_relation(
         self, model: type[DeclarativeBase], relationship_name: str
@@ -78,10 +78,10 @@ class StatementGenerator:
             mapper = inspect(model)
             relationship_prop = mapper.relationships[relationship_name]
             return relationship_prop.mapper.class_
-        except KeyError:
+        except KeyError as exc:
             raise AttributeError(
                 f"Relationship `{relationship_name}` not found in model {model}"
-            ) from None
+            ) from exc
 
     def _categorize_columns(
         self, model: type[DeclarativeBase], columns: list[str]
@@ -120,9 +120,7 @@ class StatementGenerator:
 
 def select_from_pydantic(
     model: type[DeclarativeBase], schema: type[BaseModel]
-) -> Sequence[Load | None]:
+) -> Sequence[Load]:
     graph = PydanticGraph.from_model(schema)
     generator = StatementGenerator(graph, model)
-    query = generator.generate_query()
-
-    return query
+    return generator.generate_load_options()

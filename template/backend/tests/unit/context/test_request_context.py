@@ -1,19 +1,40 @@
 """Tests for request context module."""
 
-import threading
-from unittest.mock import patch
 
-import pytest
 
 from app.context import (
     RequestContext,
-    _request_context_cache,
     _request_id_ctx,
     clear_request_context,
-    fork_request_context,
-    get_request_context,
+    ensure_request_context,
+    register_request_context,
     req_or_thread_id,
+    set_request_id,
 )
+
+
+class TestSetRequestId:
+    """Tests for set_request_id public function."""
+
+    def test_sets_request_id_in_context(self):
+        """Test that set_request_id updates the ContextVar."""
+        test_id = "public-api-request-id"
+        token = _request_id_ctx.set("before")
+        try:
+            set_request_id(test_id)
+            assert req_or_thread_id() == test_id
+        finally:
+            _request_id_ctx.reset(token)
+
+    def test_set_request_id_is_retrievable_via_req_or_thread_id(self):
+        """Test the public API integrates with req_or_thread_id."""
+        test_id = "integration-test-id"
+        token = _request_id_ctx.set("placeholder")
+        try:
+            set_request_id(test_id)
+            assert req_or_thread_id() == test_id
+        finally:
+            _request_id_ctx.reset(token)
 
 
 class TestReqOrThreadId:
@@ -55,14 +76,14 @@ class TestRequestContext:
 
 
 class TestGetRequestContext:
-    """Tests for get_request_context function."""
+    """Tests for ensure_request_context function."""
 
     def test_creates_new_context_if_not_exists(self):
         """Test creates new context if not in cache."""
         # Clear any existing context
         clear_request_context()
 
-        ctx = get_request_context()
+        ctx = ensure_request_context()
 
         assert isinstance(ctx, RequestContext)
         assert ctx.user_id == "No user id"
@@ -71,9 +92,9 @@ class TestGetRequestContext:
         """Test returns existing context from cache."""
         clear_request_context()
 
-        ctx1 = get_request_context()
+        ctx1 = ensure_request_context()
         ctx1.user_id = "modified-user"
-        ctx2 = get_request_context()
+        ctx2 = ensure_request_context()
 
         assert ctx1 is ctx2
         assert ctx2.user_id == "modified-user"
@@ -82,14 +103,14 @@ class TestGetRequestContext:
 
 
 class TestForkRequestContext:
-    """Tests for fork_request_context function."""
+    """Tests for register_request_context function."""
 
     def test_fork_creates_new_if_not_exists(self):
         """Test fork creates new context if not in cache."""
         clear_request_context()
 
         new_ctx = RequestContext(user_id="forked-user", email="fork@example.com")
-        result = fork_request_context(new_ctx)
+        result = register_request_context(new_ctx)
 
         assert result.user_id == "forked-user"
         assert result.email == "fork@example.com"
@@ -101,12 +122,12 @@ class TestForkRequestContext:
         clear_request_context()
 
         # First, create an existing context
-        existing = get_request_context()
+        existing = ensure_request_context()
         existing.user_id = "existing-user"
 
         # Now try to fork
         new_ctx = RequestContext(user_id="new-user")
-        result = fork_request_context(new_ctx)
+        result = register_request_context(new_ctx)
 
         # Should return existing, not new
         assert result.user_id == "existing-user"
@@ -120,14 +141,14 @@ class TestClearRequestContext:
     def test_clears_context_from_cache(self):
         """Test that context is removed from cache."""
         # Create a context
-        ctx = get_request_context()
+        ctx = ensure_request_context()
         ctx.user_id = "to-be-cleared"
 
         # Clear it
         clear_request_context()
 
         # Getting context now should create a new one
-        new_ctx = get_request_context()
+        new_ctx = ensure_request_context()
         assert new_ctx.user_id == "No user id"
 
         clear_request_context()

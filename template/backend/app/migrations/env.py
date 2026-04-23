@@ -5,17 +5,21 @@ from sqlalchemy import engine_from_config, pool
 import alembic_postgresql_enum  # noqa
 
 from app.core.config import settings
-from app.main import create_app  # noqa
-from app.database.base import Base
+from app.database.base import Base, _convert_url_to_sync
+
+# Import all model modules so their tables are registered on Base.metadata.
+# This is an explicit registry — add new model modules here when created.
+import app.user.models  # noqa: F401, E402
+import app.user.auth.models  # noqa: F401, E402
+import app.modules.items.models  # noqa: F401, E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-# Use sync URL for Alembic migrations
-alembic_url = settings.ALEMBIC_DATABASE_URL or settings.DB_URL
+# Derive sync URL from DB_URL for Alembic migrations
+alembic_url = _convert_url_to_sync(settings.DB_URL)
 config.set_main_option("sqlalchemy.url", alembic_url)
-print(f"Alembic using URL: {alembic_url}")  # Debug log
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -65,11 +69,18 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # PostgreSQL-specific connect args for migration safety
+    extra_kwargs = {}
+    if alembic_url.startswith("postgresql"):
+        extra_kwargs["connect_args"] = {
+            "options": "-c lock_timeout=10000 -c statement_timeout=15000",
+        }
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        connect_args={"options": "-c lock_timeout=10000 -c statement_timeout=15000"},
+        **extra_kwargs,
     )
 
     with connectable.connect() as connection:

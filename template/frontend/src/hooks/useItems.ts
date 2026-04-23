@@ -1,58 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { API } from '@/lib/api-endpoints'
+import { API, buildItemsListUrl } from '@/lib/api-endpoints'
 import { queryKeys } from '@/lib/query-keys'
-import type { Item, ItemsResponse } from '@/types/item'
+import type { Item, ItemsParams, ItemsResponse, CreateItemData, UpdateItemData } from '@/types/item'
 
-export interface ItemsParams {
-  page?: number
-  size?: number
-  name?: string
-  enabled?: boolean
-}
-
-export function useItems(params?: ItemsParams) {
-  const queryParams = new URLSearchParams()
-
-  if (params?.page) {
-    queryParams.append('page', params.page.toString())
-  }
-  if (params?.size) {
-    queryParams.append('size', params.size.toString())
-  }
-  if (params?.name) {
-    queryParams.append('name__ilike', params.name)
-  }
-
-  const queryString = queryParams.toString()
-  const url = queryString ? `${API.ITEMS.LIST}?${queryString}` : API.ITEMS.LIST
-
+export function useItems(params?: ItemsParams, enabled = true) {
   return useQuery({
     queryKey: queryKeys.items.list(params),
-    queryFn: () => api.get<ItemsResponse>(url),
-    enabled: params?.enabled ?? true,
+    queryFn: () => api.get<ItemsResponse>(buildItemsListUrl(params)),
+    enabled,
   })
-}
-
-export interface CreateItemData {
-  name: string
-  description?: string
 }
 
 export function useCreateItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: CreateItemData) => api.post<Item>(API.ITEMS.LIST, data),
+    mutationFn: (data: CreateItemData) => api.post<Item>(API.ITEMS.CREATE, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
     },
   })
-}
-
-export interface UpdateItemData {
-  name?: string
-  description?: string
 }
 
 export function useUpdateItem(itemId: string) {
@@ -70,12 +38,12 @@ export function useDeleteItem(itemId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => api.delete<void>(API.ITEMS.DETAIL(itemId)),
+    mutationFn: () => api.delete(API.ITEMS.DETAIL(itemId)),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: queryKeys.items.all })
-      const previousItems = queryClient.getQueryData<ItemsResponse>(queryKeys.items.all)
+      const previousData = queryClient.getQueriesData<ItemsResponse>({ queryKey: queryKeys.items.all })
 
-      queryClient.setQueryData<ItemsResponse>(queryKeys.items.all, (old) => {
+      queryClient.setQueriesData<ItemsResponse>({ queryKey: queryKeys.items.all }, (old) => {
         if (!old) return old
         return {
           ...old,
@@ -84,11 +52,13 @@ export function useDeleteItem(itemId: string) {
         }
       })
 
-      return { previousItems }
+      return { previousData }
     },
     onError: (_error, _variables, context) => {
-      if (context?.previousItems) {
-        queryClient.setQueryData(queryKeys.items.all, context.previousItems)
+      if (context?.previousData) {
+        for (const [queryKey, data] of context.previousData) {
+          queryClient.setQueryData(queryKey, data)
+        }
       }
     },
     onSettled: () => {

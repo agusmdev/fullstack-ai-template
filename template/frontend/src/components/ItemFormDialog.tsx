@@ -22,16 +22,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Item } from '@/types/item'
-import { handleApiError } from '@/lib/error-handler'
-import { itemSchema, type ItemFormData } from '@/lib/schemas'
+import { toastApiError } from '@/lib/error-handler'
+import { itemSchema, type ItemFormData } from '@/lib/item-schemas'
 
-interface ItemFormDialogProps {
-  mode: 'create' | 'edit'
-  item?: Item
-  trigger: React.ReactNode
-  onSubmit: (data: ItemFormData) => Promise<void>
-  isPending: boolean
-}
+type ItemFormDialogProps =
+  | { mode: 'create'; trigger: React.ReactNode; onSubmit: (data: ItemFormData) => Promise<void>; isPending: boolean; item?: never }
+  | { mode: 'edit'; item: Item; trigger: React.ReactNode; onSubmit: (data: ItemFormData) => Promise<void>; isPending: boolean }
 
 export function ItemFormDialog({
   mode,
@@ -52,7 +48,9 @@ export function ItemFormDialog({
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen)
-    if (newOpen && mode === 'edit' && item) {
+    if (!newOpen) {
+      form.reset()
+    } else if (mode === 'edit' && item) {
       form.reset({
         name: item.name,
         description: item.description || '',
@@ -64,9 +62,8 @@ export function ItemFormDialog({
     try {
       await onSubmit(data)
       setOpen(false)
-      form.reset()
     } catch (error) {
-      handleApiError(
+      toastApiError(
         error,
         mode === 'create' ? 'Failed to create item' : 'Failed to update item'
       )
@@ -134,10 +131,7 @@ export function ItemFormDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setOpen(false)
-                  form.reset()
-                }}
+                onClick={() => handleOpenChange(false)}
               >
                 Cancel
               </Button>

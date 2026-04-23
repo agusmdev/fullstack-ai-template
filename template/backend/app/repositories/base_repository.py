@@ -1,17 +1,38 @@
 import abc
 import uuid
 from collections.abc import Sequence
-from typing import Any, TypeVar
+from dataclasses import dataclass, field
+from typing import Any, Literal, TypeVar, overload
 
 from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
 from pydantic import BaseModel
-from sqlalchemy import Selectable
+from sqlalchemy import Select, Selectable
 
 from app.database.base import Base
-from app.repositories.clauses import OnConflictClause, do_default_on_conflict
+from app.repositories.clauses import OnConflictClause, conflict_passthrough
 
 T = TypeVar("T", bound=Base)
+
+
+@dataclass
+class QueryOptions:
+    """Optional modifiers for get_all queries.
+
+    Attributes:
+        base_query: Optional SQLAlchemy Select statement to use as the query base.
+            When provided, the repository will use this as the starting point instead
+            of building a default SELECT from the model.
+        return_scalars: Whether to return scalar row objects (True) or full Row tuples.
+        response_model: Optional Pydantic model to map results into.
+        pagination_kwargs: Extra keyword arguments forwarded to fastapi_pagination.paginate().
+            Accepted keys include: ``unique`` (bool), ``transformer`` (callable).
+    """
+
+    base_query: Select[Any] | None = None
+    return_scalars: bool = True
+    response_model: type[BaseModel] | None = None
+    pagination_kwargs: dict[str, Any] = field(default_factory=dict)
 
 
 class BaseRepository[T: Base](abc.ABC):
@@ -22,12 +43,55 @@ class BaseRepository[T: Base](abc.ABC):
     """
 
     # READ operations
+    @overload
+    async def get(
+        self,
+        entity_id: uuid.UUID,
+        raise_error: Literal[True],
+        response_model: type[BaseModel] | None = None,
+    ) -> T: ...
+
+    @overload
+    async def get(
+        self,
+        entity_id: uuid.UUID,
+        raise_error: Literal[False],
+        response_model: type[BaseModel] | None = None,
+    ) -> T | None: ...
+
     @abc.abstractmethod
     async def get(
         self,
         entity_id: uuid.UUID,
         raise_error: bool = True,
-        filter_field: str = "id",
+        response_model: type[BaseModel] | None = None,
+    ) -> T | None:
+        raise NotImplementedError
+
+    @overload
+    async def get_by_field(
+        self,
+        field: str,
+        value: Any,
+        raise_error: Literal[True],
+        response_model: type[BaseModel] | None = None,
+    ) -> T: ...
+
+    @overload
+    async def get_by_field(
+        self,
+        field: str,
+        value: Any,
+        raise_error: Literal[False],
+        response_model: type[BaseModel] | None = None,
+    ) -> T | None: ...
+
+    @abc.abstractmethod
+    async def get_by_field(
+        self,
+        field: str,
+        value: Any,
+        raise_error: bool = True,
         response_model: type[BaseModel] | None = None,
     ) -> T | None:
         raise NotImplementedError
@@ -36,13 +100,17 @@ class BaseRepository[T: Base](abc.ABC):
     async def get_all(
         self,
         entity_filter: BaseFilterModel | None = None,
-        pagination_params: Params | None = None,
-        base_query: Any | None = None,
-        return_scalars: bool = True,
-        response_model: type[BaseModel] | None = None,
-        pagination_kwargs: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> list[T] | Page[T]:
+        options: QueryOptions | None = None,
+    ) -> list[T]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def get_all_paginated(
+        self,
+        pagination_params: Params,
+        entity_filter: BaseFilterModel | None = None,
+        options: QueryOptions | None = None,
+    ) -> Page[T]:
         raise NotImplementedError
 
     # CREATE operations
@@ -55,7 +123,7 @@ class BaseRepository[T: Base](abc.ABC):
     async def create_many(
         self,
         entities: Sequence[BaseModel],
-        on_conflict: OnConflictClause = do_default_on_conflict,
+        on_conflict: OnConflictClause = conflict_passthrough,
     ) -> list[T]:
         """Create multiple entities using bulk INSERT ... RETURNING."""
         raise NotImplementedError

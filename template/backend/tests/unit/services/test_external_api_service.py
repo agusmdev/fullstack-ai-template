@@ -1,32 +1,55 @@
 """Tests for ExternalApiService."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
-import requests
 
-from app.services.exceptions import ExternalApiException
-from app.services.external_api_service import ExternalApiService
+from app.integrations.http_client import ExternalApiException, ExternalApiService
+
+
+def _make_response(status_code=200, json_data=None, text=""):
+    response = MagicMock(spec=httpx.Response)
+    response.status_code = status_code
+    response.json.return_value = json_data if json_data is not None else {}
+    response.text = text
+    response.raise_for_status = MagicMock()
+    return response
+
+
+def _make_http_error(status_code, text):
+    response = MagicMock(spec=httpx.Response)
+    response.status_code = status_code
+    response.text = text
+    request = MagicMock(spec=httpx.Request)
+    return httpx.HTTPStatusError("error", request=request, response=response)
+
+
+def _patch_client(mock_response):
+    """Context manager that patches httpx.AsyncClient to return mock_response."""
+    mock_client = AsyncMock()
+    mock_client.request = AsyncMock(return_value=mock_response)
+    mock_client_cls = MagicMock()
+    mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+    return patch("app.integrations.http_client.httpx.AsyncClient", mock_client_cls), mock_client
 
 
 class TestExternalApiServiceInit:
     """Tests for ExternalApiService initialization."""
 
     def test_basic_init(self):
-        """Test basic initialization."""
         service = ExternalApiService(base_url="https://api.example.com")
         assert service.base_url == "https://api.example.com"
         assert service.headers == {}
         assert service.return_json is True
 
     def test_init_with_headers(self):
-        """Test initialization with headers."""
         headers = {"Authorization": "Bearer token123"}
         service = ExternalApiService(base_url="https://api.example.com", headers=headers)
         assert service.headers == headers
 
     def test_init_with_return_json_false(self):
-        """Test initialization with return_json=False."""
         service = ExternalApiService(base_url="https://api.example.com", return_json=False)
         assert service.return_json is False
 
@@ -38,81 +61,74 @@ class TestExternalApiServiceMethods:
     def service(self):
         return ExternalApiService(base_url="https://api.example.com")
 
-    @pytest.fixture
-    def mock_response(self):
-        response = MagicMock()
-        response.status_code = 200
-        response.json.return_value = {"success": True, "data": "test"}
-        return response
+    @pytest.mark.asyncio
+    async def test_get_success(self, service):
+        mock_response = _make_response(json_data={"success": True, "data": "test"})
+        patcher, mock_client = _patch_client(mock_response)
+        with patcher:
+            result = await service.get("/endpoint")
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_get_success(self, mock_request, service, mock_response):
-        """Test successful GET request."""
-        mock_request.return_value = mock_response
-
-        result = service.get("/endpoint")
-
-        mock_request.assert_called_once_with(
-            method="get",
+        mock_client.request.assert_called_once_with(
+            method="GET",
             url="https://api.example.com/endpoint",
             headers={},
         )
         assert result == {"success": True, "data": "test"}
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_post_success(self, mock_request, service, mock_response):
-        """Test successful POST request."""
-        mock_request.return_value = mock_response
+    @pytest.mark.asyncio
+    async def test_post_success(self, service):
+        mock_response = _make_response(json_data={"success": True, "data": "test"})
+        patcher, mock_client = _patch_client(mock_response)
+        with patcher:
+            result = await service.post("/endpoint", json={"key": "value"})
 
-        result = service.post("/endpoint", json={"key": "value"})
-
-        mock_request.assert_called_once_with(
-            method="post",
+        mock_client.request.assert_called_once_with(
+            method="POST",
             url="https://api.example.com/endpoint",
             headers={},
             json={"key": "value"},
         )
         assert result == {"success": True, "data": "test"}
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_put_success(self, mock_request, service, mock_response):
-        """Test successful PUT request."""
-        mock_request.return_value = mock_response
+    @pytest.mark.asyncio
+    async def test_put_success(self, service):
+        mock_response = _make_response(json_data={"success": True})
+        patcher, mock_client = _patch_client(mock_response)
+        with patcher:
+            result = await service.put("/endpoint", json={"key": "value"})
 
-        result = service.put("/endpoint", json={"key": "value"})
-
-        mock_request.assert_called_once_with(
-            method="put",
+        mock_client.request.assert_called_once_with(
+            method="PUT",
             url="https://api.example.com/endpoint",
             headers={},
             json={"key": "value"},
         )
         assert result["success"] is True
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_patch_success(self, mock_request, service, mock_response):
-        """Test successful PATCH request."""
-        mock_request.return_value = mock_response
+    @pytest.mark.asyncio
+    async def test_patch_success(self, service):
+        mock_response = _make_response(json_data={"success": True})
+        patcher, mock_client = _patch_client(mock_response)
+        with patcher:
+            result = await service.patch("/endpoint", json={"key": "value"})
 
-        result = service.patch("/endpoint", json={"key": "value"})
-
-        mock_request.assert_called_once_with(
-            method="patch",
+        mock_client.request.assert_called_once_with(
+            method="PATCH",
             url="https://api.example.com/endpoint",
             headers={},
             json={"key": "value"},
         )
         assert result["success"] is True
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_delete_success(self, mock_request, service, mock_response):
-        """Test successful DELETE request."""
-        mock_request.return_value = mock_response
+    @pytest.mark.asyncio
+    async def test_delete_success(self, service):
+        mock_response = _make_response(json_data={"success": True})
+        patcher, mock_client = _patch_client(mock_response)
+        with patcher:
+            result = await service.delete("/endpoint")
 
-        result = service.delete("/endpoint")
-
-        mock_request.assert_called_once_with(
-            method="delete",
+        mock_client.request.assert_called_once_with(
+            method="DELETE",
             url="https://api.example.com/endpoint",
             headers={},
         )
@@ -122,67 +138,59 @@ class TestExternalApiServiceMethods:
 class TestExternalApiServiceHeaders:
     """Tests for ExternalApiService header handling."""
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_uses_instance_headers(self, mock_request):
-        """Test that instance headers are used."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {}
-        mock_request.return_value = mock_response
-
+    @pytest.mark.asyncio
+    async def test_uses_instance_headers(self):
+        mock_response = _make_response(json_data={})
+        patcher, mock_client = _patch_client(mock_response)
         service = ExternalApiService(
             base_url="https://api.example.com",
             headers={"Authorization": "Bearer token123"},
         )
-        service.get("/endpoint")
+        with patcher:
+            await service.get("/endpoint")
 
-        call_kwargs = mock_request.call_args[1]
+        call_kwargs = mock_client.request.call_args[1]
         assert call_kwargs["headers"] == {"Authorization": "Bearer token123"}
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_override_headers(self, mock_request):
-        """Test that headers can be overridden per request."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {}
-        mock_request.return_value = mock_response
-
+    @pytest.mark.asyncio
+    async def test_override_headers(self):
+        mock_response = _make_response(json_data={})
+        patcher, mock_client = _patch_client(mock_response)
         service = ExternalApiService(
             base_url="https://api.example.com",
             headers={"Authorization": "Bearer default"},
         )
-        service.get("/endpoint", headers={"Authorization": "Bearer override"})
+        with patcher:
+            await service.get("/endpoint", headers={"Authorization": "Bearer override"})
 
-        call_kwargs = mock_request.call_args[1]
+        call_kwargs = mock_client.request.call_args[1]
         assert call_kwargs["headers"] == {"Authorization": "Bearer override"}
 
 
 class TestExternalApiServiceReturnJson:
     """Tests for ExternalApiService return_json behavior."""
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_return_json_true(self, mock_request):
-        """Test return_json=True returns parsed JSON."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"key": "value"}
-        mock_request.return_value = mock_response
-
+    @pytest.mark.asyncio
+    async def test_return_json_true(self):
+        mock_response = _make_response(json_data={"key": "value"})
+        patcher, _ = _patch_client(mock_response)
         service = ExternalApiService(base_url="https://api.example.com", return_json=True)
-        result = service.get("/endpoint")
+        with patcher:
+            result = await service.get("/endpoint")
 
         mock_response.json.assert_called_once()
         assert result == {"key": "value"}
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_return_json_false(self, mock_request):
-        """Test return_json=False returns response object."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"key": "value"}
-        mock_request.return_value = mock_response
-
+    @pytest.mark.asyncio
+    async def test_return_json_false(self):
+        mock_response = _make_response(json_data={"key": "value"})
+        patcher, _ = _patch_client(mock_response)
         service = ExternalApiService(base_url="https://api.example.com", return_json=False)
-        result = service.get("/endpoint")
+        with patcher:
+            result = await service.get("/endpoint")
 
         mock_response.json.assert_not_called()
-        assert result == mock_response
+        assert result is mock_response
 
 
 class TestExternalApiServiceErrorHandling:
@@ -192,47 +200,40 @@ class TestExternalApiServiceErrorHandling:
     def service(self):
         return ExternalApiService(base_url="https://api.example.com")
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_http_error_raises_exception(self, mock_request, service):
-        """Test HTTP error raises ExternalApiException."""
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.text = "Not Found"
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError()
-        mock_request.return_value = mock_response
-
-        with pytest.raises(ExternalApiException) as exc_info:
-            service.get("/not-found")
+    @pytest.mark.asyncio
+    async def test_http_error_raises_exception(self, service):
+        error = _make_http_error(404, "Not Found")
+        mock_response = _make_response()
+        mock_response.raise_for_status.side_effect = error
+        patcher, _ = _patch_client(mock_response)
+        with patcher:
+            with pytest.raises(ExternalApiException) as exc_info:
+                await service.get("/not-found")
 
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Not Found"
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_server_error_raises_exception(self, mock_request, service):
-        """Test server error raises ExternalApiException."""
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal Server Error"
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError()
-        mock_request.return_value = mock_response
-
-        with pytest.raises(ExternalApiException) as exc_info:
-            service.get("/error")
+    @pytest.mark.asyncio
+    async def test_server_error_raises_exception(self, service):
+        error = _make_http_error(500, "Internal Server Error")
+        mock_response = _make_response()
+        mock_response.raise_for_status.side_effect = error
+        patcher, _ = _patch_client(mock_response)
+        with patcher:
+            with pytest.raises(ExternalApiException) as exc_info:
+                await service.get("/error")
 
         assert exc_info.value.status_code == 500
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_error_preserves_original_exception(self, mock_request, service):
-        """Test that original exception is preserved as __cause__."""
-        mock_response = MagicMock()
-        mock_response.status_code = 400
-        mock_response.text = "Bad Request"
-        original_error = requests.exceptions.HTTPError()
+    @pytest.mark.asyncio
+    async def test_error_preserves_original_exception(self, service):
+        original_error = _make_http_error(400, "Bad Request")
+        mock_response = _make_response()
         mock_response.raise_for_status.side_effect = original_error
-        mock_request.return_value = mock_response
-
-        with pytest.raises(ExternalApiException) as exc_info:
-            service.get("/bad-request")
+        patcher, _ = _patch_client(mock_response)
+        with patcher:
+            with pytest.raises(ExternalApiException) as exc_info:
+                await service.get("/bad-request")
 
         assert exc_info.value.__cause__ is original_error
 
@@ -240,28 +241,24 @@ class TestExternalApiServiceErrorHandling:
 class TestExternalApiServiceUrlConstruction:
     """Tests for ExternalApiService URL construction."""
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_url_concatenation(self, mock_request):
-        """Test URL is correctly constructed."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {}
-        mock_request.return_value = mock_response
-
+    @pytest.mark.asyncio
+    async def test_url_concatenation(self):
+        mock_response = _make_response(json_data={})
+        patcher, mock_client = _patch_client(mock_response)
         service = ExternalApiService(base_url="https://api.example.com")
-        service.get("/users/123")
+        with patcher:
+            await service.get("/users/123")
 
-        call_kwargs = mock_request.call_args[1]
+        call_kwargs = mock_client.request.call_args[1]
         assert call_kwargs["url"] == "https://api.example.com/users/123"
 
-    @patch("app.services.external_api_service.requests.request")
-    def test_base_url_without_trailing_slash(self, mock_request):
-        """Test base URL without trailing slash."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {}
-        mock_request.return_value = mock_response
-
+    @pytest.mark.asyncio
+    async def test_base_url_without_trailing_slash(self):
+        mock_response = _make_response(json_data={})
+        patcher, mock_client = _patch_client(mock_response)
         service = ExternalApiService(base_url="https://api.example.com")
-        service.get("/endpoint")
+        with patcher:
+            await service.get("/endpoint")
 
-        call_kwargs = mock_request.call_args[1]
+        call_kwargs = mock_client.request.call_args[1]
         assert call_kwargs["url"] == "https://api.example.com/endpoint"

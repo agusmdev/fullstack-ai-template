@@ -2,8 +2,6 @@
 
 import uuid
 
-import pytest
-
 from app.modules.items.models import Item
 
 

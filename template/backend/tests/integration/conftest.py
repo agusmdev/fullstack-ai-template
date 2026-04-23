@@ -6,7 +6,6 @@ with PostgreSQL testcontainers support for database testing.
 """
 
 import sys
-import uuid
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -48,7 +47,7 @@ def app():
     def mock_user_email():
         return "test@example.com"
 
-    from app.core.permissions.auth import AuthenticatedUser
+    from app.user.auth.permissions import AuthenticatedUser
 
     test_app.dependency_overrides[AuthenticatedUser.current_user_id] = mock_user_id
     test_app.dependency_overrides[AuthenticatedUser.current_user_email] = mock_user_email
@@ -105,8 +104,12 @@ def sample_text_file():
 
 # PostgreSQL testcontainers support (optional - requires testcontainers[postgres])
 try:
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession,
+        async_sessionmaker,
+        create_async_engine,
+    )
     from testcontainers.postgres import PostgresContainer
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
     from app.database.base import Base
 

@@ -43,20 +43,7 @@ def get_engine() -> AsyncEngine:
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get a database session with automatic commit/rollback.
-
-    This is a FastAPI dependency that yields an AsyncSession.
-    The session will be committed on success or rolled back on error.
-
-    Yields:
-        AsyncSession: An async database session.
-
-    Example:
-        @app.get("/items")
-        async def get_items(session: AsyncSession = Depends(get_db_session)):
-            result = await session.execute(select(Item))
-            return result.scalars().all()
-    """
+    """Yield an AsyncSession; commits on success, rolls back on error."""
     engine = get_engine()
     session_factory = async_sessionmaker(
         bind=engine,
@@ -79,26 +66,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 def get_repository[R: RepositoryProtocol](
     repository_type: type[R],
 ) -> Callable[[], Awaitable[R]]:
-    """Factory function to create a repository dependency.
-
-    This returns a callable that can be used with FastAPI's Depends()
-    to get a repository instance.
-
-    Args:
-        repository_type: The repository class to instantiate.
-
-    Returns:
-        A callable that creates a repository instance.
-
-    Example:
-        # Define repository dependency
-        ItemRepositoryDep = get_repository(ItemRepository)
-
-        # Use in route
-        @app.get("/items")
-        async def get_items(repo: ItemRepositoryDep = Depends()):
-            return await repo.get_all()
-    """
+    """Return a FastAPI dependency that instantiates repository_type with a db session."""
 
     async def _get_repository(session: AsyncSession = Depends(get_db_session)) -> R:
         return repository_type(session)

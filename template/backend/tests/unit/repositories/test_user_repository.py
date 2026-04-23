@@ -1,7 +1,7 @@
 """Tests for UserRepository."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -22,29 +22,18 @@ class TestUserRepositoryGet:
         mock_result.scalar.return_value = MagicMock(id=user_id, email="test@example.com")
         mock_session.execute.return_value = mock_result
 
-        result = await repository.get(user_id, filter_field="id")
+        result = await repository.get(user_id)
 
         mock_session.execute.assert_called_once()
 
-    async def test_get_by_id_with_string_converts_to_uuid(self, repository, mock_session):
-        """Test get by ID with string converts to UUID."""
-        user_id_str = "12345678-1234-5678-1234-567812345678"
-        mock_result = MagicMock()
-        mock_result.scalar.return_value = MagicMock(id=uuid.UUID(user_id_str))
-        mock_session.execute.return_value = mock_result
-
-        result = await repository.get(user_id_str, filter_field="id")
-
-        mock_session.execute.assert_called_once()
-
-    async def test_get_by_email_keeps_string(self, repository, mock_session):
-        """Test get by email keeps the string value."""
+    async def test_get_by_field_email(self, repository, mock_session):
+        """Test get_by_field with email field."""
         email = "test@example.com"
         mock_result = MagicMock()
         mock_result.scalar.return_value = MagicMock(email=email)
         mock_session.execute.return_value = mock_result
 
-        result = await repository.get(email, filter_field="email")
+        result = await repository.get_by_field("email", email)
 
         mock_session.execute.assert_called_once()
 
