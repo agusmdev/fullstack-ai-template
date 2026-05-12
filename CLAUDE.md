@@ -2,16 +2,27 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
-## npm Supply-Chain Policy
+## Supply-Chain Policy (npm + PyPI/uv)
 
-**Before installing any npm package** (`bun add`, `npm install`, `pnpm add`, etc.), the agent MUST:
+**Before installing any third-party package**, the agent MUST follow this policy for both ecosystems.
 
-1. **Search the web** for the package's latest stable, non-vulnerable release. Check the npm registry page, the project's GitHub releases, and any known CVE advisories (npm audit, GitHub Security Advisories, Snyk).
-2. **Verify the chosen version** is at least 7 days old (matches the `min-release-age` / `minimumReleaseAge` settings in `~/.npmrc` and `~/.bunfig.toml`) and has no open critical/high CVEs.
-3. **Pin to the exact version** in `package.json` — no `^`, no `~`, no `latest` tag. Example: `"foo": "1.2.3"`, never `"foo": "^1.2.3"`.
-4. **Commit the updated lockfile** alongside the `package.json` change so the resolved tree is locked in git.
+### Step 1 — Web search
+Look up the package's latest stable, non-vulnerable release. Check the registry page (npm or PyPI), the project's GitHub releases, and CVE advisories (GitHub Security Advisories, Snyk, `npm audit` / `pip-audit` / osv.dev).
 
-If the latest release is younger than 7 days, pick the most recent release that is ≥ 7 days old. Document the choice in the commit message if it's not the newest version.
+### Step 2 — Verify
+Confirm the chosen version is **at least 7 days old** and has no open critical/high CVEs. If the latest release is younger than 7 days, pick the most recent release that is ≥ 7 days old and note the choice in the commit message.
+
+### Step 3 — Pin exactly
+
+| Ecosystem | File | Pin format | Never |
+|---|---|---|---|
+| npm (bun/npm/pnpm) | `package.json` | `"foo": "1.2.3"` | `^1.2.3`, `~1.2.3`, `latest` |
+| Python (uv) | `pyproject.toml` | `"foo==1.2.3"` (preserve extras: `"pydantic[email]==2.11.10"`) | `>=`, `~=`, `*` |
+
+### Step 4 — Lock + commit
+Run `bun install` / `npm install` (or `uv lock`) to regenerate the lockfile, then commit `package.json` + lockfile (or `pyproject.toml` + `uv.lock`) **together** so the resolved tree is locked in git.
+
+The 7-day floor is also enforced globally for npm via `~/.npmrc` (`min-release-age=7`, `save-exact=true`) and `~/.bunfig.toml` (`minimumReleaseAge = 604800`). uv currently has no equivalent setting — the policy is the only enforcement, so do not skip step 2.
 
 ## Quick Reference
 

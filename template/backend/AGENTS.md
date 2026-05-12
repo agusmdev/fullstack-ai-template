@@ -9,6 +9,17 @@
 - **Generate migration:** `uv run alembic revision --autogenerate -m "description"`
 - **Apply migrations:** `uv run alembic upgrade head`
 
+## uv / PyPI Supply-Chain Policy
+
+**Before adding any Python package** (`uv add`, `uv add --dev`, editing `pyproject.toml`), the agent MUST:
+
+1. **Search the web** for the package's latest stable, non-vulnerable release — check the PyPI project page, the project's GitHub releases, and CVE advisories (PyPI's `osv.dev`, GitHub Security Advisories, Snyk, `pip-audit`).
+2. **Verify** the chosen version is at least 7 days old and has no open critical/high CVEs. If the latest release is younger than 7 days, pick the most recent release that is ≥ 7 days old and note the choice in the commit message.
+3. **Pin to the exact version** in `pyproject.toml` using `==`, never `>=` or `~=`. Example: `"fastapi==0.118.0"`, never `"fastapi>=0.115.0"`. Preserve extras: `"pydantic[email]==2.11.10"`.
+4. **Run `uv lock`** to update `uv.lock`, then commit both `pyproject.toml` and `uv.lock` together so the resolved tree is locked in git.
+
+**Adding a new dep:** `uv add 'pkg==X.Y.Z'` (always with `==X.Y.Z`, never bare `uv add pkg`).
+
 ## Tech Stack
 - **Language:** Python 3.12+
 - **Framework:** FastAPI (async)
