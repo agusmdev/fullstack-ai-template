@@ -20,6 +20,17 @@
 - **Testing:** Vitest (unit), Playwright (E2E)
 - **Package Manager:** bun (all commands use `bun run`)
 
+## npm Supply-Chain Policy
+
+**Before adding any package** (`bun add`, `bun add -d`, etc.), the agent MUST:
+
+1. **Search the web** for the package's latest stable, non-vulnerable release — check the npm registry page, GitHub releases, and CVE advisories (GitHub Security Advisories, Snyk, `bun audit`/`npm audit`).
+2. **Verify** the chosen version is at least 7 days old (enforced globally by `~/.bunfig.toml`'s `minimumReleaseAge = 604800` and `~/.npmrc`'s `min-release-age=7`) and has no open critical/high CVEs.
+3. **Pin to the exact version** in `package.json` — no `^`, no `~`, no `latest` tag. Example: `"foo": "1.2.3"`. Global `save-exact=true` enforces this for `npm install`, but `bun add` must be checked manually.
+4. **Commit `bun.lock`** with the `package.json` change so the resolved tree is locked in git.
+
+If the latest release is younger than 7 days, choose the most recent release that is ≥ 7 days old and note it in the commit message.
+
 ## Configuration
 - **Dev Port:** 3000 (Vite dev server)
 - **API Base:** `VITE_API_BASE_URL` (default: `http://localhost:9095`)

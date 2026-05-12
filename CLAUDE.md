@@ -2,6 +2,17 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+## npm Supply-Chain Policy
+
+**Before installing any npm package** (`bun add`, `npm install`, `pnpm add`, etc.), the agent MUST:
+
+1. **Search the web** for the package's latest stable, non-vulnerable release. Check the npm registry page, the project's GitHub releases, and any known CVE advisories (npm audit, GitHub Security Advisories, Snyk).
+2. **Verify the chosen version** is at least 7 days old (matches the `min-release-age` / `minimumReleaseAge` settings in `~/.npmrc` and `~/.bunfig.toml`) and has no open critical/high CVEs.
+3. **Pin to the exact version** in `package.json` — no `^`, no `~`, no `latest` tag. Example: `"foo": "1.2.3"`, never `"foo": "^1.2.3"`.
+4. **Commit the updated lockfile** alongside the `package.json` change so the resolved tree is locked in git.
+
+If the latest release is younger than 7 days, pick the most recent release that is ≥ 7 days old. Document the choice in the commit message if it's not the newest version.
+
 ## Quick Reference
 
 ```bash
