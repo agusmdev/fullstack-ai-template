@@ -98,7 +98,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-# lib/ (disabled: would incorrectly ignore template/frontend/src/lib)
+# lib/ intentionally NOT ignored at root: would swallow template/frontend/src/lib.
+# Python build `lib/` is handled (anchored) in template/backend/.gitignore.
 lib64/
 parts/
 sdist/

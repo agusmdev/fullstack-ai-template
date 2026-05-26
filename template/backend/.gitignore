@@ -47,7 +47,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# backend-only Python build dir; anchored so it can't match nested src dirs
+/lib/
 lib64/
 parts/
 sdist/
