@@ -10,7 +10,7 @@ class TestHealthCheck:
         """Test health check endpoint returns OK."""
         response = client.get("/health")
         assert response.status_code == 200
-        assert response.json() == "FastAPI running!"
+        assert response.json() == {"status": "healthy", "service": "backend"}
 
 
 class TestCORSHeaders:
@@ -35,7 +35,10 @@ class TestCORSHeaders:
             headers={"Origin": "http://localhost:3000"},
         )
         # Should have CORS headers
-        assert "access-control-allow-origin" in response.headers or response.status_code == 200
+        assert (
+            "access-control-allow-origin" in response.headers
+            or response.status_code == 200
+        )
 
 
 class TestAppFactory:

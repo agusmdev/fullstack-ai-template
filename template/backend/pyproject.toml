@@ -35,6 +35,7 @@ dev = [
     "pytest-mock==3.15.1",
     "testcontainers[postgres]==4.14.0",
     "ruff==0.13.3",
+    "ty==0.0.51",
     "types-requests==2.32.4.20260107",
 ]
 [tool.black]
@@ -42,26 +43,6 @@ line-length = 100
 
 [tool.ruff]
 target-version = "py312"
-
-[tool.ruff.lint]
-select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "C",  # flake8-comprehensions
-    "B",  # flake8-bugbear
-    "UP",  # pyupgrade
-    "TCH",  # type-checking
-    "PYI",  # pyi
-]
-ignore = [
-    "E501",  # line too long, handled by black
-    "B008",  # do not perform function calls in argument defaults
-    "C901",  # too complex
-    "F821", # undefined name
-]
-
 exclude = [
     ".bzr",
     ".direnv",
@@ -83,7 +64,29 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
+    "app/migrations",
 ]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "UP",  # pyupgrade
+    "TCH",  # type-checking
+    "PYI",  # pyi
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "F821", # undefined name
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
@@ -96,6 +99,7 @@ testpaths = [
     "tests",
 ]
 asyncio_mode = "auto"
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=30"
 
 [tool.coverage.run]
 source = ["."]

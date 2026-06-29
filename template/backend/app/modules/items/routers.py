@@ -114,7 +114,9 @@ async def update_item(
     """Update an existing item."""
     log_action("update")
     log_entity("item", item_id)
-    return cast("ItemResponse", await item_service.update(item_id, item, user_id=user_id))
+    return cast(
+        "ItemResponse", await item_service.update(item_id, item, user_id=user_id)
+    )
 
 
 @items_router.delete(

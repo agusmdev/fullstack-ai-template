@@ -251,7 +251,9 @@ def _transform_annotation_to_partial(
     elif origin is list:
         # Transform BaseModels in List types
         if args:
-            transformed_arg = _unwrap_if_optional(_transform_annotation_to_partial(args[0], cache))
+            transformed_arg = _unwrap_if_optional(
+                _transform_annotation_to_partial(args[0], cache)
+            )
             return Optional[list[transformed_arg]]  # type: ignore[valid-type]
         return Optional[annotation]
     elif hasattr(annotation, "__origin__") and args:

@@ -72,8 +72,9 @@ def create_app(
     app_router = get_app_router()
 
     @app_router.get("/health")
-    def sanity_check() -> str:
-        return "FastAPI running!"
+    def sanity_check() -> dict[str, str]:
+        """Health check endpoint for load balancers and Docker health checks."""
+        return {"status": "healthy", "service": "backend"}
 
     if add_sentry:
         sentry_sdk.init(

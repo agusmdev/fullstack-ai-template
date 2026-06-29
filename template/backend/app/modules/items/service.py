@@ -66,7 +66,9 @@ class ItemService(BaseService[Item]):
         """Create an item bound to the requesting user."""
         return await super().create(entity, user_id=user_id)
 
-    async def update(self, entity_id: uuid.UUID, entity: BaseModel, *, user_id: uuid.UUID) -> Item:  # type: ignore[override]
+    async def update(
+        self, entity_id: uuid.UUID, entity: BaseModel, *, user_id: uuid.UUID
+    ) -> Item:  # type: ignore[override]
         """Update an item, enforcing ownership."""
         item = await self.repo.get(entity_id, raise_error=True)
         self._assert_ownership(item, user_id)

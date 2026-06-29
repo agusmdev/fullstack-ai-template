@@ -106,21 +106,21 @@ def init(
         str,
         typer.Option(
             "--ai-api-key",
-            help='API key for AI provider (optional, can be set later via .env)',
+            help="API key for AI provider (optional, can be set later via .env)",
         ),
     ] = "",
     ai_model: Annotated[
         str,
         typer.Option(
             "--ai-model",
-            help='AI model to use (optional, has sensible defaults per provider)',
+            help="AI model to use (optional, has sensible defaults per provider)",
         ),
     ] = "",
     ai_azure_endpoint: Annotated[
         str,
         typer.Option(
             "--ai-azure-endpoint",
-            help='Azure OpenAI endpoint (required only for azure provider)',
+            help="Azure OpenAI endpoint (required only for azure provider)",
         ),
     ] = "",
     # Feature Flags

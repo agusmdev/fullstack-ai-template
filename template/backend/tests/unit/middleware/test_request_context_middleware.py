@@ -28,11 +28,13 @@ class TestRequestContextMiddleware:
         response = MagicMock()
         return AsyncMock(return_value=response)
 
-    async def test_dispatch_generates_request_id(self, middleware, mock_request, mock_call_next):
+    async def test_dispatch_generates_request_id(
+        self, middleware, mock_request, mock_call_next
+    ):
         """Test that dispatch generates a request_id."""
         from app.context import _request_id_ctx
 
-        response = await middleware.dispatch(mock_request, mock_call_next)
+        await middleware.dispatch(mock_request, mock_call_next)
 
         # Request ID should have been set
         request_id = _request_id_ctx.get()
@@ -45,7 +47,9 @@ class TestRequestContextMiddleware:
 
         mock_call_next.assert_called_once_with(mock_request)
 
-    async def test_dispatch_returns_response(self, middleware, mock_request, mock_call_next):
+    async def test_dispatch_returns_response(
+        self, middleware, mock_request, mock_call_next
+    ):
         """Test that dispatch returns the response."""
         expected_response = MagicMock()
         mock_call_next.return_value = expected_response
@@ -54,7 +58,9 @@ class TestRequestContextMiddleware:
 
         assert result is expected_response
 
-    async def test_request_id_is_uuid_format(self, middleware, mock_request, mock_call_next):
+    async def test_request_id_is_uuid_format(
+        self, middleware, mock_request, mock_call_next
+    ):
         """Test that request_id is in UUID format."""
         import uuid
 

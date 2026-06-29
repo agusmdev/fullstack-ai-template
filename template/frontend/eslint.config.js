@@ -39,6 +39,7 @@ export default [
       'react/prop-types': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
+      'complexity': ['warn', { max: 15 }],
     },
     settings: {
       react: {

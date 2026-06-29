@@ -203,7 +203,6 @@ class AuthService:
         # Invalidate all sessions after password change as a security measure
         await self.repo.delete_all_for_user(token_record.user_id)
 
-
     # Email Verification Methods
 
     async def initiate_email_verification(self, user_id: uuid.UUID) -> str:
@@ -246,4 +245,3 @@ class AuthService:
 
         await self.user_service.mark_email_verified(token_record.user_id)
         await self.email_verification_repo.mark_as_used(token)
-

@@ -32,14 +32,18 @@ class TestBaseServiceGetById:
         """Create a BaseService instance with mocked repository."""
         return BaseService(repo=mock_item_repository)
 
-    async def test_get_by_id_success(self, service, mock_item_repository, sample_item_id):
+    async def test_get_by_id_success(
+        self, service, mock_item_repository, sample_item_id
+    ):
         """Test successful get_by_id."""
         expected = MockModel(id=sample_item_id, name="Test")
         mock_item_repository.get.return_value = expected
 
         result = await service.get_by_id(sample_item_id)
 
-        mock_item_repository.get.assert_called_once_with(sample_item_id, raise_error=True)
+        mock_item_repository.get.assert_called_once_with(
+            sample_item_id, raise_error=True
+        )
         assert result == expected
 
     async def test_get_by_id_with_raise_error_false(
@@ -50,7 +54,9 @@ class TestBaseServiceGetById:
 
         result = await service.get_by_id(sample_item_id, raise_error=False)
 
-        mock_item_repository.get.assert_called_once_with(sample_item_id, raise_error=False)
+        mock_item_repository.get.assert_called_once_with(
+            sample_item_id, raise_error=False
+        )
         assert result is None
 
 
@@ -92,7 +98,9 @@ class TestBaseServiceGetAll:
 
         result = await service.get_all_paginated(pagination_params=params)
 
-        mock_item_repository.get_all_paginated.assert_called_once_with(params, None, None)
+        mock_item_repository.get_all_paginated.assert_called_once_with(
+            params, None, None
+        )
         assert result == mock_page
 
 

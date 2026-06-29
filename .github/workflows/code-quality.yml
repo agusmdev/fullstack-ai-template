@@ -1,0 +1,108 @@
+name: Code Quality Analysis
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  tech-debt:
+    name: Tech Debt Scan (leasot)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Scan TODOs and FIXMEs
+        run: npx leasot --tags "TODO,FIXME,HACK,XXX" --ignore "**/node_modules/**,**/.git/**,**/uv.lock,**/bun.lock,**/package-lock.json,**/migrations/**" .
+
+  duplicate-code:
+    name: Duplicate Code Detection (jscpd)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Detect duplicate code
+        run: npx jscpd --threshold 5 --format "py,ts,tsx,js" --ignore "**/node_modules/**,**/.git/**,**/migrations/**,**/dist/**,**/build/**,**/*.lock,**/playwright-report/**" .
+
+  backend-complexity:
+    name: Backend Cyclomatic Complexity (radon)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: template/backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Analyze complexity
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uvx radon cc app/ -s -nb
+
+  backend-dead-code:
+    name: Backend Dead Code (vulture)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: template/backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Detect dead code
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uvx vulture app/ --min-confidence 80
+
+  backend-unused-deps:
+    name: Backend Unused Dependencies (deptry)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: template/backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Check unused dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv sync
+          uvx deptry .
+
+  frontend-dead-code:
+    name: Frontend Dead Code & Unused Deps (knip)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: template/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install
+      - name: Detect dead code and unused dependencies
+        run: npx knip --no-progress
+        continue-on-error: true

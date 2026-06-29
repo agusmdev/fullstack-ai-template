@@ -1,0 +1,2 @@
+# Files/directories to ignore for vulture dead code analysis
+# This whitelist is used with: uvx vulture app/ --min-confidence 80

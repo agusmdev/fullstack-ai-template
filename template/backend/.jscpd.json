@@ -1,0 +1,11 @@
+{
+  "threshold": 0,
+  "reporters": ["console"],
+  "format": ["py"],
+  "ignore": [
+    "**/migrations/**",
+    "**/__pycache__/**",
+    "**/.venv/**",
+    "**/tests/**"
+  ]
+}

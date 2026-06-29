@@ -1,0 +1,34 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: template/backend
+          push: false
+          tags: ai-fsr-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: template/frontend
+          push: false
+          tags: ai-fsr-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

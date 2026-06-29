@@ -1,20 +1,23 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from loguru import logger
-from pydantic import BaseModel
 from sqlalchemy import inspect
 from sqlalchemy.orm import (
-    DeclarativeBase,
     InstrumentedAttribute,
-    Load,
     RelationshipProperty,
 )
 
 from .ast import ASTNode, LoadOnlyNode, RelationshipLoadNode, safe_getattr
 from .code_generator import QueryOptionGenerator
 from .pydantic_fields import PydanticGraph
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from pydantic import BaseModel
+    from sqlalchemy.orm import DeclarativeBase, Load
 
 
 class StatementGenerator:

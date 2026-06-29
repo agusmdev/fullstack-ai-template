@@ -1,0 +1,35 @@
+name: Documentation Validation
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  validate-agents-md:
+    name: Validate AGENTS.md Commands
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Verify AGENTS.md documented commands are valid
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          # Verify the CLI tool runs
+          uv sync
+          uv run ai-fsr --help
+          # Verify ruff is available
+          uv run ruff check ai_fsr/
+          # Verify pytest is available
+          uv run pytest --co -q
+          # Verify root AGENTS.md exists and is non-empty
+          test -s AGENTS.md && echo "AGENTS.md OK"
+          # Verify template AGENTS.md files exist
+          test -s template/backend/AGENTS.md && echo "backend/AGENTS.md OK"
+          test -s template/frontend/AGENTS.md && echo "frontend/AGENTS.md OK"

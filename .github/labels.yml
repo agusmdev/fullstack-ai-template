@@ -1,0 +1,43 @@
+# Issue and PR labels for the repository
+# Import with: gh label edit --file .github/labels.yml (or manual setup)
+# Priority labels
+- name: P0
+  description: Critical priority - blocks production
+  color: B60205
+- name: P1
+  description: High priority - should be fixed soon
+  color: D93F0B
+- name: P2
+  description: Medium priority - normal backlog
+  color: FBCA04
+- name: P3
+  description: Low priority - nice to have
+  color: 0E8A16
+
+# Type labels
+- name: bug
+  description: Something isn't working
+  color: B60205
+- name: feature
+  description: New feature or enhancement
+  color: A2EEEF
+- name: chore
+  description: Maintenance task or refactoring
+  color: C5DEF5
+- name: docs
+  description: Documentation improvement
+  color: 0075CA
+
+# Area labels
+- name: backend
+  description: Backend (FastAPI) related
+  color: 1D76DB
+- name: frontend
+  description: Frontend (React/TanStack) related
+  color: C2E0C6
+- name: infra
+  description: Infrastructure / CI/CD related
+  color: E99695
+- name: cli
+  description: CLI generator (ai-fsr) related
+  color: FBCA04

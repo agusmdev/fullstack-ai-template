@@ -1,0 +1,8 @@
+# Default code owner
+* @agusmdev
+
+# Backend specific
+/template/backend/ @agusmdev
+
+# Frontend specific  
+/template/frontend/ @agusmdev

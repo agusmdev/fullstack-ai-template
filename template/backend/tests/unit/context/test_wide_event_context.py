@@ -165,6 +165,7 @@ class TestContextVarFunctions:
 
         assert get_wide_event_context() is None
 
+
 class TestAddEntityToContext:
     """Tests for add_entity_to_context function."""
 

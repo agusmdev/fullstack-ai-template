@@ -111,7 +111,6 @@ class TestUserDefaults:
 
     def test_default_is_active(self):
         """Test that is_active defaults to True."""
-        user = User(id=uuid.uuid4(), email="test@example.com")
         # Default should be True based on model definition
         assert User.is_active.default.arg is True
 

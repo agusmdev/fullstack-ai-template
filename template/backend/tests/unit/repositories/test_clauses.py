@@ -29,7 +29,10 @@ class TestConflictDoNothing:
 
         result = conflict_do_nothing(mock_insert, index_elements=["id"])
 
-        mock_insert.on_conflict_do_nothing.assert_called_once_with(index_elements=["id"])
+        assert result == mock_insert
+        mock_insert.on_conflict_do_nothing.assert_called_once_with(
+            index_elements=["id"]
+        )
 
 
 class TestConflictDoUpdate:
@@ -54,6 +57,7 @@ class TestConflictDoUpdate:
             mock_insert, index_elements=["id"], set_={"name": "updated"}
         )
 
+        assert result == mock_insert
         mock_insert.on_conflict_do_update.assert_called_once_with(
             index_elements=["id"], set_={"name": "updated"}
         )

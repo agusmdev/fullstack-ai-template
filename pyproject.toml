@@ -20,7 +20,7 @@ dependencies = [
     "typer==0.21.1",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "ruff==0.14.14",
     "pytest==9.0.2",
@@ -45,6 +45,11 @@ packages = ["ai_fsr"]
 target-version = "py312"
 line-length = 88
 src = ["ai_fsr"]
+# The `template/` directory ships a separate project (its own pyproject.toml,
+# own ruff config) that is embedded in the wheel for code generation. It is
+# not part of the ai-fsr CLI source, so exclude it from the root project's
+# lint/format checks.
+extend-exclude = ["template"]
 
 [tool.ruff.lint]
 select = [
@@ -69,3 +74,21 @@ known-first-party = ["ai_fsr"]
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
+
+# ---------- ty (type checker) ----------
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+include = ["ai_fsr"]
+
+# ---------- Naming conventions documentation ----------
+# Naming conventions:
+# - snake_case for functions and variables
+# - PascalCase for classes
+# - SCREAMING_SNAKE_CASE for constants
+# - kebab-case for CLI project names
+# These are enforced by ruff's pyflakes (F) rules above.
+
+[tool.pytest.ini_options]
+testpaths = ["ai_fsr/tests"]

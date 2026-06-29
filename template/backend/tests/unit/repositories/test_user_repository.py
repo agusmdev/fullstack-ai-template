@@ -19,10 +19,13 @@ class TestUserRepositoryGet:
         """Test get by ID with UUID type."""
         user_id = uuid.uuid4()
         mock_result = MagicMock()
-        mock_result.scalar.return_value = MagicMock(id=user_id, email="test@example.com")
+        mock_result.scalar.return_value = MagicMock(
+            id=user_id, email="test@example.com"
+        )
         mock_session.execute.return_value = mock_result
 
         result = await repository.get(user_id)
+        assert result is not None
 
         mock_session.execute.assert_called_once()
 
@@ -34,6 +37,7 @@ class TestUserRepositoryGet:
         mock_session.execute.return_value = mock_result
 
         result = await repository.get_by_field("email", email)
+        assert result is not None
 
         mock_session.execute.assert_called_once()
 

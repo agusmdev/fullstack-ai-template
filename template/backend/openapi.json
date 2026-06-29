@@ -1,0 +1,212 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Backend Template API",
+    "description": "FastAPI backend with async SQLAlchemy, session-based auth, and items CRUD",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Returns a simple health status string.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "example": "FastAPI running!"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegister"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully"
+          },
+          "400": {
+            "description": "Email already registered"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login with email and password",
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLogin"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful, returns session token"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout current session",
+        "tags": ["auth"],
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Logout successful"
+          }
+        }
+      }
+    },
+    "/items": {
+      "get": {
+        "summary": "List items with pagination and filtering",
+        "tags": ["items"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+          {"name": "size", "in": "query", "schema": {"type": "integer", "default": 50}},
+          {"name": "search", "in": "query", "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of items"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new item",
+        "tags": ["items"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ItemCreate"}
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Item created"},
+          "400": {"description": "Validation error"}
+        }
+      }
+    },
+    "/items/{item_id}": {
+      "get": {
+        "summary": "Get a single item by ID",
+        "tags": ["items"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "item_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {"description": "Item found"},
+          "404": {"description": "Item not found"}
+        }
+      },
+      "patch": {
+        "summary": "Update an item",
+        "tags": ["items"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "item_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ItemUpdate"}
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Item updated"},
+          "404": {"description": "Item not found"}
+        }
+      },
+      "delete": {
+        "summary": "Delete an item (soft delete)",
+        "tags": ["items"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "item_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "204": {"description": "Item deleted"},
+          "404": {"description": "Item not found"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "UserRegister": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string", "minLength": 8}
+        }
+      },
+      "UserLogin": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string"}
+        }
+      },
+      "ItemCreate": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "sku": {"type": "string"}
+        }
+      },
+      "ItemUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "sku": {"type": "string"}
+        }
+      }
+    }
+  }
+}
