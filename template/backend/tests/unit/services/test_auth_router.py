@@ -127,7 +127,9 @@ class TestOAuthCallback:
         assert result.status_code == 302
         assert "unsupported_provider" in str(result.headers["location"])
 
-    async def test_redirects_to_frontend_on_success(self, mock_auth_service, sample_session_response):
+    async def test_redirects_to_frontend_on_success(
+        self, mock_auth_service, sample_session_response
+    ):
         """Known provider triggers oauth_login and redirects to frontend."""
         mock_auth_service.oauth_login = AsyncMock(return_value=sample_session_response)
         callback = OAuthCallback(code="auth_code", state="st")
@@ -169,7 +171,9 @@ class TestRequestPasswordReset:
         assert result is not None
 
     async def test_returns_success_for_oauth_user(self, mock_auth_service):
-        mock_auth_service.initiate_password_reset.side_effect = OAuthUserPasswordResetError()
+        mock_auth_service.initiate_password_reset.side_effect = (
+            OAuthUserPasswordResetError()
+        )
         request = PasswordResetRequest(email="oauth@example.com")
 
         # Should not raise — returns success to prevent enumeration
@@ -205,7 +209,9 @@ class TestConfirmPasswordReset:
         request = PasswordResetConfirm(token="invalid", new_password="newpass")
 
         with pytest.raises(InvalidTokenError):
-            await confirm_password_reset(request=request, auth_service=mock_auth_service)
+            await confirm_password_reset(
+                request=request, auth_service=mock_auth_service
+            )
 
 
 class TestRequestEmailVerification:
@@ -227,7 +233,9 @@ class TestConfirmEmailVerification:
     async def test_calls_verify_email(self, mock_auth_service):
         request = EmailVerificationConfirm(token="ev_token")
 
-        await confirm_email_verification(request=request, auth_service=mock_auth_service)
+        await confirm_email_verification(
+            request=request, auth_service=mock_auth_service
+        )
 
         mock_auth_service.verify_email.assert_called_once_with("ev_token")
 

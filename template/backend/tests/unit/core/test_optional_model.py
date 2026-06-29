@@ -1,7 +1,7 @@
 """Tests for optional_model decorator and utilities."""
 
 import pytest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from app.core.optional_model import (
     _extract_nested_basemodels,
@@ -78,7 +78,7 @@ class TestPartialModel:
         _ = partial_model(SimpleModel)
 
         # Original should still require name and value
-        with pytest.raises(Exception):  # ValidationError
+        with pytest.raises(ValidationError):
             SimpleModel()
 
 
@@ -143,7 +143,7 @@ class TestExtractNestedBasemodels:
         """Test extracting from Optional[BaseModel]."""
         from typing import Optional
 
-        result = _extract_nested_basemodels(Optional[SimpleModel])
+        result = _extract_nested_basemodels(Optional[SimpleModel])  # noqa: UP045
         assert SimpleModel in result
 
     def test_list_of_basemodel(self):

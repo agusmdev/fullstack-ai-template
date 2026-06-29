@@ -74,7 +74,9 @@ class TestUserRegister:
     def test_valid_registration(self):
         """Test valid user registration."""
         user = UserRegister(
-            email="register@example.com", display_name="New User", raw_password="secret123"
+            email="register@example.com",
+            display_name="New User",
+            raw_password="secret123",
         )
         assert user.email == "register@example.com"
         assert user.display_name == "New User"

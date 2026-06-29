@@ -1,6 +1,5 @@
 """Tests for ItemFilter."""
 
-
 from app.modules.items.filters import ItemFilter
 from app.modules.items.models import Item
 

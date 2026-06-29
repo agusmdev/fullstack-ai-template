@@ -51,13 +51,13 @@ def normalize_project_name(name: str) -> str:
     # Convert spaces and underscores to hyphens
     normalized = name.replace(" ", "-").replace("_", "-")
     # Convert camelCase to kebab-case
-    normalized = re.sub(r'(?<!^)(?=[A-Z])', '-', normalized).lower()
+    normalized = re.sub(r"(?<!^)(?=[A-Z])", "-", normalized).lower()
     # Remove any non-alphanumeric characters except hyphens
-    normalized = re.sub(r'[^a-z0-9-]', '', normalized)
+    normalized = re.sub(r"[^a-z0-9-]", "", normalized)
     # Remove consecutive hyphens
-    normalized = re.sub(r'-+', '-', normalized)
+    normalized = re.sub(r"-+", "-", normalized)
     # Remove leading/trailing hyphens
-    normalized = normalized.strip('-')
+    normalized = normalized.strip("-")
     return normalized
 
 
@@ -78,7 +78,9 @@ def validate_project_name(name: str) -> list[str] | None:
 
     normalized = normalize_project_name(name)
     if not normalized:
-        errors.append("Project name must contain at least one valid character (a-z, 0-9)")
+        errors.append(
+            "Project name must contain at least one valid character (a-z, 0-9)"
+        )
 
     # Check for reserved names
     if normalized in {"node", "npm", "test", "package", "frontend", "backend"}:
@@ -174,10 +176,7 @@ def should_skip_copy(path: Path) -> bool:
         return True
 
     # Skip various cache/log directories
-    if path.name in {".uv", ".ruff_cache", ".nitro", ".terraform"}:
-        return True
-
-    return False
+    return path.name in {".uv", ".ruff_cache", ".nitro", ".terraform"}
 
 
 def copy_template(
@@ -225,20 +224,35 @@ def copy_template(
 
         if item.is_dir():
             # Recursively copy directory
-            shutil.copytree(item, target_path, ignore=shutil.ignore_patterns(
-                "node_modules", ".output", "__pycache__", ".pytest_cache",
-                ".ruff_cache", ".uv", ".DS_Store", ".nitro", ".terraform",
-            ))
+            shutil.copytree(
+                item,
+                target_path,
+                ignore=shutil.ignore_patterns(
+                    "node_modules",
+                    ".output",
+                    "__pycache__",
+                    ".pytest_cache",
+                    ".ruff_cache",
+                    ".uv",
+                    ".DS_Store",
+                    ".nitro",
+                    ".terraform",
+                ),
+            )
             # Apply substitutions in subdirectory files
-            modified_files.extend(apply_substitutions_in_dir(
-                target_path, project_name, substitution_patterns
-            ))
+            modified_files.extend(
+                apply_substitutions_in_dir(
+                    target_path, project_name, substitution_patterns
+                )
+            )
         else:
             # Copy file and apply substitutions if needed
             shutil.copy2(item, target_path)
-            modified_files.extend(apply_substitutions_to_file(
-                target_path, project_name, substitution_patterns
-            ))
+            modified_files.extend(
+                apply_substitutions_to_file(
+                    target_path, project_name, substitution_patterns
+                )
+            )
 
     return modified_files
 
@@ -262,16 +276,26 @@ def apply_substitutions_in_dir(
 
     for root, dirs, files in os.walk(directory):
         # Skip cache directories
-        dirs[:] = [d for d in dirs if d not in {
-            "node_modules", "__pycache__", ".pytest_cache",
-            ".ruff_cache", ".uv", ".nitro", ".terraform",
-        }]
+        dirs[:] = [
+            d
+            for d in dirs
+            if d
+            not in {
+                "node_modules",
+                "__pycache__",
+                ".pytest_cache",
+                ".ruff_cache",
+                ".uv",
+                ".nitro",
+                ".terraform",
+            }
+        ]
 
         for file in files:
             file_path = Path(root) / file
-            modified_files.extend(apply_substitutions_to_file(
-                file_path, project_name, patterns
-            ))
+            modified_files.extend(
+                apply_substitutions_to_file(file_path, project_name, patterns)
+            )
 
     return modified_files
 
@@ -334,6 +358,7 @@ def check_docker_installed() -> bool:
         True if Docker is available, False otherwise
     """
     import shutil
+
     return shutil.which("docker") is not None
 
 
@@ -400,7 +425,10 @@ def install_backend_deps(target_dir: Path) -> tuple[bool, str]:
 
     # Check if uv is installed
     if not shutil.which("uv"):
-        return False, "uv is not installed or not in PATH. Install from: https://docs.astral.sh/uv/"
+        return (
+            False,
+            "uv is not installed or not in PATH. Install from: https://docs.astral.sh/uv/",
+        )
 
     success, stdout, stderr = run_command(["uv", "sync"], backend_dir)
     if success:
@@ -425,7 +453,10 @@ def install_frontend_deps(target_dir: Path) -> tuple[bool, str]:
 
     # Check if bun is installed
     if not shutil.which("bun"):
-        return False, "bun is not installed or not in PATH. Install from: https://bun.sh/"
+        return (
+            False,
+            "bun is not installed or not in PATH. Install from: https://bun.sh/",
+        )
 
     success, stdout, stderr = run_command(["bun", "install"], frontend_dir)
     if success:
@@ -472,11 +503,21 @@ def init_project(
 
     # Check if directory already exists
     if target_dir.exists() and not force:
-        return False, f"Directory '{target_dir}' already exists. Use --force to override.", [], []
+        return (
+            False,
+            f"Directory '{target_dir}' already exists. Use --force to override.",
+            [],
+            [],
+        )
 
     # Check Docker installation
     if not check_docker_installed():
-        return False, "Docker is not installed or not in PATH. Docker is required for generated projects.", [], []
+        return (
+            False,
+            "Docker is not installed or not in PATH. Docker is required for generated projects.",
+            [],
+            [],
+        )
 
     # Get template directory
     template_dir = get_template_dir()

@@ -127,7 +127,9 @@ class SQLAlchemyRepository(BaseRepository[T]):
         raise_error: bool = True,
         response_model: type[BaseModel] | None = None,
     ) -> T | None:
-        return await self._get_by_field_value("id", entity_id, raise_error, response_model)
+        return await self._get_by_field_value(
+            "id", entity_id, raise_error, response_model
+        )
 
     @translate_commit_errors
     async def get_by_field(
@@ -154,9 +156,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
         if response_model:
             query = self._generate_select_from_pydantic(response_model)
 
-        result = await self._session.execute(
-            query.where(filter_model_field == value)
-        )
+        result = await self._session.execute(query.where(filter_model_field == value))
         item = result.scalar()
 
         if item is None and raise_error:

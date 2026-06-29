@@ -79,7 +79,9 @@ class BaseService(Generic[T]):  # noqa: UP046
         entity_filter: BaseFilterModel | None = None,
         options: QueryOptions | None = None,
     ) -> Page[T]:
-        return await self.repo.get_all_paginated(pagination_params, entity_filter, options)
+        return await self.repo.get_all_paginated(
+            pagination_params, entity_filter, options
+        )
 
     async def create(self, entity: BaseModel, **extra_fields: Any) -> T:
         result = await self.repo.create(entity, **extra_fields)

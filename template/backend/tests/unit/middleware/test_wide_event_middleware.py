@@ -59,7 +59,9 @@ class TestWideEventMiddlewareDispatch:
         return request
 
     @patch("app.core.logging.middleware.logger")
-    async def test_dispatch_returns_response(self, mock_logger, middleware, mock_request):
+    async def test_dispatch_returns_response(
+        self, mock_logger, middleware, mock_request
+    ):
         """Test dispatch returns the response."""
         mock_response = MagicMock()
         mock_response.status_code = 201

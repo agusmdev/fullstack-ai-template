@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -10,19 +10,20 @@ dependencies = [
     { name = "typer" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "pytest", marker = "extra == 'dev'", specifier = "==9.0.2" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = "==0.14.14" },
-    { name = "typer", specifier = "==0.21.1" },
+requires-dist = [{ name = "typer", specifier = "==0.21.1" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.0.2" },
+    { name = "ruff", specifier = "==0.14.14" },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "click"

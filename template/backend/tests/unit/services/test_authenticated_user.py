@@ -48,25 +48,35 @@ class TestGetAuthenticatedUser:
     async def test_validates_session_and_returns_user(
         self, mock_request, mock_http_auth, mock_auth_service, sample_user_response
     ):
-        mock_auth_service.validate_session = AsyncMock(return_value=sample_user_response)
+        mock_auth_service.validate_session = AsyncMock(
+            return_value=sample_user_response
+        )
 
-        with patch("app.user.auth.permissions.ensure_request_context") as mock_ctx, \
-             patch("app.user.auth.permissions.log_user"):
+        with (
+            patch("app.user.auth.permissions.ensure_request_context") as mock_ctx,
+            patch("app.user.auth.permissions.log_user"),
+        ):
             mock_ctx.return_value = MagicMock()
             result = await _get_authenticated_user(
                 mock_request, mock_http_auth, mock_auth_service
             )
 
         assert result is sample_user_response
-        mock_auth_service.validate_session.assert_called_once_with("s_test_session_token")
+        mock_auth_service.validate_session.assert_called_once_with(
+            "s_test_session_token"
+        )
 
     async def test_raises_401_on_session_expired(
         self, mock_request, mock_http_auth, mock_auth_service
     ):
-        mock_auth_service.validate_session = AsyncMock(side_effect=SessionExpiredError())
+        mock_auth_service.validate_session = AsyncMock(
+            side_effect=SessionExpiredError()
+        )
 
         with pytest.raises(HTTPException) as exc_info:
-            await _get_authenticated_user(mock_request, mock_http_auth, mock_auth_service)
+            await _get_authenticated_user(
+                mock_request, mock_http_auth, mock_auth_service
+            )
 
         assert exc_info.value.status_code == 401
 
@@ -75,7 +85,9 @@ class TestGetAuthenticatedUser:
     ):
         mock_request.state.user = sample_user_response
 
-        result = await _get_authenticated_user(mock_request, mock_http_auth, mock_auth_service)
+        result = await _get_authenticated_user(
+            mock_request, mock_http_auth, mock_auth_service
+        )
 
         mock_auth_service.validate_session.assert_not_called()
         assert result is sample_user_response

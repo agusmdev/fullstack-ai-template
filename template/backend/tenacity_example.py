@@ -30,6 +30,7 @@ def retry_with_backoff(
         async def fetch_external_data(url: str) -> dict:
             ...
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         import functools
 

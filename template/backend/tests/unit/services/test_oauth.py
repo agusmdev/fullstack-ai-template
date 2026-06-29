@@ -41,7 +41,10 @@ class TestGoogleOAuthFetchUser:
         mock_session = MagicMock()
         mock_session_cls.return_value = mock_session
         mock_session.fetch_token.return_value = {"access_token": "tok"}
-        mock_session.get.return_value.json.return_value = {"email": "a@b.com", "name": "A"}
+        mock_session.get.return_value.json.return_value = {
+            "email": "a@b.com",
+            "name": "A",
+        }
 
         GoogleOAuth()._fetch_user(self._make_callback())
 
@@ -135,14 +138,18 @@ class TestAuthServiceOAuthLogin:
     async def test_find_or_create_called_with_email(self, auth_service_with_mocks):
         mock_provider = MagicMock()
         mock_provider.callback = AsyncMock(
-            return_value=OAuthUser(token="tok", email="hello@example.com", display_name="Hello")
+            return_value=OAuthUser(
+                token="tok", email="hello@example.com", display_name="Hello"
+            )
         )
         auth_service_with_mocks.providers["google"] = mock_provider
 
         callback = OAuthCallback(code="code", state="state")
         await auth_service_with_mocks.oauth_login("google", callback)
 
-        call_args = auth_service_with_mocks.user_service.find_or_create_by_email.call_args
+        call_args = (
+            auth_service_with_mocks.user_service.find_or_create_by_email.call_args
+        )
         assert call_args.args[0] == "hello@example.com"
 
 
@@ -170,7 +177,9 @@ class TestOAuthCallbackRouter:
         assert response.status_code == 302
         assert "session=" in response.headers["location"]
 
-    async def test_redirects_to_error_on_unknown_provider(self, mock_auth_service_for_router):
+    async def test_redirects_to_error_on_unknown_provider(
+        self, mock_auth_service_for_router
+    ):
         """Providers not in _ALLOWED_OAUTH_PROVIDERS are rejected before calling the service."""
         callback = OAuthCallback(code="code", state="state")
         response = await oauth_callback(
@@ -185,7 +194,9 @@ class TestOAuthCallbackRouter:
 
     async def test_unexpected_exceptions_propagate(self, mock_auth_service_for_router):
         """Unexpected errors propagate to middleware for structured logging."""
-        mock_auth_service_for_router.oauth_login.side_effect = RuntimeError("network error")
+        mock_auth_service_for_router.oauth_login.side_effect = RuntimeError(
+            "network error"
+        )
         callback = OAuthCallback(code="code", state="state")
 
         with pytest.raises(RuntimeError, match="network error"):

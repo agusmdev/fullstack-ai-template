@@ -45,7 +45,7 @@ class TestQueryBuilderBuildSelectFromPydantic:
         mock_select.return_value = mock_select_stmt
 
         builder = QueryBuilder(MockModel)
-        result = builder.build_select_from_pydantic(MockSchema)
+        builder.build_select_from_pydantic(MockSchema)
 
         mock_select_from_pydantic.assert_called_once_with(MockModel, MockSchema)
         mock_select.assert_called_once_with(MockModel)
@@ -68,7 +68,9 @@ class TestQueryBuilderBuildSelectFromPydantic:
 
     @patch("app.repositories.query_builder.select_from_pydantic")
     @patch("app.repositories.query_builder.select")
-    def test_returns_base_select_when_no_query(self, mock_select, mock_select_from_pydantic):
+    def test_returns_base_select_when_no_query(
+        self, mock_select, mock_select_from_pydantic
+    ):
         """Test that base select is returned when no query provided."""
         mock_options = []
         mock_select_from_pydantic.return_value = mock_options

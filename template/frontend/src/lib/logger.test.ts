@@ -3,6 +3,7 @@ import { logger } from './logger'
 
 describe('logger', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.spyOn(console, 'debug').mockImplementation(() => {})
     vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})

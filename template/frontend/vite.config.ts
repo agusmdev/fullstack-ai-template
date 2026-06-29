@@ -1,5 +1,3 @@
-/// <reference types="vitest/globals" />
-
 import { defineConfig } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -27,36 +25,6 @@ const config = defineConfig({
     viteReact(),
     tailwindcss(),
   ],
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['**/*.test.{ts,tsx}'],
-    poolOptions: {
-      threads: {
-        singleThread: true,
-      },
-    },
-    teardownTimeout: 1000,
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      include: ['src/**/*.{ts,tsx}'],
-      exclude: [
-        'src/**/*.test.{ts,tsx}',
-        'src/**/*.d.ts',
-        'src/test/**',
-        'src/routeTree.gen.ts',
-        'src/**/types/**',
-      ],
-      thresholds: {
-        lines: 40,
-        functions: 40,
-        branches: 30,
-        statements: 40,
-      },
-    },
-  },
 })
 
 export default config

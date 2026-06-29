@@ -45,7 +45,9 @@ class TestWideEventContextCreation:
         assert "trace_id" not in data
 
     def test_to_dict_includes_optional_when_set(self):
-        ctx = WideEventContext(request_id="req-1", user_id="u-1", email="test@example.com")
+        ctx = WideEventContext(
+            request_id="req-1", user_id="u-1", email="test@example.com"
+        )
         data = ctx.to_dict()
         assert data["user_id"] == "u-1"
         assert data["email"] == "test@example.com"

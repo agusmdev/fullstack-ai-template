@@ -2,9 +2,9 @@ name: Backend CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   lint-typecheck-test:
@@ -20,7 +20,7 @@ jobs:
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin uv" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -36,8 +36,8 @@ jobs:
       - name: Run ruff formatting check
         run: uv run ruff format --check .
 
-      -name: Run type checking with ty
-        run: uv run ty
+      - name: Run type checking with ty
+        run: uv run ty check
 
       - name: Run pytest
         run: uv run pytest
