@@ -58,9 +58,11 @@ select = [
 ignore = [
     "E501",  # line too long, handled by black
     "B008",  # do not perform function calls in argument defaults
-    "C901",  # too complex
     "F821", # undefined name
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
 
 exclude = [
     ".bzr",
@@ -96,6 +98,7 @@ testpaths = [
     "tests",
 ]
 asyncio_mode = "auto"
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=30"
 
 [tool.coverage.run]
 source = ["."]

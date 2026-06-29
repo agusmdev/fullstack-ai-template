@@ -38,6 +38,24 @@ const config = defineConfig({
       },
     },
     teardownTimeout: 1000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/test/**',
+        'src/routeTree.gen.ts',
+        'src/**/types/**',
+      ],
+      thresholds: {
+        lines: 40,
+        functions: 40,
+        branches: 30,
+        statements: 40,
+      },
+    },
   },
 })
 

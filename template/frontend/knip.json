@@ -1,0 +1,26 @@
+{
+  "entry": [
+    "src/main.tsx",
+    "src/router.tsx",
+    "src/routes/**/*.{ts,tsx}",
+    "e2e/**/*.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": [
+    "src/routeTree.gen.ts",
+    "src/components/ui/**",
+    "playwright.config.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "ignoreDependencies": [
+    "@tanstack/react-start",
+    "@tanstack/devtools-vite",
+    "vite-tsconfig-paths",
+    "@vitejs/plugin-react",
+    "tw-animate-css",
+    "nitro",
+    "@tailwindcss/vite",
+    "web-vitals"
+  ]
+}

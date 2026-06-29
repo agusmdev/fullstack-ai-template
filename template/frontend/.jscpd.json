@@ -1,0 +1,14 @@
+{
+  "threshold": 0,
+  "reporters": ["console"],
+  "format": ["ts", "tsx", "js"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/routeTree.gen.ts",
+    "**/components/ui/**"
+  ]
+}
