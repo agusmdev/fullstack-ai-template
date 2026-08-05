@@ -2,7 +2,6 @@ import asyncio
 import secrets
 import uuid
 from datetime import datetime, timedelta
-from typing import cast
 
 from requests_oauthlib import OAuth2Session
 
@@ -29,7 +28,8 @@ from app.user.auth.schemas import (
     SessionResponse,
     UserSessionResponse,
 )
-from app.user.schemas import UserCreate, UserRegister, UserResponse
+from app.user.models import User
+from app.user.schemas import UserCreate, UserRegister
 from app.user.service import UserService
 
 # Token expiration times
@@ -65,6 +65,10 @@ class GoogleOAuth:
         )
 
 
+OAUTH_PROVIDERS: dict[str, type[GoogleOAuth]] = {"google": GoogleOAuth}
+OAUTH_PROVIDER_NAMES: frozenset[str] = frozenset(OAUTH_PROVIDERS)
+
+
 class AuthService:
     repo: SessionRepository
     user_service: UserService
@@ -83,9 +87,7 @@ class AuthService:
         self.password_reset_repo = password_reset_repo
         self.email_verification_repo = email_verification_repo
 
-        self.providers = {
-            "google": GoogleOAuth(),
-        }
+        self.providers = {name: cls() for name, cls in OAUTH_PROVIDERS.items()}
 
     @staticmethod
     def generate_session_id() -> str:
@@ -137,12 +139,9 @@ class AuthService:
         )
         return await self._create_session_for_user(user.id)
 
-    async def validate_session(self, session_id: str) -> UserResponse:
-        session = cast(
-            "UserSessionResponse",
-            await self.repo.get_by_field(
-                "id", session_id, response_model=UserSessionResponse, raise_error=True
-            ),
+    async def validate_session(self, session_id: str) -> User:
+        session = await self.repo.get_by_field(
+            "id", session_id, response_model=UserSessionResponse, raise_error=True
         )
         if session.expires_at < datetime.now():
             raise SessionExpiredError()

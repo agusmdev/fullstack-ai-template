@@ -4,9 +4,11 @@ import uuid
 from typing import Any
 
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from app.modules.items.models import Item
 from app.modules.items.repository import ItemRepository
+from app.repositories.base_repository import QueryOptions
 from app.repositories.exceptions import NotFoundError
 from app.services.base_crud_service import BaseService
 
@@ -40,26 +42,14 @@ class ItemService(BaseService[Item]):
         self,
         pagination_params: Any,
         entity_filter: Any = None,
-        options: Any = None,
         *,
         user_id: uuid.UUID,
     ) -> Any:
         """List items, scoped to the requesting user."""
-        from sqlalchemy import select
-
-        from app.repositories.base_repository import QueryOptions
-
         base_query = select(self.repo.model).where(  # type: ignore[attr-defined]
             self.repo.model.user_id == user_id  # type: ignore[attr-defined]
         )
-        opts = options or QueryOptions(base_query=base_query)
-        if opts.base_query is None:
-            opts = QueryOptions(
-                base_query=base_query,
-                return_scalars=opts.return_scalars,
-                response_model=opts.response_model,
-                pagination_kwargs=opts.pagination_kwargs,
-            )
+        opts = QueryOptions(base_query=base_query)
         return await self.repo.get_all_paginated(pagination_params, entity_filter, opts)
 
     async def create(self, entity: BaseModel, *, user_id: uuid.UUID) -> Item:  # type: ignore[override]
