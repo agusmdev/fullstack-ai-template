@@ -135,7 +135,7 @@ describe('ApiClient.request()', () => {
     })
   })
 
-  it('falls back gracefully when error response body is not valid JSON', async () => {
+  it('flags invalid JSON in error response body instead of swallowing it', async () => {
     const response = {
       ok: false,
       status: 503,
@@ -146,6 +146,17 @@ describe('ApiClient.request()', () => {
     await expect(api.get('/broken')).rejects.toMatchObject({
       status: 503,
       message: 'HTTP 503',
+      code: 'invalid_error_body',
+    })
+  })
+
+  it('wraps network failures into an ApiError instead of leaking TypeError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    await expect(api.get('/unreachable')).rejects.toMatchObject({
+      status: 0,
+      message: 'Network request failed',
+      code: 'network_error',
     })
   })
 

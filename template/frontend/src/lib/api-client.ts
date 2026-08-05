@@ -26,14 +26,22 @@ class ApiClient {
   private async execute(endpoint: string, options?: RequestInit): Promise<Response> {
     const token = getAuthToken()
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options?.headers,
-      },
-    })
+    let response: Response
+    try {
+      response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+          ...options?.headers,
+        },
+      })
+    } catch {
+      // Network-level failure (DNS, offline, CORS, blocked): fetch rejects with a
+      // raw TypeError. Normalize it into the app's ApiError so callers never see
+      // an unstructured network error leak through.
+      throw new ApiError(0, 'Network request failed', 'network_error')
+    }
 
     if (response.status === 401) {
       clearAuthToken()
@@ -41,7 +49,14 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      const data = await response.json().catch(() => ({})) as ApiErrorResponse
+      // Parse the error body; if it isn't valid JSON, surface a structured
+      // error instead of silently swallowing the parse failure.
+      let data: ApiErrorResponse
+      try {
+        data = await response.json()
+      } catch {
+        throw new ApiError(response.status, `HTTP ${response.status}`, 'invalid_error_body')
+      }
       throw new ApiError(
         response.status,
         data.detail || `HTTP ${response.status}`,

@@ -10,6 +10,7 @@ import { DeleteItemDialog } from '@/components/DeleteItemDialog'
 import { Pencil, Trash2, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import React, { useState, useCallback } from 'react'
 import { useDebounce } from '@/hooks/useDebounce'
+import { getErrorMessage } from '@/lib/error-handler'
 
 function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A'
@@ -69,7 +70,7 @@ function Items() {
         <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
         <div className="bg-destructive/10 text-destructive p-4 rounded-md border border-destructive/20">
           <p className="font-semibold">Error loading items</p>
-          <p className="text-sm">{error instanceof Error ? error.message : 'An unknown error occurred'}</p>
+          <p className="text-sm">{getErrorMessage(error, 'An unknown error occurred')}</p>
         </div>
       </PageShell>
     )

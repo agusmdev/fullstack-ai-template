@@ -1,143 +1,138 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { executeAuthSubmit } from './useAuthSubmit'
-import type { AuthSessionResponse } from '@/types/auth'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, act, waitFor } from '@testing-library/react'
+import React, { type ReactNode } from 'react'
+import { useAuthSubmit } from './useAuthSubmit'
 
-const mockSession: AuthSessionResponse = {
-  id: 'session-token-123',
-  expires_at: '2099-01-01T00:00:00Z',
-  expires_in: 3600,
+// The hook composes useNavigate() + useAuth() + the executeAuthSubmit orchestrator.
+// We mock each collaborator to verify the wiring (endpoint/messages/redirect passthrough,
+// isLoading lifecycle) without performing real HTTP or router navigation.
+const navigateMock = vi.fn()
+const loginMock = vi.fn()
+const executeMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => navigateMock,
+}))
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ login: loginMock }),
+}))
+vi.mock('@/lib/auth-actions', () => ({
+  executeAuthSubmit: executeMock,
+}))
+
+function wrapper({ children }: { children: ReactNode }) {
+  return React.createElement(React.Fragment, null, children)
 }
 
-// Mock sonner so we can assert on toast calls, and error-handler so we can
-// assert the error path is wired correctly without depending on its internals.
-const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
-const errorHandlerMock = vi.hoisted(() => ({ toastApiError: vi.fn() }))
-
-vi.mock('sonner', () => ({ toast: toastMock }))
-vi.mock('@/lib/error-handler', () => ({ toastApiError: errorHandlerMock.toastApiError }))
-
-function mockFetch(status: number, body?: unknown) {
-  const response = {
-    ok: status >= 200 && status < 300,
-    status,
-    json:
-      body !== undefined
-        ? vi.fn().mockResolvedValue(body)
-        : vi.fn().mockRejectedValue(new Error('No body')),
-  }
-  const spy = vi.fn().mockResolvedValue(response)
-  vi.stubGlobal('fetch', spy)
-  return spy
-}
-
-describe('executeAuthSubmit', () => {
-  const login = vi.fn()
-  const navigate = vi.fn()
-  const successMessage = 'Signed in'
-  const errorMessage = 'Login failed'
-  const redirect = { to: '/' as const }
-
+describe('useAuthSubmit', () => {
   beforeEach(() => {
-    login.mockReset()
-    navigate.mockReset()
-    toastMock.success.mockReset()
-    toastMock.error.mockReset()
-    errorHandlerMock.toastApiError.mockReset()
-    localStorage.clear()
+    navigateMock.mockReset()
+    loginMock.mockReset()
+    executeMock.mockReset()
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('calls login() with the session token on success', async () => {
-    mockFetch(200, mockSession)
-
-    await executeAuthSubmit('/auth/login', { email: 'a@b.com', password: 'pw' }, {
-      login,
-      navigate,
-      successMessage,
-      errorMessage,
-      redirect,
-    })
-
-    expect(login).toHaveBeenCalledWith(mockSession.id)
-  })
-
-  it('calls navigate() with the redirect option on success', async () => {
-    mockFetch(200, mockSession)
-
-    await executeAuthSubmit('/auth/login', {}, { login, navigate, successMessage, errorMessage, redirect })
-
-    expect(navigate).toHaveBeenCalledWith(redirect)
-  })
-
-  it('posts the payload as JSON to the configured endpoint', async () => {
-    const fetchSpy = mockFetch(200, mockSession)
-
-    await executeAuthSubmit('/auth/login', { email: 'a@b.com', password: 'pw' }, {
-      login,
-      navigate,
-      successMessage,
-      errorMessage,
-      redirect,
-    })
-
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'http://localhost:9095/auth/login',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ email: 'a@b.com', password: 'pw' }),
-      }),
+  it('exposes submit and isLoading (initially false)', () => {
+    const { result } = renderHook(
+      () => useAuthSubmit('/auth/login', 'Signed in', 'Login failed'),
+      { wrapper },
     )
+
+    expect(result.current.isLoading).toBe(false)
+    expect(typeof result.current.submit).toBe('function')
   })
 
-  it('shows the success toast on success', async () => {
-    mockFetch(200, mockSession)
+  it('defaults the redirect to the home route', async () => {
+    executeMock.mockResolvedValue(undefined)
+    const { result } = renderHook(
+      () => useAuthSubmit('/auth/login', 'Signed in', 'Login failed'),
+      { wrapper },
+    )
 
-    await executeAuthSubmit('/auth/login', {}, { login, navigate, successMessage, errorMessage, redirect })
+    await act(async () => {
+      await result.current.submit({ email: 'a@b.com', password: 'pw' })
+    })
 
-    expect(toastMock.success).toHaveBeenCalledWith(successMessage)
+    expect(executeMock).toHaveBeenCalledTimes(1)
+    const [, , deps] = executeMock.mock.calls[0]
+    expect(deps).toMatchObject({
+      login: loginMock,
+      navigate: navigateMock,
+      successMessage: 'Signed in',
+      errorMessage: 'Login failed',
+      redirect: { to: '/' },
+    })
   })
 
-  it('does not call login or navigate on API error', async () => {
-    mockFetch(401, { detail: 'Unauthorized' })
+  it('honors a caller-provided redirect', async () => {
+    executeMock.mockResolvedValue(undefined)
+    const { result } = renderHook(
+      () =>
+        useAuthSubmit('/auth/register', 'Welcome', 'Registration failed', {
+          to: '/items',
+        }),
+      { wrapper },
+    )
 
-    await executeAuthSubmit('/auth/login', {}, { login, navigate, successMessage, errorMessage, redirect })
+    await act(async () => {
+      await result.current.submit({ email: 'a@b.com', password: 'pw' })
+    })
 
-    expect(login).not.toHaveBeenCalled()
-    expect(navigate).not.toHaveBeenCalled()
+    const [endpoint, , deps] = executeMock.mock.calls[0]
+    expect(endpoint).toBe('/auth/register')
+    expect(deps.redirect).toEqual({ to: '/items' })
   })
 
-  it('routes the error through toastApiError with the fallback message', async () => {
-    mockFetch(400, { detail: 'Invalid credentials' })
+  it('forwards the submit payload as the orchestrator payload', async () => {
+    executeMock.mockResolvedValue(undefined)
+    const { result } = renderHook(
+      () => useAuthSubmit('/auth/login', 'Signed in', 'Login failed'),
+      { wrapper },
+    )
+    const payload = { email: 'a@b.com', password: 'pw' }
 
-    await executeAuthSubmit('/auth/login', {}, { login, navigate, successMessage, errorMessage, redirect })
+    await act(async () => {
+      await result.current.submit(payload)
+    })
 
-    expect(errorHandlerMock.toastApiError).toHaveBeenCalledTimes(1)
-    const [err, message] = errorHandlerMock.toastApiError.mock.calls[0]
-    expect(message).toBe(errorMessage)
-    // The error surfaced is an ApiError carrying the API detail.
-    expect(err).toBeInstanceOf(Error)
-    expect((err as Error).message).toBe('Invalid credentials')
+    const [, passedPayload] = executeMock.mock.calls[0]
+    expect(passedPayload).toBe(payload)
   })
 
-  it('does not show a success toast on error', async () => {
-    mockFetch(500, {})
+  it('toggles isLoading true while submitting, then back to false on success', async () => {
+    let resolveSubmit!: () => void
+    executeMock.mockReturnValue(new Promise<void>((resolve) => { resolveSubmit = resolve }))
 
-    await executeAuthSubmit('/auth/login', {}, { login, navigate, successMessage, errorMessage, redirect })
+    const { result } = renderHook(
+      () => useAuthSubmit('/auth/login', 'Signed in', 'Login failed'),
+      { wrapper },
+    )
 
-    expect(toastMock.success).not.toHaveBeenCalled()
+    expect(result.current.isLoading).toBe(false)
+    let pending: Promise<void>
+    act(() => {
+      pending = result.current.submit({})
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(true))
+
+    await act(async () => {
+      resolveSubmit()
+      await pending!
+    })
+    expect(result.current.isLoading).toBe(false)
   })
 
-  it('swallows network errors without throwing (handled by toastApiError)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Network down')))
+  it('resets isLoading to false even when the orchestrator rejects', async () => {
+    executeMock.mockRejectedValue(new Error('boom'))
 
-    await expect(
-      executeAuthSubmit('/auth/login', {}, { login, navigate, successMessage, errorMessage, redirect }),
-    ).resolves.toBeUndefined()
+    const { result } = renderHook(
+      () => useAuthSubmit('/auth/login', 'Signed in', 'Login failed'),
+      { wrapper },
+    )
 
-    expect(errorHandlerMock.toastApiError).toHaveBeenCalledTimes(1)
-    expect(login).not.toHaveBeenCalled()
+    await act(async () => {
+      await expect(result.current.submit({})).rejects.toThrow('boom')
+    })
+
+    expect(result.current.isLoading).toBe(false)
   })
 })
