@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from argon2 import PasswordHasher
+from argon2.exceptions import Argon2Error
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -29,7 +30,7 @@ class User(TimestampMixin, Base):
             return False
         try:
             return _ph.verify(self.password, password)
-        except Exception:
+        except Argon2Error:
             return False
 
     @property

@@ -65,3 +65,7 @@ class ExternalApiService(BaseModel):
             raise ExternalApiException(
                 status_code=err.response.status_code, detail=err.response.text
             ) from err
+        except httpx.RequestError as err:
+            raise ExternalApiException(
+                status_code=502, detail="External service unreachable"
+            ) from err

@@ -49,6 +49,7 @@ async def login_user(
 @auth_router.post(
     "/register",
     response_description="Register a new user",
+    status_code=status.HTTP_201_CREATED,
 )
 async def register_user(
     user: UserRegister = Body(...),
@@ -130,8 +131,6 @@ async def request_password_reset(
         # Treat OAuth-only accounts the same as missing users to prevent enumeration
         return PasswordResetResponse()
     if token:
-        # TODO: Send email with reset link containing the token
-        # Example: send_password_reset_email(request.email, token)
         loguru.logger.debug("Password reset token generated — implement email delivery")
     return PasswordResetResponse()
 
@@ -172,10 +171,10 @@ async def request_email_verification(
     Requires authentication. Generates a verification token and sends an email.
     """
     token = await auth_service.initiate_email_verification(user_id)
-    # TODO: Send email with verification link containing the token
-    # Example: send_email_verification_email(user.email, token)
-    loguru.logger.debug("Email verification token generated — implement email delivery")
-    del token  # token will be used when email delivery is implemented
+    if token:
+        loguru.logger.debug(
+            "Email verification token generated — implement email delivery"
+        )
     return EmailVerificationResponse()
 
 

@@ -31,7 +31,7 @@ async def get_authenticated_user(
 @user_router.patch(
     "/me",
     response_description="Update user",
-    status_code=status.HTTP_202_ACCEPTED,
+    status_code=status.HTTP_200_OK,
 )
 async def update_logged_user(
     user_id: uuid.UUID = Depends(AuthenticatedUser.current_user_id),
