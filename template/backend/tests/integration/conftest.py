@@ -31,7 +31,7 @@ def _configure_test_logger():
 
 _configure_test_logger()
 
-from app.main import create_app
+from app.main import create_app  # noqa: E402  - must run after _configure_test_logger()
 
 
 @pytest.fixture(scope="session")
@@ -50,7 +50,9 @@ def app():
     from app.user.auth.permissions import AuthenticatedUser
 
     test_app.dependency_overrides[AuthenticatedUser.current_user_id] = mock_user_id
-    test_app.dependency_overrides[AuthenticatedUser.current_user_email] = mock_user_email
+    test_app.dependency_overrides[AuthenticatedUser.current_user_email] = (
+        mock_user_email
+    )
 
     return test_app
 

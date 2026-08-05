@@ -35,7 +35,10 @@ class TestCORSHeaders:
             headers={"Origin": "http://localhost:3000"},
         )
         # Should have CORS headers
-        assert "access-control-allow-origin" in response.headers or response.status_code == 200
+        assert (
+            "access-control-allow-origin" in response.headers
+            or response.status_code == 200
+        )
 
 
 class TestAppFactory:

@@ -66,12 +66,14 @@ class TestGetDbSession:
         # Mock the async session context
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session_factory = MagicMock()
-        mock_session_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_factory.return_value.__aenter__ = AsyncMock(
+            return_value=mock_session
+        )
         mock_session_factory.return_value.__aexit__ = AsyncMock(return_value=None)
 
         # We can't easily test the generator behavior without more mocking
-        # but we can test the function exists and is async
-        assert hasattr(get_db_session, "__call__")
+        # but we can test the function is async
+        assert callable(get_db_session)
 
     async def test_is_async_generator(self):
         """Test that get_db_session is an async generator."""

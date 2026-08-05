@@ -1,228 +1,151 @@
-"""Tests for Items router endpoint functions."""
+"""Route-level tests for the Items router.
+
+These hit the mounted items_router through FastAPI's TestClient (real HTTP,
+dependency injection, response serialization) instead of importing the handler
+functions and invoking them directly. The service and auth dependencies are
+overridden so no database is touched.
+"""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-from app.modules.items.routers import (
-    create_item,
-    delete_item,
-    get_item,
-    get_item_by_sku,
-    list_items,
-    update_item,
-)
-from app.modules.items.schemas import ItemCreate, ItemResponse, ItemUpdate
+from app.modules.items.dependencies import get_item_service
+from app.modules.items.routers import items_router
+from app.repositories.exceptions import NotFoundError
+from app.user.auth import require_current_user_id
 
 
 @pytest.fixture
-def mock_item_service():
-    svc = MagicMock()
-    svc.get_by_id = AsyncMock()
-    svc.get_all = AsyncMock()
-    svc.get_all_paginated = AsyncMock()
-    svc.create = AsyncMock()
-    svc.update = AsyncMock()
-    svc.delete = AsyncMock()
-    svc.get_by_sku = AsyncMock()
-    return svc
-
-
-@pytest.fixture
-def sample_item_id():
+def user_id():
     return uuid.UUID("87654321-4321-8765-4321-876543218765")
 
 
 @pytest.fixture
-def sample_item_owner_id():
+def owner_id():
     return uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 
 
 @pytest.fixture
-def sample_item_response(sample_item_id, sample_item_owner_id):
-    item = MagicMock()
-    item.id = sample_item_id
-    item.user_id = sample_item_owner_id
-    item.name = "Test Item"
-    item.description = "A test item"
-    return item
+def item_obj(user_id, owner_id):
+    return SimpleNamespace(
+        id=user_id, user_id=owner_id, name="Test Item", description="A test item"
+    )
 
 
 @pytest.fixture
-def sample_page(sample_item_response):
-    """A page-like object whose items/metadata the router can validate."""
-    page = MagicMock()
-    page.items = [sample_item_response]
-    page.total = 1
-    page.page = 1
-    page.size = 50
-    page.pages = 1
-    return page
+def item_service(item_obj, user_id):
+    svc = MagicMock()
+    svc.get_by_id = AsyncMock(return_value=item_obj)
+    svc.get_by_sku = AsyncMock(return_value=item_obj)
+    svc.create = AsyncMock(return_value=item_obj)
+    svc.update = AsyncMock(return_value=item_obj)
+    svc.delete = AsyncMock(return_value=None)
+    svc.get_all_paginated = AsyncMock(
+        return_value=SimpleNamespace(
+            items=[item_obj], total=1, page=1, size=50, pages=1
+        )
+    )
+    return svc
+
+
+@pytest.fixture
+def client(user_id, item_service):
+    app = FastAPI()
+    app.include_router(items_router)
+    app.dependency_overrides[require_current_user_id] = lambda: user_id
+    app.dependency_overrides[get_item_service] = lambda: item_service
+    with TestClient(app, base_url="http://test") as c:
+        yield c
 
 
 class TestListItems:
-    async def test_calls_service_get_all_paginated(
-        self, mock_item_service, sample_page
-    ):
-        mock_item_service.get_all_paginated.return_value = sample_page
-        pagination = MagicMock()
-        item_filter = MagicMock()
-        user_id = uuid.uuid4()
+    def test_returns_paginated_items(self, client, item_service):
+        response = client.get("/items")
 
-        with patch("app.modules.items.routers.log_action"):
-            await list_items(pagination, item_filter, user_id, mock_item_service)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total"] == 1
+        assert body["page"] == 1
+        assert len(body["items"]) == 1
+        assert body["items"][0]["name"] == "Test Item"
+        item_service.get_all_paginated.assert_awaited_once()
 
-        mock_item_service.get_all_paginated.assert_called_once_with(
-            pagination_params=pagination,
-            entity_filter=item_filter,
-            user_id=user_id,
-        )
+    def test_propagates_query_params_to_service(self, client, item_service, user_id):
+        client.get("/items", params={"page": "2", "size": "10"})
 
-    async def test_returns_result(self, mock_item_service, sample_page, sample_item_id):
-        mock_item_service.get_all_paginated.return_value = sample_page
-        pagination = MagicMock()
-        item_filter = MagicMock()
-        user_id = uuid.uuid4()
-
-        with patch("app.modules.items.routers.log_action"):
-            result = await list_items(
-                pagination, item_filter, user_id, mock_item_service
-            )
-
-        assert result.total == 1
-        assert result.page == 1
-        assert result.size == 50
-        assert len(result.items) == 1
-        assert isinstance(result.items[0], ItemResponse)
-        assert result.items[0].id == sample_item_id
+        # The service received a pagination Params object built from the query.
+        _args, kwargs = item_service.get_all_paginated.await_args
+        assert kwargs["user_id"] == user_id
+        assert kwargs["pagination_params"].page == 2
+        assert kwargs["pagination_params"].size == 10
 
 
 class TestGetItem:
-    async def test_returns_item_when_found(
-        self, mock_item_service, sample_item_response, sample_item_id
-    ):
-        mock_item_service.get_by_id.return_value = sample_item_response
-        user_id = uuid.uuid4()
+    def test_returns_item_by_id(self, client, user_id):
+        response = client.get(f"/items/{user_id}")
 
-        with patch("app.modules.items.routers.log_action"):
-            result = await get_item(sample_item_id, user_id, mock_item_service)
+        assert response.status_code == 200
+        assert response.json()["id"] == str(user_id)
 
-        assert isinstance(result, ItemResponse)
-        assert result.id == sample_item_id
-
-    async def test_raises_when_item_not_found(self, mock_item_service, sample_item_id):
-        from app.repositories.exceptions import NotFoundError
-
-        mock_item_service.get_by_id.side_effect = NotFoundError(
-            detail=f"Item {sample_item_id} not found"
+    def test_not_found_returns_404(self, client, item_service, user_id):
+        item_service.get_by_id.side_effect = NotFoundError(
+            detail=f"Item {user_id} not found"
         )
-        user_id = uuid.uuid4()
 
-        with patch("app.modules.items.routers.log_action"):
-            with pytest.raises(NotFoundError):
-                await get_item(sample_item_id, user_id, mock_item_service)
+        response = client.get(f"/items/{user_id}")
 
-    async def test_calls_service_with_item_id(
-        self, mock_item_service, sample_item_response, sample_item_id
-    ):
-        mock_item_service.get_by_id.return_value = sample_item_response
-        user_id = uuid.uuid4()
+        assert response.status_code == 404
 
-        with patch("app.modules.items.routers.log_action"):
-            await get_item(sample_item_id, user_id, mock_item_service)
+    def test_owns_user_id_from_auth(self, client, item_service, user_id):
+        client.get(f"/items/{user_id}")
 
-        mock_item_service.get_by_id.assert_called_once_with(
-            sample_item_id, user_id=user_id
-        )
+        _args, kwargs = item_service.get_by_id.await_args
+        assert kwargs["user_id"] == user_id
 
 
 class TestGetItemBySku:
-    async def test_returns_item_when_found(
-        self, mock_item_service, sample_item_response
-    ):
-        mock_item_service.get_by_sku.return_value = sample_item_response
-        user_id = uuid.uuid4()
+    def test_returns_item_by_sku(self, client):
+        response = client.get("/items/by-sku/TEST-SKU")
 
-        with (
-            patch("app.modules.items.routers.log_action"),
-            patch("app.modules.items.routers.log_entity"),
-        ):
-            result = await get_item_by_sku("TEST-SKU", user_id, mock_item_service)
-
-        assert isinstance(result, ItemResponse)
-        assert result.id == sample_item_response.id
-
-    async def test_calls_service_with_sku(
-        self, mock_item_service, sample_item_response
-    ):
-        mock_item_service.get_by_sku.return_value = sample_item_response
-        user_id = uuid.uuid4()
-
-        with (
-            patch("app.modules.items.routers.log_action"),
-            patch("app.modules.items.routers.log_entity"),
-        ):
-            await get_item_by_sku("MY-SKU-001", user_id, mock_item_service)
-
-        mock_item_service.get_by_sku.assert_called_once_with(
-            "MY-SKU-001", user_id=user_id
-        )
+        assert response.status_code == 200
+        assert response.json()["name"] == "Test Item"
 
 
 class TestCreateItem:
-    async def test_creates_and_returns_item(
-        self, mock_item_service, sample_item_response
-    ):
-        mock_item_service.create.return_value = sample_item_response
-        create_data = ItemCreate(name="New Item", description="desc")
-        user_id = uuid.uuid4()
+    def test_creates_and_returns_201(self, client, item_service, user_id, owner_id):
+        response = client.post(
+            "/items", json={"name": "New Item", "description": "desc"}
+        )
 
-        with (
-            patch("app.modules.items.routers.log_action"),
-            patch("app.modules.items.routers.log_entity"),
-        ):
-            result = await create_item(create_data, user_id, mock_item_service)
+        assert response.status_code == 201
+        assert response.json()["id"] == str(user_id)
+        _args, kwargs = item_service.create.await_args
+        assert kwargs["user_id"] == user_id
 
-        assert isinstance(result, ItemResponse)
-        assert result.id == sample_item_response.id
-        mock_item_service.create.assert_called_once_with(create_data, user_id=user_id)
+    def test_rejects_empty_name(self, client):
+        response = client.post("/items", json={"name": "", "description": "d"})
+
+        assert response.status_code == 422
 
 
 class TestUpdateItem:
-    async def test_updates_and_returns_item(
-        self, mock_item_service, sample_item_response, sample_item_id
-    ):
-        mock_item_service.update.return_value = sample_item_response
-        update_data = ItemUpdate(name="Updated")
-        user_id = uuid.uuid4()
-
-        with (
-            patch("app.modules.items.routers.log_action"),
-            patch("app.modules.items.routers.log_entity"),
-        ):
-            result = await update_item(
-                sample_item_id, update_data, user_id, mock_item_service
-            )
-
-        assert isinstance(result, ItemResponse)
-        assert result.id == sample_item_id
-        mock_item_service.update.assert_called_once_with(
-            sample_item_id, update_data, user_id=user_id
+    def test_updates_and_returns_item(self, client, item_service, user_id):
+        response = client.patch(
+            f"/items/{user_id}", json={"name": "Updated", "description": "d"}
         )
+
+        assert response.status_code == 200
+        item_service.update.assert_awaited_once()
 
 
 class TestDeleteItem:
-    async def test_calls_service_delete(self, mock_item_service, sample_item_id):
-        mock_item_service.delete.return_value = None
-        user_id = uuid.uuid4()
+    def test_returns_204(self, client, item_service, user_id):
+        response = client.delete(f"/items/{user_id}")
 
-        with (
-            patch("app.modules.items.routers.log_action"),
-            patch("app.modules.items.routers.log_entity"),
-        ):
-            await delete_item(sample_item_id, user_id, mock_item_service)
-
-        mock_item_service.delete.assert_called_once_with(
-            sample_item_id, user_id=user_id
-        )
+        assert response.status_code == 204
+        item_service.delete.assert_awaited_once_with(user_id, user_id=user_id)

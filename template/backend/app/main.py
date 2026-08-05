@@ -2,8 +2,9 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import sentry_sdk
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.context import clear_request_context
 from app.core.config import settings
@@ -12,6 +13,19 @@ from app.core.logging.middleware import WideEventMiddleware
 from app.middlewares.context import RequestContextMiddleware
 
 from .routers import get_app_router
+
+
+async def _http_exception_handler(
+    _request: Request, exc: HTTPException
+) -> JSONResponse:
+    """Surface error_code alongside detail for all HTTP exceptions."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "error_code": getattr(exc, "error_code", "http_error"),
+        },
+    )
 
 
 @asynccontextmanager
@@ -43,6 +57,7 @@ def create_app(
     configure_logging()
 
     app = FastAPI(lifespan=lifespan)
+    app.add_exception_handler(HTTPException, _http_exception_handler)
 
     # Middleware is applied LIFO: last-added = outermost (first to handle request).
     # Desired order: CORS → WideEvent → RequestContext

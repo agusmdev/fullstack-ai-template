@@ -1,241 +1,205 @@
-"""Tests for Auth router endpoint functions."""
+"""Route-level tests for the Auth router.
+
+These hit the mounted auth_router through FastAPI's TestClient (real HTTP,
+dependency injection, response serialization, exception→status mapping) instead
+of importing the handler functions and invoking them directly.
+"""
 
 import uuid
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from app.user.auth.exceptions import InvalidTokenError, OAuthUserPasswordResetError
-from app.user.auth.routers import (
-    confirm_email_verification,
-    confirm_password_reset,
-    login_user,
-    logout_all_devices,
-    logout_user,
-    oauth_callback,
-    register_user,
-    request_email_verification,
-    request_password_reset,
-)
-from app.user.auth.schemas import (
-    EmailVerificationConfirm,
-    LogoutResponse,
-    OAuthCallback,
-    PasswordResetConfirm,
-    PasswordResetRequest,
-    SessionResponse,
-)
-from app.user.schemas import UserRegister
+from app.user.auth.permissions import AuthenticatedUser
+from app.user.auth.routers import auth_router
+from app.user.auth.schemas import SessionResponse
+from app.user.dependencies import get_auth_service
 
 
 @pytest.fixture
-def mock_auth_service():
+def user_id():
+    return uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+
+@pytest.fixture
+def expires_at():
+    # SessionResponse.expires_in uses naive datetime.now(); keep this naive too.
+    return datetime.now() + timedelta(days=1)
+
+
+@pytest.fixture
+def session(expires_at):
+    return SessionResponse(id="s_test_session", expires_at=expires_at)
+
+
+@pytest.fixture
+def auth_service(session):
     svc = MagicMock()
-    svc.authenticate = AsyncMock()
-    svc.register = AsyncMock()
-    svc.logout = AsyncMock()
-    svc.logout_all = AsyncMock()
-    svc.initiate_password_reset = AsyncMock()
-    svc.reset_password = AsyncMock()
-    svc.initiate_email_verification = AsyncMock()
-    svc.verify_email = AsyncMock()
+    svc.authenticate = AsyncMock(return_value=session)
+    svc.register = AsyncMock(return_value=session)
+    svc.logout = AsyncMock(return_value=None)
+    svc.logout_all = AsyncMock(return_value=None)
+    svc.initiate_password_reset = AsyncMock(return_value="pr_token")
+    svc.reset_password = AsyncMock(return_value=None)
+    svc.initiate_email_verification = AsyncMock(return_value="ev_token")
+    svc.verify_email = AsyncMock(return_value=None)
+    svc.oauth_login = AsyncMock(return_value=session)
     return svc
 
 
 @pytest.fixture
-def sample_session_response():
-    from datetime import datetime, timedelta
-
-    return SessionResponse(
-        id="s_test_session_id",
-        expires_at=datetime.now() + timedelta(days=365),
+def client(user_id, auth_service):
+    app = FastAPI()
+    app.include_router(auth_router)
+    app.dependency_overrides[AuthenticatedUser.current_user_id] = lambda: user_id
+    app.dependency_overrides[AuthenticatedUser.current_session_id] = (
+        lambda: "s_test_session"
     )
+    app.dependency_overrides[get_auth_service] = lambda: auth_service
+    with TestClient(app, base_url="http://test") as c:
+        yield c
 
 
-@pytest.fixture
-def sample_user_id():
-    return uuid.UUID("12345678-1234-5678-1234-567812345678")
-
-
-class TestLoginUser:
-    async def test_calls_authenticate_and_returns_session(
-        self, mock_auth_service, sample_session_response
-    ):
-        mock_auth_service.authenticate.return_value = sample_session_response
-
-        result = await login_user(
-            email="test@example.com",
-            password="password123",
-            auth_service=mock_auth_service,
+class TestLogin:
+    def test_returns_session(self, client, auth_service):
+        response = client.post(
+            "/login", json={"email": "test@example.com", "password": "password123"}
         )
 
-        mock_auth_service.authenticate.assert_called_once_with(
+        assert response.status_code == 200
+        assert response.json()["id"] == "s_test_session"
+        auth_service.authenticate.assert_awaited_once_with(
             email="test@example.com", password="password123"
         )
-        assert result == sample_session_response
 
 
-class TestRegisterUser:
-    async def test_calls_register_and_returns_session(
-        self, mock_auth_service, sample_session_response
-    ):
-        mock_auth_service.register.return_value = sample_session_response
-        user = UserRegister(
-            email="new@example.com", display_name="New User", raw_password="secret123"
-        )
+class TestRegister:
+    def test_returns_session_and_201(self, client, auth_service):
+        payload = {
+            "email": "new@example.com",
+            "display_name": "New User",
+            "raw_password": "secret123",
+        }
+        response = client.post("/register", json=payload)
 
-        result = await register_user(user=user, auth_service=mock_auth_service)
-
-        mock_auth_service.register.assert_called_once_with(new_user=user)
-        assert result == sample_session_response
-
-
-class TestLogoutUser:
-    async def test_calls_logout_and_returns_response(self, mock_auth_service):
-        result = await logout_user(
-            session_id="s_session_id", auth_service=mock_auth_service
-        )
-
-        mock_auth_service.logout.assert_called_once_with("s_session_id")
-        assert isinstance(result, LogoutResponse)
+        assert response.status_code == 201
+        assert response.json()["id"] == "s_test_session"
+        auth_service.register.assert_awaited_once()
+        _, kwargs = auth_service.register.await_args
+        assert kwargs["new_user"].email == "new@example.com"
 
 
-class TestLogoutAllDevices:
-    async def test_calls_logout_all_and_returns_response(
-        self, mock_auth_service, sample_user_id
-    ):
-        result = await logout_all_devices(
-            user_id=sample_user_id, auth_service=mock_auth_service
-        )
+class TestLogout:
+    def test_logout_invalidates_session(self, client, auth_service):
+        response = client.post("/logout")
 
-        mock_auth_service.logout_all.assert_called_once_with(sample_user_id)
-        assert isinstance(result, LogoutResponse)
+        assert response.status_code == 200
+        auth_service.logout.assert_awaited_once_with("s_test_session")
+
+    def test_logout_all_invalidates_all(self, client, auth_service, user_id):
+        response = client.post("/logout/all")
+
+        assert response.status_code == 200
+        auth_service.logout_all.assert_awaited_once_with(user_id)
 
 
 class TestOAuthCallback:
-    async def test_redirects_to_error_on_unknown_provider(self, mock_auth_service):
-        """Unsupported providers are rejected before the service layer is called."""
-        callback = OAuthCallback(code="auth_code", state="st")
-
-        result = await oauth_callback(
-            provider="unknown_provider",
-            auth_service=mock_auth_service,
-            callback=callback,
+    def test_unknown_provider_redirects_to_error(self, client, auth_service):
+        response = client.get(
+            "/oauth/unknown/callback",
+            params={"code": "auth_code", "state": "st"},
+            follow_redirects=False,
         )
 
-        mock_auth_service.oauth_login.assert_not_called()
-        assert result.status_code == 302
-        assert "unsupported_provider" in str(result.headers["location"])
+        assert response.status_code == 302
+        assert "unsupported_provider" in response.headers["location"]
+        auth_service.oauth_login.assert_not_awaited()
 
-    async def test_redirects_to_frontend_on_success(self, mock_auth_service, sample_session_response):
-        """Known provider triggers oauth_login and redirects to frontend."""
-        mock_auth_service.oauth_login = AsyncMock(return_value=sample_session_response)
-        callback = OAuthCallback(code="auth_code", state="st")
-
-        result = await oauth_callback(
-            provider="google",
-            auth_service=mock_auth_service,
-            callback=callback,
+    def test_known_provider_redirects_with_session(self, client, auth_service):
+        response = client.get(
+            "/oauth/google/callback",
+            params={"code": "auth_code", "state": "st"},
+            follow_redirects=False,
         )
 
-        mock_auth_service.oauth_login.assert_called_once_with(
-            provider_name="google", payload=callback
-        )
-        assert result.status_code == 302
-        assert sample_session_response.id in str(result.headers["location"])
+        assert response.status_code == 302
+        assert "s_test_session" in response.headers["location"]
+        auth_service.oauth_login.assert_awaited_once()
 
-    async def test_unexpected_exceptions_propagate(self, mock_auth_service):
-        """Unexpected service errors propagate to middleware for structured logging."""
-        mock_auth_service.oauth_login.side_effect = RuntimeError("unexpected")
-        callback = OAuthCallback(code="code", state="st")
+    def test_service_error_propagates(self, client, auth_service):
+        auth_service.oauth_login.side_effect = RuntimeError("unexpected")
 
         with pytest.raises(RuntimeError):
-            await oauth_callback(
-                provider="google",
-                auth_service=mock_auth_service,
-                callback=callback,
+            client.get(
+                "/oauth/google/callback",
+                params={"code": "code", "state": "st"},
+                follow_redirects=False,
             )
 
 
-class TestRequestPasswordReset:
-    async def test_returns_success_for_valid_email(self, mock_auth_service):
-        mock_auth_service.initiate_password_reset.return_value = "pr_token"
-        request = PasswordResetRequest(email="user@example.com")
+class TestPasswordReset:
+    def test_reset_for_valid_email(self, client, auth_service):
+        response = client.post("/password/reset", json={"email": "user@example.com"})
 
-        result = await request_password_reset(
-            request=request, auth_service=mock_auth_service
+        assert response.status_code == 200
+        auth_service.initiate_password_reset.assert_awaited_once_with(
+            "user@example.com"
         )
 
-        assert result is not None
+    def test_reset_for_oauth_user_is_non_enumerating(self, client, auth_service):
+        """OAuth users get the same success response as anyone else."""
+        auth_service.initiate_password_reset.side_effect = OAuthUserPasswordResetError()
 
-    async def test_returns_success_for_oauth_user(self, mock_auth_service):
-        mock_auth_service.initiate_password_reset.side_effect = OAuthUserPasswordResetError()
-        request = PasswordResetRequest(email="oauth@example.com")
+        response = client.post("/password/reset", json={"email": "oauth@example.com"})
 
-        # Should not raise — returns success to prevent enumeration
-        result = await request_password_reset(
-            request=request, auth_service=mock_auth_service
+        assert response.status_code == 200
+
+    def test_reset_when_user_not_found_still_succeeds(self, client, auth_service):
+        auth_service.initiate_password_reset.return_value = None
+
+        response = client.post("/password/reset", json={"email": "nope@example.com"})
+
+        assert response.status_code == 200
+
+    def test_confirm_resets_password(self, client, auth_service):
+        response = client.post(
+            "/password/confirm",
+            json={"token": "pr_token", "new_password": "newpass123"},
         )
 
-        assert result is not None
+        assert response.status_code == 200
+        auth_service.reset_password.assert_awaited_once_with("pr_token", "newpass123")
 
-    async def test_returns_success_when_user_not_found(self, mock_auth_service):
-        mock_auth_service.initiate_password_reset.return_value = None
-        request = PasswordResetRequest(email="notfound@example.com")
+    def test_confirm_invalid_token_returns_400(self, client, auth_service):
+        auth_service.reset_password.side_effect = InvalidTokenError()
 
-        result = await request_password_reset(
-            request=request, auth_service=mock_auth_service
+        response = client.post(
+            "/password/confirm", json={"token": "invalid", "new_password": "newpass"}
         )
 
-        assert result is not None
+        assert response.status_code == 400
 
 
-class TestConfirmPasswordReset:
-    async def test_calls_reset_password(self, mock_auth_service):
-        request = PasswordResetConfirm(token="pr_token", new_password="newpass123")
+class TestEmailVerification:
+    def test_request_verification(self, client, auth_service, user_id):
+        response = client.post("/email/verify")
 
-        await confirm_password_reset(request=request, auth_service=mock_auth_service)
+        assert response.status_code == 200
+        auth_service.initiate_email_verification.assert_awaited_once_with(user_id)
 
-        mock_auth_service.reset_password.assert_called_once_with(
-            "pr_token", "newpass123"
-        )
+    def test_confirm_verification(self, client, auth_service):
+        response = client.post("/email/verify/confirm", json={"token": "ev_token"})
 
-    async def test_raises_on_invalid_token(self, mock_auth_service):
-        mock_auth_service.reset_password.side_effect = InvalidTokenError()
-        request = PasswordResetConfirm(token="invalid", new_password="newpass")
+        assert response.status_code == 200
+        auth_service.verify_email.assert_awaited_once_with("ev_token")
 
-        with pytest.raises(InvalidTokenError):
-            await confirm_password_reset(request=request, auth_service=mock_auth_service)
+    def test_confirm_invalid_token_returns_400(self, client, auth_service):
+        auth_service.verify_email.side_effect = InvalidTokenError()
 
+        response = client.post("/email/verify/confirm", json={"token": "invalid"})
 
-class TestRequestEmailVerification:
-    async def test_calls_initiate_email_verification(
-        self, mock_auth_service, sample_user_id
-    ):
-        mock_auth_service.initiate_email_verification.return_value = "ev_token"
-
-        await request_email_verification(
-            user_id=sample_user_id, auth_service=mock_auth_service
-        )
-
-        mock_auth_service.initiate_email_verification.assert_called_once_with(
-            sample_user_id
-        )
-
-
-class TestConfirmEmailVerification:
-    async def test_calls_verify_email(self, mock_auth_service):
-        request = EmailVerificationConfirm(token="ev_token")
-
-        await confirm_email_verification(request=request, auth_service=mock_auth_service)
-
-        mock_auth_service.verify_email.assert_called_once_with("ev_token")
-
-    async def test_raises_on_invalid_token(self, mock_auth_service):
-        mock_auth_service.verify_email.side_effect = InvalidTokenError()
-        request = EmailVerificationConfirm(token="invalid")
-
-        with pytest.raises(InvalidTokenError):
-            await confirm_email_verification(
-                request=request, auth_service=mock_auth_service
-            )
+        assert response.status_code == 400

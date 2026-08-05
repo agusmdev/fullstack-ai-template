@@ -19,12 +19,16 @@ class TestUserRepositoryGet:
         """Test get by ID with UUID type."""
         user_id = uuid.uuid4()
         mock_result = MagicMock()
-        mock_result.scalar.return_value = MagicMock(id=user_id, email="test@example.com")
+        mock_result.scalar.return_value = MagicMock(
+            id=user_id, email="test@example.com"
+        )
         mock_session.execute.return_value = mock_result
 
         result = await repository.get(user_id)
 
         mock_session.execute.assert_called_once()
+        assert result.id == user_id
+        assert result.email == "test@example.com"
 
     async def test_get_by_field_email(self, repository, mock_session):
         """Test get_by_field with email field."""
@@ -36,6 +40,7 @@ class TestUserRepositoryGet:
         result = await repository.get_by_field("email", email)
 
         mock_session.execute.assert_called_once()
+        assert result.email == email
 
     async def test_get_with_raise_error_true(self, repository, mock_session):
         """Test get with raise_error=True when not found."""

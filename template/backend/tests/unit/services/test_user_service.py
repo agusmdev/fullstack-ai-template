@@ -63,13 +63,17 @@ class TestUserServiceGetOrCreate:
         mock_user_repository.get_by_field.return_value = sample_user_model
         create_fields = MagicMock()
 
-        result = await service.find_or_create("email", sample_user_model.email, create_fields)
+        result = await service.find_or_create(
+            "email", sample_user_model.email, create_fields
+        )
 
         mock_user_repository.get_by_field.assert_called_once()
         mock_user_repository.create.assert_not_called()
         assert result == sample_user_model
 
-    async def test_get_or_create_new_user(self, service, mock_user_repository, sample_user_model):
+    async def test_get_or_create_new_user(
+        self, service, mock_user_repository, sample_user_model
+    ):
         """Test get_or_create creates new user when not found."""
         mock_user_repository.get_by_field.return_value = None
         mock_user_repository.create.return_value = sample_user_model
@@ -89,7 +93,9 @@ class TestUserServiceRegister:
     def service(self, mock_user_repository):
         return UserService(repo=mock_user_repository)
 
-    async def test_register_success(self, service, mock_user_repository, sample_user_model):
+    async def test_register_success(
+        self, service, mock_user_repository, sample_user_model
+    ):
         """Test successful user registration."""
         mock_user_repository.create.return_value = sample_user_model
         register_data = UserRegister(
@@ -125,7 +131,9 @@ class TestUserServiceAuthenticate:
     def service(self, mock_user_repository):
         return UserService(repo=mock_user_repository)
 
-    async def test_authenticate_success(self, service, mock_user_repository, sample_user_model):
+    async def test_authenticate_success(
+        self, service, mock_user_repository, sample_user_model
+    ):
         """Test successful authentication."""
         mock_user_repository.get_by_field.return_value = sample_user_model
 
@@ -162,7 +170,9 @@ class TestUserServiceUpdatePassword:
     def service(self, mock_user_repository):
         return UserService(repo=mock_user_repository)
 
-    async def test_update_password_success(self, service, mock_user_repository, sample_user_id):
+    async def test_update_password_success(
+        self, service, mock_user_repository, sample_user_id
+    ):
         """Test successful password update."""
         mock_user_repository.update.return_value = MagicMock()
 
