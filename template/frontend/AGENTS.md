@@ -51,16 +51,17 @@ src/
 │   ├── DeleteItemDialog.tsx
 │   └── ItemFormDialog.tsx   ← Shared form shell for create/edit item dialogs
 ├── contexts/            ← React Context (AuthContext, etc.)
+├── features/            ← Feature-scoped modules (domain schemas + logic)
+│   ├── auth/            ← auth-schemas.ts, auth-actions.ts
+│   └── items/           ← item-schemas.ts
 ├── hooks/               ← All hooks flat (useItems.ts, useDebounce.ts, etc.)
-├── lib/
+├── lib/                 ← Generic infrastructure only (no feature code)
 │   ├── api-client.ts    ← Fetch wrapper with auth & error handling
-│   ├── api-endpoints.ts ← Endpoint URL constants
+│   ├── api-endpoints.ts ← Endpoint URL constants + URL builders
 │   ├── auth.ts          ← Token storage/retrieval + pub-sub
 │   ├── query-keys.ts    ← Query key factory
-│   ├── config.ts        ← Runtime configuration
-│   ├── error-handler.ts ← Error handling utilities
-│   ├── auth-schemas.ts  ← Auth Zod schemas + payload helpers
-│   ├── item-schemas.ts  ← Item Zod schemas + payload helpers
+│   ├── config.ts        ← Runtime configuration (getConfig)
+│   ├── error-handler.ts ← getErrorMessage / toastApiError
 │   └── utils.ts         ← Helper utilities
 ├── routes/              ← TanStack file-based routes
 │   ├── __root.tsx       ← Root layout with providers
@@ -187,8 +188,9 @@ render(
 **Files:**
 - Hooks: `use*.ts` flat in `hooks/` (useItems.ts, useDebounce.ts)
 - Components: `components/*.tsx` flat (CreateItemDialog.tsx, Navigation.tsx)
+- Feature schemas: `features/<feature>/*-schemas.ts` (auth-schemas.ts, item-schemas.ts)
 - Types: `types/*.ts` (no `.d.ts` for imports)
-- Utilities: `lib/*.ts` with named exports
+- Utilities (generic infra): `lib/*.ts` with named exports
 
 **Components:**
 - All components flat in `components/` (no subdirectories)

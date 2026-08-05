@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, type NavigateOptions } from '@tanstack/react-router'
 import { useAuth } from '@/contexts/AuthContext'
-import { executeAuthSubmit } from '@/lib/auth-actions'
+import { executeAuthSubmit } from '@/features/auth/auth-actions'
 
 export function useAuthSubmit<TPayload extends Record<string, unknown>>(
   endpoint: string,

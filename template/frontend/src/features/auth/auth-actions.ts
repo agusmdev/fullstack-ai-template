@@ -8,8 +8,11 @@ import type { AuthSessionResponse } from '@/types/auth'
  * Core auth submit logic — a framework-agnostic orchestrator extracted from the
  * useAuthSubmit hook so it can be unit-tested without React mounting.
  *
- * Handles the api.post → login → toast → navigate sequence. Lives in lib/
- * (not hooks/) because it is a plain async function that uses no React APIs.
+ * Handles the api.post → login → toast → navigate sequence. On failure the
+ * error is surfaced via toastApiError AND re-thrown so callers (e.g.
+ * useAuthSubmit / useMutation) can observe rejection and react accordingly.
+ * Lives in features/auth/ (not hooks/) because it is a plain async function
+ * that uses no React APIs.
  */
 export async function executeAuthSubmit(
   endpoint: string,
@@ -29,5 +32,6 @@ export async function executeAuthSubmit(
     deps.navigate(deps.redirect)
   } catch (err) {
     toastApiError(err, deps.errorMessage)
+    throw err
   }
 }

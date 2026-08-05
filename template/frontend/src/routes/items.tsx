@@ -38,6 +38,26 @@ function PageShell({ children }: { children: React.ReactNode }) {
   )
 }
 
+function ItemsPageHeader({
+  subtitle,
+  actions,
+}: {
+  subtitle?: React.ReactNode
+  actions?: React.ReactNode
+}) {
+  return (
+    <div className="flex justify-between items-center mb-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Items</h1>
+        {subtitle !== undefined && (
+          <p className="text-muted-foreground mt-1">{subtitle}</p>
+        )}
+      </div>
+      {actions}
+    </div>
+  )
+}
+
 function Items() {
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
@@ -58,7 +78,7 @@ function Items() {
   if (isLoading) {
     return (
       <PageShell>
-        <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
+        <ItemsPageHeader />
         <p className="text-muted-foreground">Loading items...</p>
       </PageShell>
     )
@@ -67,7 +87,7 @@ function Items() {
   if (isError) {
     return (
       <PageShell>
-        <h1 className="text-3xl font-bold mb-6 text-foreground">Items</h1>
+        <ItemsPageHeader />
         <div className="bg-destructive/10 text-destructive p-4 rounded-md border border-destructive/20">
           <p className="font-semibold">Error loading items</p>
           <p className="text-sm">{getErrorMessage(error, 'An unknown error occurred')}</p>
@@ -88,15 +108,10 @@ function Items() {
           {`Showing ${items.length} of ${total} items`}
         </div>
 
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Items</h1>
-            <p className="text-muted-foreground mt-1">
-              {total === 0 ? 'No items found' : `${total} ${total === 1 ? 'item' : 'items'} total`}
-            </p>
-          </div>
-          <CreateItemDialog trigger={<Button>Create Item</Button>} />
-        </div>
+        <ItemsPageHeader
+          subtitle={total === 0 ? 'No items found' : `${total} ${total === 1 ? 'item' : 'items'} total`}
+          actions={<CreateItemDialog trigger={<Button>Create Item</Button>} />}
+        />
 
         <div className="flex gap-2 mb-6">
           <div className="relative flex-1">

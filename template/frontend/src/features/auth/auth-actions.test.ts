@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { executeAuthSubmit } from './auth-actions'
-import { ApiError } from './api-client'
+import { ApiError } from '@/lib/api-client'
 import type { AuthSessionResponse } from '@/types/auth'
 
 const mockSession: AuthSessionResponse = {
@@ -101,9 +101,11 @@ describe('executeAuthSubmit', () => {
   })
 
   it('does not call login, navigate, or success toast on API error', async () => {
-    mockFetch(401, { detail: 'Unauthorized' })
+    mockFetch(403, { detail: 'Forbidden' })
 
-    await executeAuthSubmit('/auth/login', {}, baseDeps)
+    await expect(
+      executeAuthSubmit('/auth/login', {}, baseDeps),
+    ).rejects.toThrow('Forbidden')
 
     expect(login).not.toHaveBeenCalled()
     expect(navigate).not.toHaveBeenCalled()
@@ -113,7 +115,9 @@ describe('executeAuthSubmit', () => {
   it('routes the error through toastApiError with the fallback message and a typed ApiError', async () => {
     mockFetch(400, { detail: 'Invalid credentials' })
 
-    await executeAuthSubmit('/auth/login', {}, baseDeps)
+    await expect(
+      executeAuthSubmit('/auth/login', {}, baseDeps),
+    ).rejects.toThrow('Invalid credentials')
 
     expect(errorHandlerMock.toastApiError).toHaveBeenCalledTimes(1)
     const [err, message] = errorHandlerMock.toastApiError.mock.calls[0]
@@ -130,7 +134,9 @@ describe('executeAuthSubmit', () => {
       fields: { email: ['Invalid'] },
     })
 
-    await executeAuthSubmit('/auth/register', {}, baseDeps)
+    await expect(
+      executeAuthSubmit('/auth/register', {}, baseDeps),
+    ).rejects.toThrow('Validation failed')
 
     const [err] = errorHandlerMock.toastApiError.mock.calls[0]
     expect(err).toBeInstanceOf(ApiError)
@@ -141,18 +147,20 @@ describe('executeAuthSubmit', () => {
   it('does not show a success toast on a 500 error', async () => {
     mockFetch(500, {})
 
-    await executeAuthSubmit('/auth/login', {}, baseDeps)
+    await expect(
+      executeAuthSubmit('/auth/login', {}, baseDeps),
+    ).rejects.toThrow()
 
     expect(toastMock.success).not.toHaveBeenCalled()
     expect(errorHandlerMock.toastApiError).toHaveBeenCalledTimes(1)
   })
 
-  it('swallows network errors without throwing (handled by toastApiError)', async () => {
+  it('rethrows network errors after toasting so callers can react', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Network down')))
 
     await expect(
       executeAuthSubmit('/auth/login', {}, baseDeps),
-    ).resolves.toBeUndefined()
+    ).rejects.toThrow('Network request failed')
 
     expect(errorHandlerMock.toastApiError).toHaveBeenCalledTimes(1)
     expect(login).not.toHaveBeenCalled()
@@ -168,5 +176,37 @@ describe('executeAuthSubmit', () => {
 
     expect(navigate).toHaveBeenCalledWith(customRedirect)
     expect(navigate).not.toHaveBeenCalledWith(redirect)
+  })
+
+  it('runs login, then the success toast, then navigate — in that strict order', async () => {
+    mockFetch(200, mockSession)
+    const order: string[] = []
+    login.mockImplementation(() => { order.push('login') })
+    toastMock.success.mockImplementation(() => { order.push('toast') })
+    navigate.mockImplementation(() => { order.push('navigate') })
+
+    await executeAuthSubmit('/auth/login', {}, baseDeps)
+
+    expect(order).toEqual(['login', 'toast', 'navigate'])
+  })
+
+  it('resolves to undefined on the success path (void contract)', async () => {
+    mockFetch(200, mockSession)
+
+    await expect(executeAuthSubmit('/auth/login', {}, baseDeps)).resolves.toBeUndefined()
+
+    expect(login).toHaveBeenCalledTimes(1)
+    expect(navigate).toHaveBeenCalledTimes(1)
+    expect(toastMock.success).toHaveBeenCalledTimes(1)
+  })
+
+  it('posts to the fully-resolved URL built from the configured API base + endpoint path', async () => {
+    const fetchSpy = mockFetch(200, mockSession)
+
+    await executeAuthSubmit('/auth/register', {}, baseDeps)
+
+    const [url, init] = fetchSpy.mock.calls[0]
+    expect(url).toBe('http://localhost:9095/auth/register')
+    expect((init as RequestInit).method).toBe('POST')
   })
 })

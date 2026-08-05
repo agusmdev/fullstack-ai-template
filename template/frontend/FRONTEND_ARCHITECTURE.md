@@ -33,19 +33,25 @@ src/
 ├── contexts/                # React Context for UI state
 │   └── AuthContext.tsx      # Global auth state
 │
+├── features/                # Feature-scoped modules (domain schemas + logic)
+│   ├── auth/                # Auth Zod schemas + submit orchestrator
+│   │   ├── auth-schemas.ts  # loginSchema, registerSchema + payload helpers
+│   │   └── auth-actions.ts  # executeAuthSubmit orchestrator
+│   └── items/               # Item Zod schemas + payload helpers
+│       └── item-schemas.ts  # itemSchema + itemFormToPayload
+│
 ├── hooks/                   # React hooks (flat)
 │   ├── useItems.ts          # All items queries and mutations
+│   ├── useAuthSubmit.ts     # Auth form submit hook (wraps executeAuthSubmit)
 │   └── useDebounce.ts       # Debounce utility hook
 │
-├── lib/                     # Utilities & configuration
-│   ├── api-client.ts        # Fetch wrapper class
-│   ├── api-endpoints.ts     # Endpoint URL constants
-│   ├── auth.ts              # Token storage functions
-│   ├── config.ts            # Runtime config
-│   ├── error-handler.ts     # Error handling utilities
+├── lib/                     # Generic infrastructure & configuration
+│   ├── api-client.ts        # Fetch wrapper (Bearer auth, typed errors)
+│   ├── api-endpoints.ts     # API endpoint registry + URL builders
+│   ├── auth.ts              # Token storage + auth change pub/sub
+│   ├── config.ts            # Runtime config (getConfig)
+│   ├── error-handler.ts     # getErrorMessage / toastApiError
 │   ├── query-keys.ts        # Query key factory
-│   ├── auth-schemas.ts      # Auth Zod schemas + payload helpers (loginSchema, registerSchema)
-│   ├── item-schemas.ts      # Item Zod schemas + payload helpers (itemSchema)
 │   ├── utils.ts             # General utilities
 │   └── web-vitals.ts        # Web Vitals tracking (DEV-only logging)
 │
@@ -103,8 +109,8 @@ Group endpoints by feature:
 ```tsx
 export const API = {
   AUTH: {
-    REGISTER: '/auth/register',
     LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
     LOGOUT: '/auth/logout',
   },
   ITEMS: {
@@ -114,6 +120,12 @@ export const API = {
   },
   // Add more features as needed
 } as const
+
+/** Builds the items list URL, translating semantic params to wire keys
+ *  (e.g. name -> name__ilike). Used by useItems so hooks stay declarative. */
+export function buildItemsListUrl(params?: ItemsParams): string {
+  // ...appends page/size/name__ilike to API.ITEMS.LIST
+}
 ```
 
 ---
@@ -127,26 +139,22 @@ File: `src/hooks/useItems.ts`
 ```tsx
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { API } from '@/lib/api-endpoints'
+import { API, buildItemsListUrl } from '@/lib/api-endpoints'
 import { queryKeys } from '@/lib/query-keys'
 import type { ItemsResponse, ItemsParams } from '@/types/item'
 
 export function useItems(params?: ItemsParams, enabled = true) {
-  const queryParams = new URLSearchParams()
-  if (params?.page) queryParams.append('page', params.page.toString())
-  if (params?.size) queryParams.append('size', params.size.toString())
-  if (params?.name) queryParams.append('name__ilike', params.name)
-
-  const queryString = queryParams.toString()
-  const url = queryString ? `${API.ITEMS.LIST}?${queryString}` : API.ITEMS.LIST
-
   return useQuery({
     queryKey: queryKeys.items.list(params),
-    queryFn: () => api.get<ItemsResponse>(url),
+    queryFn: () => api.get<ItemsResponse>(buildItemsListUrl(params)),
     enabled,
   })
 }
 ```
+
+Query-string construction is centralized in `buildItemsListUrl()` (in
+`src/lib/api-endpoints.ts`) so the hook stays declarative — it translates
+semantic params (e.g. `name`) to wire keys (e.g. `name__ilike`).
 
 Usage in components:
 
@@ -240,7 +248,7 @@ function CreateItemDialog() {
 
 ### 4. Forms with Validation
 
-File: `src/lib/item-schemas.ts`
+File: `src/features/items/item-schemas.ts`
 
 ```tsx
 import { z } from 'zod'
@@ -262,7 +270,7 @@ Usage in component (see `src/components/ItemFormDialog.tsx`):
 ```tsx
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { itemSchema, type ItemFormData } from '@/lib/item-schemas'
+import { itemSchema, type ItemFormData } from '@/features/items/item-schemas'
 import { Form, FormField, FormItem } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -337,14 +345,17 @@ function Header() {
 
 File: `src/routes/__root.tsx`
 
-The root layout wraps the app with providers:
+The root shell (`src/routes/__root.tsx`) composes the providers. `Layout` takes
+no children — it renders `<Navigation />` and `<Outlet />` itself (see
+`src/components/Layout.tsx`):
 
 ```tsx
 <QueryClientProvider client={queryClient}>
   <AuthProvider queryClient={queryClient}>
-    <Layout>
-      {children}
-    </Layout>
+    <ErrorBoundary>
+      <Layout />
+    </ErrorBoundary>
+    <Toaster />
   </AuthProvider>
 </QueryClientProvider>
 ```
@@ -366,7 +377,7 @@ export const Route = createFileRoute('/items')({
       throw redirect({ to: '/login', search: { redirect: '/items' } })
     }
   },
-  component: ItemsPage,
+  component: Items,
 })
 ```
 
@@ -403,7 +414,7 @@ try {
 **Component Error Handling:**
 
 ```tsx
-function ItemsPage() {
+function Items() {
   const { data, isLoading, error } = useItems()
   
   if (error) {
@@ -451,7 +462,7 @@ export class ErrorBoundary extends React.Component {
 // src/routes/items.tsx — items page renders the list directly
 import { useItems } from '@/hooks/useItems'
 
-function ItemsPage() {
+function Items() {
   const { data, isLoading, error } = useItems()
 
   if (isLoading) return <div>Loading...</div>
@@ -561,7 +572,7 @@ test.describe('Items Feature', () => {
 | Components | `components/` | `*.tsx` (named exports) | `Navigation.tsx` |
 | Dialogs | `components/` | `*Dialog.tsx` | `CreateItemDialog.tsx` |
 | Route Pages | `routes/` | `*.tsx` | `items.tsx` |
-| Schemas | `lib/` | `*-schemas.ts` | `auth-schemas.ts` |
+| Schemas | `features/<feature>/` | `*-schemas.ts` | `features/auth/auth-schemas.ts` |
 | Types | `types/` | `*.ts` | `item.ts` |
 | Utils | `lib/` | `*.ts` (named exports) | `utils.ts` |
 
@@ -572,11 +583,11 @@ test.describe('Items Feature', () => {
 ### Adding a New Feature
 
 1. **Create API endpoints** in `lib/api-endpoints.ts`
-2. **Create Zod schemas** in `lib/{feature}-schemas.ts`
+2. **Create Zod schemas** in `features/{feature}/{feature}-schemas.ts`
 3. **Create hook** in `hooks/use{Feature}.ts` (queries and mutations together)
 4. **Create components** in `components/` (flat — no subdirectory)
 5. **Create route** in `routes/{feature}.tsx`
-6. **Add tests** co-located with the hook (`hooks/use{Feature}.test.ts`)
+6. **Add tests** co-located with the source (`hooks/use{Feature}.test.ts`, `features/{feature}/{feature}-schemas.test.ts`)
 
 ### Adding Authentication-Required Route
 
@@ -601,17 +612,21 @@ function ProtectedFeature() {
 
 ### Handling Form Validation Errors
 
-```tsx
-const { mutate } = useCreateItem()
+`src/lib/error-handler.ts` exports two helpers:
+- `getErrorMessage(error, fallback?)` — returns a string message (for rendering inline).
+- `toastApiError(error, fallbackMessage)` — surfaces an `ApiError` as a toast (field errors individually, otherwise the fallback + detail).
 
-// Prefer handleApiError for centralized error handling:
+```tsx
+import { toastApiError } from '@/lib/error-handler'
+
+// Toast-based centralized handling (used by auth-actions):
 try {
   await mutateAsync(data)
 } catch (error) {
-  handleApiError(error, 'Failed to save item')
+  toastApiError(error, 'Failed to save item')
 }
 
-// Or in catch blocks for field-level errors from ApiError.fields:
+// Or field-level errors from ApiError.fields in a mutation onError:
 mutate(data, {
   onError: (error) => {
     if (error instanceof ApiError && error.fields) {
@@ -620,7 +635,7 @@ mutate(data, {
         form.setError(field as keyof typeof data, { message: messages[0] })
       })
     } else {
-      handleApiError(error, 'Failed to save item')
+      toastApiError(error, 'Failed to save item')
     }
   },
 })
@@ -639,9 +654,9 @@ VITE_API_BASE_URL=http://localhost:9095
 Access in code:
 
 ```tsx
-import { config } from '@/lib/config'
+import { getConfig } from '@/lib/config'
 
-const baseUrl = config.apiBaseUrl
+const baseUrl = getConfig().apiBaseUrl
 ```
 
 ---
@@ -656,7 +671,7 @@ const baseUrl = config.apiBaseUrl
 - [ ] Errors are handled with try/catch or onError callbacks
 - [ ] Protected routes check `isAuthenticated`
 - [ ] Tests are co-located with source files (`use*.test.ts`, `*.test.ts`)
-- [ ] Types are defined in `lib/{feature}-schemas.ts` or `types/`
+- [ ] Types are defined in `features/{feature}/{feature}-schemas.ts` or `types/`
 - [ ] Components follow shadcn/ui patterns
 
 ---
