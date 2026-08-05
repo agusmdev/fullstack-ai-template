@@ -49,7 +49,7 @@ def client(user_id, user_obj, user_service):
     app.dependency_overrides[AuthenticatedUser.current_user_email] = (
         lambda: "test@example.com"
     )
-    app.dependency_overrides[AuthenticatedUser.load_user_context] = lambda: user_obj
+    app.dependency_overrides[AuthenticatedUser.get_current_user] = lambda: user_obj
     app.dependency_overrides[get_user_service] = lambda: user_service
     with TestClient(app, base_url="http://test") as c:
         yield c

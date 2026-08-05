@@ -62,13 +62,13 @@ class SQLAlchemyRepository(BaseRepository[T]):
         return {**values, **extra_fields} if extra_fields else values
 
     @staticmethod
-    def _get_insert_dialect() -> Any:
-        """Get the database-specific insert statement.
+    def _get_postgres_insert() -> Any:
+        """Get the PostgreSQL insert statement builder.
 
         Override this for different database backends.
 
         Returns:
-            The dialect-specific insert function (e.g., PostgreSQL's insert)
+            The PostgreSQL insert callable (a statement factory, not a dialect).
         """
         from sqlalchemy.dialects.postgresql import insert
 
@@ -209,10 +209,10 @@ class SQLAlchemyRepository(BaseRepository[T]):
     @translate_commit_errors
     async def create(self, entity: BaseModel, **extra_fields: Any) -> T:
         """Create a single entity using INSERT ... RETURNING."""
-        insert_dialect = self._get_insert_dialect()
+        postgres_insert = self._get_postgres_insert()
         values = self._normalize_values(entity, **extra_fields)
 
-        stmt = insert_dialect(self.model).values(values).returning(self.model)
+        stmt = postgres_insert(self.model).values(values).returning(self.model)
         result = await self._session.execute(stmt)
         await self._session.commit()
         return result.scalar_one()
@@ -220,11 +220,11 @@ class SQLAlchemyRepository(BaseRepository[T]):
     @translate_commit_errors
     async def upsert(self, entity: BaseModel, **extra_fields: Any) -> T:
         """Insert or update based on primary key using INSERT ... ON CONFLICT DO UPDATE."""
-        insert_dialect = self._get_insert_dialect()
+        postgres_insert = self._get_postgres_insert()
         values = self._normalize_values(entity, **extra_fields)
 
         stmt = (
-            insert_dialect(self.model)
+            postgres_insert(self.model)
             .values(values)
             .on_conflict_do_update(index_elements=["id"], set_=values)
             .returning(self.model)
@@ -275,10 +275,10 @@ class SQLAlchemyRepository(BaseRepository[T]):
             logger.warning("No entities to create")
             return []
 
-        insert_dialect = self._get_insert_dialect()
+        postgres_insert = self._get_postgres_insert()
         values = [entity.model_dump() for entity in entities]
 
-        stmt = insert_dialect(self.model).values(values)
+        stmt = postgres_insert(self.model).values(values)
         stmt = on_conflict(stmt)
 
         result = await self._session.execute(stmt.returning(self.model))

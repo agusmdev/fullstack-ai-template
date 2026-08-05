@@ -13,11 +13,11 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.user.auth.dependencies import get_auth_service
 from app.user.auth.exceptions import InvalidTokenError, OAuthUserPasswordResetError
 from app.user.auth.permissions import AuthenticatedUser
 from app.user.auth.routers import auth_router
 from app.user.auth.schemas import SessionResponse
-from app.user.dependencies import get_auth_service
 
 
 @pytest.fixture

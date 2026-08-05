@@ -32,7 +32,7 @@ class TestRequestContextMiddleware:
         self, middleware, mock_request, mock_call_next
     ):
         """Test that dispatch generates a request_id."""
-        from app.context import _request_id_ctx
+        from app.core.context import _request_id_ctx
 
         response = await middleware.dispatch(mock_request, mock_call_next)
 
@@ -66,7 +66,7 @@ class TestRequestContextMiddleware:
         """Test that request_id is in UUID format."""
         import uuid
 
-        from app.context import _request_id_ctx
+        from app.core.context import _request_id_ctx
 
         await middleware.dispatch(mock_request, mock_call_next)
 

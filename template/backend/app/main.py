@@ -6,8 +6,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.context import clear_request_context
 from app.core.config import settings
+from app.core.context import clear_request_context
 from app.core.logging import configure_logging
 from app.core.logging.middleware import WideEventMiddleware
 from app.middlewares.context import RequestContextMiddleware
@@ -87,7 +87,7 @@ def create_app(
     app_router = get_app_router()
 
     @app_router.get("/health")
-    def sanity_check() -> str:
+    def health_check() -> str:
         return "FastAPI running!"
 
     if add_sentry:

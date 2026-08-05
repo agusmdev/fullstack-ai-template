@@ -118,9 +118,9 @@ class TestAuthenticatedUserCurrentUserEmail:
         assert result == "test@example.com"
 
 
-class TestAuthenticatedUserLoadUserContext:
-    """Tests for AuthenticatedUser.load_user_context."""
+class TestAuthenticatedUserGetCurrentUser:
+    """Tests for AuthenticatedUser.get_current_user."""
 
     async def test_returns_user(self, sample_user_response):
-        result = await AuthenticatedUser.load_user_context(user=sample_user_response)
+        result = await AuthenticatedUser.get_current_user(user=sample_user_response)
         assert result is sample_user_response

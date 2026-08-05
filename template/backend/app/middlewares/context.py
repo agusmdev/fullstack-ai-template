@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.context import set_request_id
+from app.core.context import set_request_id
 from app.core.logging.context import get_wide_event_context
 
 

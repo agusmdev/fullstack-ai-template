@@ -12,8 +12,6 @@ class RepositoryError(HTTPExceptionMixin):
 
 
 class NotFoundError(RepositoryError):
-    """Repository not found error"""
-
     detail = "Item not found"
     error_code = "not_found"
     status_code = 404

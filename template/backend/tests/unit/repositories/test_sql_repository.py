@@ -148,14 +148,14 @@ class TestSQLAlchemyRepositoryParseIntegrityError:
         assert result is error
 
 
-class TestSQLAlchemyRepositoryGetInsertDialect:
-    """Tests for _get_insert_dialect method."""
+class TestSQLAlchemyRepositoryGetPostgresInsert:
+    """Tests for _get_postgres_insert method."""
 
     def test_returns_postgresql_insert(self):
         """Test that PostgreSQL insert is returned."""
         from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-        result = SQLAlchemyRepository._get_insert_dialect()
+        result = SQLAlchemyRepository._get_postgres_insert()
 
         # Should be the PostgreSQL insert function
         assert result is pg_insert

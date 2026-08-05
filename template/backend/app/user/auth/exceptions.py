@@ -10,16 +10,12 @@ class AuthenticationError(HTTPExceptionMixin):
 
 
 class InvalidPasswordError(AuthenticationError):
-    """Invalid password error"""
-
     detail = "Invalid password"
     error_code = "invalid_password"
     status_code = 401
 
 
 class SessionExpiredError(AuthenticationError):
-    """Session expired error"""
-
     detail = "Session expired"
     error_code = "session_expired"
     status_code = 401

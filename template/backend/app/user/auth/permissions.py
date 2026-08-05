@@ -4,16 +4,16 @@ from typing import TYPE_CHECKING, Protocol, cast
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.context import ensure_request_context
+from app.core.context import ensure_request_context
 from app.core.logging import log_user
 from app.repositories.exceptions import NotFoundError
+from app.user.auth.dependencies import get_auth_service
 from app.user.auth.exceptions import SessionExpiredError
 from app.user.auth.service import AuthService
-from app.user.dependencies import get_auth_service
 from app.user.models import User
 
 if TYPE_CHECKING:
-    from app.context import RequestContext
+    from app.core.context import RequestContext
 
 
 class _RequestState(Protocol):
@@ -66,7 +66,7 @@ class AuthenticatedUser:
         return http_auth.credentials
 
     @classmethod
-    async def load_user_context(
+    async def get_current_user(
         cls,
         user: User = Depends(_get_authenticated_user),
     ) -> User:

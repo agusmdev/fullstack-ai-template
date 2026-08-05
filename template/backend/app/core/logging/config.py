@@ -2,7 +2,7 @@
 
 import logging
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -43,38 +43,6 @@ def _get_log_level() -> str:
 def _get_log_format() -> str:
     """Get log format from settings."""
     return getattr(settings, "LOG_FORMAT", "console")
-
-
-def _serialize_record(record: dict[str, Any]) -> str:
-    """Custom serializer for JSON output."""
-    import json
-    from datetime import datetime
-
-    subset = {
-        "timestamp": datetime.now().isoformat(),
-        "level": record["level"].name.lower(),
-        "message": record["message"],
-        "logger": record["name"],
-    }
-
-    # Add extra bound context
-    if record.get("extra"):
-        for key, value in record["extra"].items():
-            if not key.startswith("_"):
-                subset[key] = value
-
-    # Add exception info if present
-    if record["exception"]:
-        subset["exception"] = {
-            "type": record["exception"].type.__name__
-            if record["exception"].type
-            else None,
-            "value": str(record["exception"].value)
-            if record["exception"].value
-            else None,
-        }
-
-    return json.dumps(subset, default=str) + "\n"
 
 
 def configure_logging() -> None:

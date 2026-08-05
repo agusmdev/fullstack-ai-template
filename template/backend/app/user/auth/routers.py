@@ -7,6 +7,7 @@ from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
+from app.user.auth.dependencies import get_auth_service
 from app.user.auth.exceptions import (
     OAuthUserPasswordResetError,
 )
@@ -24,7 +25,6 @@ from app.user.auth.schemas import (
     SessionResponse,
 )
 from app.user.auth.service import OAUTH_PROVIDER_NAMES, AuthService
-from app.user.dependencies import get_auth_service
 from app.user.schemas import UserRegister
 
 auth_router = APIRouter()

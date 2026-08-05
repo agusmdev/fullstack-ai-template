@@ -22,10 +22,11 @@ from app.modules.items.routers import (
 )
 from app.routers import get_app_router
 from app.user.auth import require_current_user_id
+from app.user.auth.dependencies import get_auth_service
 from app.user.auth.permissions import AuthenticatedUser
 from app.user.auth.routers import auth_router  # noqa: F401
 from app.user.auth.schemas import PasswordResetResponse, SessionResponse
-from app.user.dependencies import get_auth_service, get_user_service
+from app.user.dependencies import get_user_service
 from app.user.routers import user_router  # noqa: F401
 
 
@@ -65,7 +66,7 @@ def router_app(user_id):
     app.dependency_overrides[AuthenticatedUser.current_session_id] = (
         lambda: "s_test_session"
     )
-    app.dependency_overrides[AuthenticatedUser.load_user_context] = _load_user
+    app.dependency_overrides[AuthenticatedUser.get_current_user] = _load_user
 
     # --- Service overrides ---------------------------------------------
     item_svc = MagicMock()

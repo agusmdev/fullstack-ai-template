@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import datetime
-from typing import Any, override
 
 from pydantic import BaseModel
 
@@ -31,10 +30,6 @@ class UserService(BaseService[User]):
         repo: UserRepository,
     ) -> None:
         self.repo = repo
-
-    @override
-    async def create(self, entity: BaseModel, **extra_fields: Any) -> User:
-        return await self.repo.create(entity, **extra_fields)
 
     async def find_or_create(
         self, field: str, value: str, create_fields: BaseModel
