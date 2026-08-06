@@ -67,10 +67,9 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
     } catch {
       // Ignore errors - still clear local auth state even if backend call fails
     } finally {
-      // Always clear local auth state
+      // clearAuthToken() triggers the auth-change subscriber, which is the sole
+      // owner of the post-clear side effects (setTokenState(null) + queryClient.clear()).
       clearAuthToken()
-      setTokenState(null)
-      queryClient.clear()
     }
   }, [queryClient])
 

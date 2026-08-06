@@ -20,7 +20,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   state: State = { hasError: false, error: null, errorId: null }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    const errorId = `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const errorId = `error-${crypto.randomUUID()}`
     return { hasError: true, error, errorId }
   }
 

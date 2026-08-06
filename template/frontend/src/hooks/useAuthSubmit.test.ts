@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React, { type ReactNode } from 'react'
 import { useAuthSubmit } from './useAuthSubmit'
 
@@ -22,7 +23,10 @@ vi.mock('@/features/auth/auth-actions', () => ({
 }))
 
 function wrapper({ children }: { children: ReactNode }) {
-  return React.createElement(React.Fragment, null, children)
+  // useMutation requires a QueryClient context; create a fresh client per
+  // render so onSuccess invalidation has no cross-test cache leakage.
+  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  return React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
 describe('useAuthSubmit', () => {
@@ -151,7 +155,9 @@ describe('useAuthSubmit', () => {
       resolveSubmit()
       await pending
     })
-    expect(result.current.isLoading).toBe(false)
+    // isPending flips back to false on the post-resolution re-render, which
+    // commits after mutateAsync resolves; waitFor lets that update flush.
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
   })
 
   it('resets isLoading to false in the finally block when the orchestrator rejects, and rethrows the original error', async () => {
