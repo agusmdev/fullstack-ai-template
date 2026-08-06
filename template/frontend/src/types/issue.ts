@@ -121,6 +121,7 @@ export interface IssuesQueryParams {
   assignee?: string | null
   label_id?: string | null
   project_id?: string | null
+  cycle_id?: string | null
   /** Sort preset key (see {@link SORT_PRESETS}); defaults to newest-first. */
   sort?: string
 }
@@ -134,6 +135,7 @@ export function hasActiveIssueFilters(params: IssuesQueryParams): boolean {
       params.assignee ||
       params.label_id ||
       params.project_id ||
+      params.cycle_id ||
       (params.sort && params.sort !== DEFAULT_SORT_KEY),
   )
 }
@@ -150,6 +152,7 @@ export function serializeIssueParams(params: IssuesQueryParams): string {
     params.assignee ? `a:${params.assignee}` : '',
     params.label_id ? `l:${params.label_id}` : '',
     params.project_id ? `pj:${params.project_id}` : '',
+    params.cycle_id ? `cy:${params.cycle_id}` : '',
     params.sort && params.sort !== DEFAULT_SORT_KEY ? `o:${params.sort}` : '',
   ].filter(Boolean)
   return parts.join('|')
@@ -188,6 +191,7 @@ export interface UpdateIssueInput {
   priority?: number
   assignee_id?: string | null
   project_id?: string | null
+  cycle_id?: string | null
 }
 
 /**

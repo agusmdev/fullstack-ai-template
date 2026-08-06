@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.modules.cycles.repository import CycleRepository
 from app.modules.issues.models import Issue
 from app.modules.issues.repository import IssueRepository
 from app.modules.labels.models import issue_label
@@ -42,6 +43,7 @@ class IssueService(BaseService[Issue]):
     workflow_state_repo: WorkflowStateRepository
     label_repo: LabelRepository
     project_repo: ProjectRepository
+    cycle_repo: CycleRepository
 
     def __init__(
         self,
@@ -50,12 +52,14 @@ class IssueService(BaseService[Issue]):
         workflow_state_repo: WorkflowStateRepository,
         label_repo: LabelRepository,
         project_repo: ProjectRepository,
+        cycle_repo: CycleRepository,
     ) -> None:
         self.repo = repo
         self.team_service = team_service
         self.workflow_state_repo = workflow_state_repo
         self.label_repo = label_repo
         self.project_repo = project_repo
+        self.cycle_repo = cycle_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -125,6 +129,14 @@ class IssueService(BaseService[Issue]):
         project = await self.project_repo.get(project_id, raise_error=False)
         if project is None or project.team_id != team_id:
             raise NotFoundError(detail=f"Project '{project_id}' not found")
+
+    async def _validate_cycle_in_team(
+        self, cycle_id: uuid.UUID, team_id: uuid.UUID
+    ) -> None:
+        """Verify a cycle exists and belongs to ``team_id``."""
+        cycle = await self.cycle_repo.get(cycle_id, raise_error=False)
+        if cycle is None or cycle.team_id != team_id:
+            raise NotFoundError(detail=f"Cycle '{cycle_id}' not found")
 
     # ------------------------------------------------------------------
     # Read (team-scoped)
@@ -215,6 +227,10 @@ class IssueService(BaseService[Issue]):
         if assignee_id is not None:
             await self._validate_assignee_in_team(assignee_id, team_id)
 
+        cycle_id = getattr(entity, "cycle_id", None)
+        if cycle_id is not None:
+            await self._validate_cycle_in_team(cycle_id, team_id)
+
         label_ids = getattr(entity, "label_ids", None)
         if label_ids:
             for lid in label_ids:
@@ -266,6 +282,9 @@ class IssueService(BaseService[Issue]):
         project_id = getattr(entity, "project_id", None)
         if project_id is not None:
             await self._validate_project_in_team(project_id, issue.team_id)
+        cycle_id = getattr(entity, "cycle_id", None)
+        if cycle_id is not None:
+            await self._validate_cycle_in_team(cycle_id, issue.team_id)
 
         updated = await self.repo.update(entity_id, entity)
         # Reload to populate labels (update returns a fresh instance but

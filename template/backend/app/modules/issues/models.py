@@ -71,12 +71,15 @@ class Issue(TimestampMixin, Base):
         ForeignKey("user.id", ondelete="CASCADE"), index=True
     )
 
-    # M2 links. project_id now has a FK to the project table (added by
-    # m2-projects); cycle_id remains a plain UUID until m2-cycles wires its FK.
+    # M2 links. project_id and cycle_id both have FKs (cycle wired by
+    # m2-cycles). Both use SET NULL so deleting the project/cycle detaches its
+    # issues rather than cascading (VAL-CYCLES-005, VAL-PROJECTS-008).
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("project.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    cycle_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
+    cycle_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("cycle.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # M3 self-reference for sub-issues.
     parent_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -16,6 +16,7 @@ import { useIssues, flattenIssues, issuesTotal } from '@/hooks/useIssues'
 import { useWorkflowStates } from '@/hooks/useWorkflowStates'
 import { useLabels } from '@/hooks/useLabels'
 import { useProjects } from '@/hooks/useProjects'
+import { useCycles } from '@/hooks/useCycles'
 import { useDebounce } from '@/hooks/useDebounce'
 import {
   DEFAULT_SORT_KEY,
@@ -77,10 +78,12 @@ function IssuesView() {
   const statesQuery = useWorkflowStates(teamId)
   const labelsQuery = useLabels(teamId)
   const projectsQuery = useProjects(teamId)
+  const cyclesQuery = useCycles(teamId)
 
   const workflowStates = statesQuery.data?.items ?? []
   const labels = labelsQuery.data?.items ?? []
   const projects = projectsQuery.data?.items ?? []
+  const cycles = cyclesQuery.data?.items ?? []
   const issues = flattenIssues(issuesQuery.data)
   const total = issuesTotal(issuesQuery.data)
   const hasMore = issuesQuery.hasNextPage
@@ -246,6 +249,7 @@ function IssuesView() {
         workflowStates={workflowStates}
         labels={labels}
         projects={projects}
+        cycles={cycles}
         members={members}
       />
     </div>

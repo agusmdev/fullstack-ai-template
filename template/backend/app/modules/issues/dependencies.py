@@ -3,6 +3,7 @@
 from fastapi import Depends
 
 from app.dependencies import get_repository
+from app.modules.cycles.repository import CycleRepository
 from app.modules.issues.repository import IssueRepository
 from app.modules.issues.service import IssueService
 from app.modules.labels.repository import LabelRepository
@@ -19,6 +20,7 @@ def get_issue_service(
     ),
     label_repo: LabelRepository = Depends(get_repository(LabelRepository)),
     project_repo: ProjectRepository = Depends(get_repository(ProjectRepository)),
+    cycle_repo: CycleRepository = Depends(get_repository(CycleRepository)),
 ) -> IssueService:
     return IssueService(
         repo=repo,
@@ -26,4 +28,5 @@ def get_issue_service(
         workflow_state_repo=workflow_state_repo,
         label_repo=label_repo,
         project_repo=project_repo,
+        cycle_repo=cycle_repo,
     )

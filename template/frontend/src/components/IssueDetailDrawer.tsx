@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trash2, Loader2, Folder } from 'lucide-react'
+import { Trash2, Loader2, Folder, Repeat2 } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -25,6 +25,7 @@ import { PriorityPicker } from '@/components/PriorityPicker'
 import { AssigneePicker } from '@/components/AssigneePicker'
 import { LabelPicker } from '@/components/LabelPicker'
 import { ProjectPicker } from '@/components/ProjectPicker'
+import { CyclePicker } from '@/components/CyclePicker'
 import { StatusDot } from '@/components/StatusDot'
 import { IssueDetailDrawerSkeleton } from '@/components/IssueDetailDrawerSkeleton'
 import {
@@ -40,6 +41,7 @@ import type { Issue, IssueLabel } from '@/types/issue'
 import type { WorkflowState } from '@/types/workflow-state'
 import type { Label } from '@/types/label'
 import type { Project } from '@/types/project'
+import type { Cycle } from '@/types/cycle'
 
 interface IssueDetailDrawerProps {
   open: boolean
@@ -54,6 +56,8 @@ interface IssueDetailDrawerProps {
   labels: Label[]
   /** The team's projects (for the project picker + badge). */
   projects: Project[]
+  /** The team's cycles (for the cycle picker + badge). */
+  cycles: Cycle[]
   /** Known assignable members. */
   members: { id: string; name: string }[]
 }
@@ -98,6 +102,7 @@ export function IssueDetailDrawer({
   workflowStates,
   labels,
   projects,
+  cycles,
   members,
 }: IssueDetailDrawerProps) {
   const { data: issue, isLoading } = useIssue(open ? (issueId ?? undefined) : undefined, initialIssue)
@@ -192,6 +197,11 @@ export function IssueDetailDrawer({
   const handleProjectChange = (projectId: string | null) => {
     if (!issue || projectId === issue.project_id) return
     updateIssue.mutate({ id: issue.id, team_id: teamId, project_id: projectId })
+  }
+
+  const handleCycleChange = (cycleId: string | null) => {
+    if (!issue || cycleId === issue.cycle_id) return
+    updateIssue.mutate({ id: issue.id, team_id: teamId, cycle_id: cycleId })
   }
 
   // --- Delete -------------------------------------------------------------
@@ -372,6 +382,15 @@ export function IssueDetailDrawer({
                       disabled={busy}
                     />
                   </div>
+                  <div className="flex items-center justify-between gap-3 py-1">
+                    <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Cycle</span>
+                    <CyclePicker
+                      value={issue.cycle_id}
+                      onChange={handleCycleChange}
+                      cycles={cycles}
+                      disabled={busy}
+                    />
+                  </div>
                 </div>
 
                 {/* Project badge (VAL-PROJECTS-009: badge everywhere) */}
@@ -385,6 +404,23 @@ export function IssueDetailDrawer({
                         >
                           <Folder className="h-3 w-3" />
                           {p.name}
+                        </span>
+                      ) : null
+                    })()}
+                  </div>
+                )}
+
+                {/* Cycle badge (VAL-CYCLES-005: assignment visible everywhere) */}
+                {issue.cycle_id && (
+                  <div className="mt-1 flex flex-wrap gap-1.5 px-1">
+                    {(() => {
+                      const c = cycles.find((cy) => cy.id === issue.cycle_id)
+                      return c ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground"
+                        >
+                          <Repeat2 className="h-3 w-3" />
+                          {c.name}
                         </span>
                       ) : null
                     })()}

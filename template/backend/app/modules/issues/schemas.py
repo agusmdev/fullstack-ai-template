@@ -51,6 +51,7 @@ class IssueCreate(IssueBase):
     team_id: uuid.UUID
     label_ids: list[uuid.UUID] | None = None
     parent_id: uuid.UUID | None = None
+    cycle_id: uuid.UUID | None = None
 
 
 @partial_model
@@ -59,6 +60,7 @@ class IssueUpdate(IssueBase):
 
     parent_id: uuid.UUID | None = None
     project_id: uuid.UUID | None = None
+    cycle_id: uuid.UUID | None = None
 
 
 class IssueResponse(IssueBase, OrmBaseModel):

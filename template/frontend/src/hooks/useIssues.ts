@@ -71,6 +71,7 @@ export function buildIssuesQueryString(
   }
   if (params.label_id) sp.set('label_id', params.label_id)
   if (params.project_id) sp.set('project_id', params.project_id)
+  if (params.cycle_id) sp.set('cycle_id', params.cycle_id)
 
   // order_by is a list[str] on the backend (repeated query params); fall back
   // to newest-first when unset.
@@ -369,6 +370,7 @@ export function useUpdateIssue() {
       if (input.priority !== undefined) body.priority = input.priority
       if (input.assignee_id !== undefined) body.assignee_id = input.assignee_id
       if (input.project_id !== undefined) body.project_id = input.project_id
+      if (input.cycle_id !== undefined) body.cycle_id = input.cycle_id
       return api.patch<Issue>(API.ISSUES.DETAIL(input.id), body)
     },
     onMutate: async (input) => {

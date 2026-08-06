@@ -35,6 +35,7 @@ class IssueFilter(Filter):
     priority: int | None = None
     assignee_id: uuid.UUID | None = None
     project_id: uuid.UUID | None = None
+    cycle_id: uuid.UUID | None = None
 
     class Constants(Filter.Constants):
         model = Issue

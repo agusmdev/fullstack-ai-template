@@ -5,6 +5,7 @@ import type { Issue } from '@/types/issue'
 import type { WorkflowState } from '@/types/workflow-state'
 import type { Label } from '@/types/label'
 import type { Project } from '@/types/project'
+import type { Cycle } from '@/types/cycle'
 
 // Mock all hooks used by the drawer so the test is deterministic and isolated.
 const hooks = vi.hoisted(() => ({
@@ -43,6 +44,10 @@ const projects: Project[] = [
   { id: 'p-1', team_id: 't', name: 'Q3 Launch', status: 'planned', lead_id: null, target_date: null, description: null, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
 ]
 
+const cycles: Cycle[] = [
+  { id: 'c-1', team_id: 't', name: 'Sprint 1', starts_at: '2026-08-01', ends_at: '2026-08-14', completed_at: null, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+]
+
 const issue: Issue = {
   id: 'i-1',
   team_id: 't',
@@ -75,6 +80,7 @@ function renderDrawer(overrides: Partial<React.ComponentProps<typeof IssueDetail
       workflowStates={states}
       labels={labels}
       projects={projects}
+      cycles={cycles}
       members={[{ id: 'u-1', name: 'Ada Lovelace' }]}
       {...overrides}
     />,
@@ -201,5 +207,18 @@ describe('IssueDetailDrawer', () => {
     renderDrawer()
     const title = screen.getByText('Fix the bug')
     expect(title.className).toContain('line-through')
+  })
+
+  it('cycle picker assigns the issue to a cycle via PATCH (VAL-CYCLES-005)', async () => {
+    const mutate = vi.fn()
+    hooks.useUpdateIssue.mockReturnValue({ ...noopMutation, mutate })
+    renderDrawer()
+    // The issue has cycle_id=null, so the trigger shows "No cycle".
+    fireEvent.click(screen.getByText('No cycle'))
+    // Pick "Sprint 1".
+    fireEvent.click(screen.getByText('Sprint 1'))
+    await waitFor(() =>
+      expect(mutate).toHaveBeenCalledWith({ id: 'i-1', team_id: 't', cycle_id: 'c-1' }),
+    )
   })
 })
