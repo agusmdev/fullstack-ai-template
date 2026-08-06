@@ -37,8 +37,9 @@ async def update_logged_user(
     user_id: uuid.UUID = Depends(AuthenticatedUser.current_user_id),
     user: UserUpdate = Body(...),
     user_service: UserService = Depends(get_user_service),
-) -> None:
-    await user_service.update(user_id, user)
+) -> UserResponse:
+    updated_user = await user_service.update(user_id, user)
+    return UserResponse.model_validate(updated_user)
 
 
 @user_router.delete(

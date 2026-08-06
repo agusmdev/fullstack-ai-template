@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.context import clear_request_context
 from app.core.logging import configure_logging
 from app.core.logging.middleware import WideEventMiddleware
+from app.exceptions import ErrorResponse
 from app.middlewares.context import RequestContextMiddleware
 
 from .routers import get_app_router
@@ -18,13 +19,17 @@ from .routers import get_app_router
 async def _http_exception_handler(
     _request: Request, exc: HTTPException
 ) -> JSONResponse:
-    """Surface error_code alongside detail for all HTTP exceptions."""
+    """Surface error_code alongside detail for all HTTP exceptions.
+
+    Built through the ``ErrorResponse`` contract so the response shape is
+    validated by the schema rather than hand-rolled per call site.
+    """
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-            "error_code": getattr(exc, "error_code", "http_error"),
-        },
+        content=ErrorResponse(
+            detail=exc.detail,
+            error_code=getattr(exc, "error_code", "http_error"),
+        ).model_dump(mode="json"),
     )
 
 

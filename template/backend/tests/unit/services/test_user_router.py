@@ -34,9 +34,9 @@ def user_obj(user_id):
 
 
 @pytest.fixture
-def user_service():
+def user_service(user_obj):
     svc = MagicMock()
-    svc.update = AsyncMock(return_value=None)
+    svc.update = AsyncMock(return_value=user_obj)
     svc.delete = AsyncMock(return_value=None)
     return svc
 
@@ -81,11 +81,14 @@ class TestUpdateLoggedUser:
         assert args[0] == user_id
         assert args[1].display_name == "New Name"
 
-    def test_returns_no_content_body(self, client):
+    def test_returns_updated_user(self, client, user_obj):
         response = client.patch("/me", json={"display_name": "X"})
 
-        # update_logged_user returns None → empty 200 body.
+        # update_logged_user echoes the updated resource (mirrors items PATCH).
         assert response.status_code == 200
+        body = response.json()
+        assert body["id"] == str(user_obj.id)
+        assert body["email"] == user_obj.email
 
 
 class TestDeleteUser:

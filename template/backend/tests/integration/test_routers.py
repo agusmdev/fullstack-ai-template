@@ -50,13 +50,16 @@ def router_app(user_id):
     def _user_id():
         return user_id
 
-    async def _load_user():
+    def _make_user():
         return SimpleNamespace(
             id=user_id,
             email="test@example.com",
             display_name="Test User",
             email_verified_at=None,
         )
+
+    async def _load_user():
+        return _make_user()
 
     app.dependency_overrides[require_current_user_id] = _user_id
     app.dependency_overrides[AuthenticatedUser.current_user_id] = _user_id
@@ -102,7 +105,7 @@ def router_app(user_id):
     app.dependency_overrides[get_item_service] = lambda: item_svc
 
     user_svc = MagicMock()
-    user_svc.update = AsyncMock(return_value=None)
+    user_svc.update = AsyncMock(return_value=_make_user())
     user_svc.delete = AsyncMock(return_value=None)
     app.dependency_overrides[get_user_service] = lambda: user_svc
 
@@ -230,6 +233,9 @@ class TestUserRoutePipeline:
         _, _, user_svc, _ = router_app
         resp = router_client.patch("/users/me", json={"display_name": "Renamed"})
         assert resp.status_code == 200
+        # PATCH /me echoes the updated resource (mirrors items PATCH).
+        assert resp.json()["id"] == str(user_id)
+        assert resp.json()["email"] == "test@example.com"
         user_svc.update.assert_awaited_once()
         called_args = user_svc.update.await_args.args
         assert called_args[0] == user_id
