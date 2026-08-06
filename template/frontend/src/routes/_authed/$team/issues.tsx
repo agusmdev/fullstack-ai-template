@@ -8,6 +8,7 @@ import { IssueList } from '@/components/IssueList'
 import { IssueListSkeleton } from '@/components/IssueListSkeleton'
 import { IssueFiltersBar } from '@/components/IssueFiltersBar'
 import { CreateIssueDialog } from '@/components/CreateIssueDialog'
+import { IssueDetailDrawer } from '@/components/IssueDetailDrawer'
 import { useTeams } from '@/hooks/useTeams'
 import { useUser } from '@/hooks/useUser'
 import { useIssues, flattenIssues, issuesTotal } from '@/hooks/useIssues'
@@ -17,6 +18,7 @@ import { useDebounce } from '@/hooks/useDebounce'
 import {
   DEFAULT_SORT_KEY,
   hasActiveIssueFilters,
+  type Issue,
   type IssuesQueryParams,
 } from '@/types/issue'
 
@@ -45,6 +47,10 @@ export const Route = createFileRoute('/_authed/$team/issues')({
 function IssuesView() {
   const { team: teamKey } = useParams({ strict: false })
   const [createOpen, setCreateOpen] = useState(false)
+  // The currently-selected issue (for the detail drawer). Holds the issue object
+  // already in the list cache so the drawer renders instantly without a flash,
+  // while still refetching for freshness (VAL-ISSUES-030, VAL-ISSUES-048).
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
 
   // Filter/search/sort state. The search input is immediate (responsive UI);
   // a debounced copy feeds the query so typing doesn't fire a request per key.
@@ -167,6 +173,7 @@ function IssuesView() {
               issues={issues}
               workflowStates={workflowStates}
               assigneeNames={assigneeNames}
+              onSelectIssue={setSelectedIssue}
             />
 
             {/* Pagination: load more for long lists (VAL-ISSUES-029). */}
@@ -203,6 +210,18 @@ function IssuesView() {
       <CreateIssueDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
+        teamId={teamId ?? ''}
+        workflowStates={workflowStates}
+        labels={labels}
+        members={members}
+      />
+
+      {/* Detail drawer (opens on row click). Closes by clearing the selection. */}
+      <IssueDetailDrawer
+        open={!!selectedIssue}
+        onOpenChange={(o) => !o && setSelectedIssue(null)}
+        issueId={selectedIssue?.id ?? null}
+        initialIssue={selectedIssue ?? undefined}
         teamId={teamId ?? ''}
         workflowStates={workflowStates}
         labels={labels}

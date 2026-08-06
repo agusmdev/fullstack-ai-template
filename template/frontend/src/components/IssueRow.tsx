@@ -9,18 +9,26 @@ interface IssueRowProps {
   issue: Issue
   /** Display name of the assignee, if any (resolved by the caller). */
   assigneeName?: string
+  /** True when the issue is in a terminal status (completed/canceled). */
+  isTerminal?: boolean
+  /** Called when the row is activated (click / Enter) to open the detail drawer. */
+  onSelect?: (issue: Issue) => void
   className?: string
 }
 
 /**
  * A single issue row in the grouped list. Shows the auto-identifier
  * (`TEAM-NN`), title, priority glyph, label badges, and assignee avatar.
+ * Clicking the row (or focusing it and pressing Enter) opens the detail drawer.
  *
  * Optimistically-inserted rows render a pending identifier placeholder until the
  * POST settles and the real issue reconciles (VAL-ISSUES-008, VAL-ISSUES-011).
+ * Issues in a terminal status (completed/canceled) render muted with a
+ * strikethrough title (VAL-ISSUES-044).
  */
-export function IssueRow({ issue, assigneeName, className }: IssueRowProps) {
+export function IssueRow({ issue, assigneeName, isTerminal, onSelect, className }: IssueRowProps) {
   const optimistic = isOptimisticIssue(issue)
+  const interactive = !!onSelect
   const initials =
     assigneeName
       ?.split(/\s+/)
@@ -32,8 +40,22 @@ export function IssueRow({ issue, assigneeName, className }: IssueRowProps) {
 
   return (
     <div
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? () => onSelect?.(issue) : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onSelect?.(issue)
+              }
+            }
+          : undefined
+      }
       className={cn(
-        'group flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:bg-accent/50',
+        'group flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 transition-colors',
+        interactive && 'cursor-pointer hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
         optimistic && 'opacity-60',
         className,
       )}
@@ -44,7 +66,12 @@ export function IssueRow({ issue, assigneeName, className }: IssueRowProps) {
         {issue.identifier || '···'}
       </span>
 
-      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+      <span
+        className={cn(
+          'min-w-0 flex-1 truncate text-sm text-foreground',
+          isTerminal && 'text-muted-foreground line-through',
+        )}
+      >
         {issue.title}
       </span>
 

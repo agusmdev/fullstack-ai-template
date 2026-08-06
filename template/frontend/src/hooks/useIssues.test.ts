@@ -4,7 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 import {
   useIssues,
+  useIssue,
   useCreateIssue,
+  useUpdateIssue,
+  useDeleteIssue,
+  useAddIssueLabel,
+  useRemoveIssueLabel,
   isOptimisticIssue,
   flattenIssues,
   issuesTotal,
@@ -14,6 +19,8 @@ import type { IssuesResponse, Issue, CreateIssueInput } from '@/types/issue'
 const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
+  patch: vi.fn(),
+  delete: vi.fn(),
 }))
 const authMock = vi.hoisted(() => ({ isAuthenticated: vi.fn() }))
 const toastMock = vi.hoisted(() => ({
@@ -343,5 +350,261 @@ describe('isOptimisticIssue', () => {
   it('flags optimistic ids and rejects real ids', () => {
     expect(isOptimisticIssue({ ...realIssue, id: 'optimistic-abc' })).toBe(true)
     expect(isOptimisticIssue(realIssue)).toBe(false)
+  })
+})
+
+describe('useIssue (detail)', () => {
+  beforeEach(() => {
+    apiMock.get.mockReset()
+    authMock.isAuthenticated.mockReset()
+  })
+
+  it('fetches a single issue by id', async () => {
+    authMock.isAuthenticated.mockReturnValue(true)
+    apiMock.get.mockResolvedValue(realIssue)
+
+    const { result } = renderHook(() => useIssue('i-1'), {
+      wrapper: makeWrapper(makeQueryClient()),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(apiMock.get).toHaveBeenCalledWith('/issues/i-1')
+    expect(result.current.data?.identifier).toBe('ENG-1')
+  })
+
+  it('is disabled without an id', () => {
+    authMock.isAuthenticated.mockReturnValue(true)
+    const { result } = renderHook(() => useIssue(undefined), {
+      wrapper: makeWrapper(makeQueryClient()),
+    })
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(apiMock.get).not.toHaveBeenCalled()
+  })
+
+  it('uses initialIssue so the drawer renders instantly without a flash', () => {
+    authMock.isAuthenticated.mockReturnValue(true)
+    const { result } = renderHook(() => useIssue('i-1', realIssue), {
+      wrapper: makeWrapper(makeQueryClient()),
+    })
+    expect(result.current.data).toEqual(realIssue)
+    expect(result.current.isLoading).toBe(false)
+  })
+})
+
+describe('useUpdateIssue — optimistic patch + rollback', () => {
+  beforeEach(() => {
+    apiMock.patch.mockReset()
+    apiMock.get.mockReset()
+    toastMock.success.mockReset()
+    toastMock.error.mockReset()
+    authMock.isAuthenticated.mockReturnValue(true)
+    apiMock.get.mockResolvedValue(mockPage)
+  })
+
+  it('updates the detail + list caches optimistically before PATCH resolves', async () => {
+    const qc = makeQueryClient()
+    // Seed detail + default list caches.
+    qc.setQueryData(['issues', 'detail', 'i-1'], realIssue)
+    qc.setQueryData(['issues', 'list', 't-1', ''], { pages: [mockPage], pageParams: [1] })
+
+    // Hold the PATCH open to inspect the in-flight optimistic cache.
+    let resolvePatch!: (v: Issue) => void
+    apiMock.patch.mockReturnValue(
+      new Promise<Issue>((res) => {
+        resolvePatch = res
+      }),
+    )
+
+    const { result } = renderHook(() => useUpdateIssue(), { wrapper: makeWrapper(qc) })
+    act(() => {
+      result.current.mutate({ id: 'i-1', team_id: 't-1', title: 'Renamed' })
+    })
+
+    await waitFor(() => {
+      expect(qc.getQueryData<Issue>(['issues', 'detail', 'i-1'])?.title).toBe('Renamed')
+    })
+    const list = qc.getQueryData<{ pages: IssuesResponse[] }>(['issues', 'list', 't-1', ''])
+    expect(list?.pages[0].items[0].title).toBe('Renamed')
+
+    resolvePatch({ ...realIssue, title: 'Renamed' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(toastMock.success).toHaveBeenCalled()
+  })
+
+  it('moves the row between status groups optimistically (status_id change)', async () => {
+    const qc = makeQueryClient()
+    qc.setQueryData(['issues', 'detail', 'i-1'], realIssue)
+    qc.setQueryData(['issues', 'list', 't-1', ''], { pages: [mockPage], pageParams: [1] })
+
+    apiMock.patch.mockResolvedValue({ ...realIssue, status_id: 'ws-2' })
+
+    const { result } = renderHook(() => useUpdateIssue(), { wrapper: makeWrapper(qc) })
+    await act(async () => {
+      await result.current.mutateAsync({ id: 'i-1', team_id: 't-1', status_id: 'ws-2' })
+    })
+
+    const detail = qc.getQueryData<Issue>(['issues', 'detail', 'i-1'])
+    expect(detail?.status_id).toBe('ws-2')
+    const list = qc.getQueryData<{ pages: IssuesResponse[] }>(['issues', 'list', 't-1', ''])
+    expect(list?.pages[0].items[0].status_id).toBe('ws-2')
+  })
+
+  it('rolls back both caches on backend error', async () => {
+    const qc = makeQueryClient()
+    qc.setQueryData(['issues', 'detail', 'i-1'], realIssue)
+    qc.setQueryData(['issues', 'list', 't-1', ''], { pages: [mockPage], pageParams: [1] })
+
+    apiMock.patch.mockRejectedValue(new ApiError(422, 'Invalid'))
+
+    const { result } = renderHook(() => useUpdateIssue(), { wrapper: makeWrapper(qc) })
+    await act(async () => {
+      try {
+        await result.current.mutateAsync({ id: 'i-1', team_id: 't-1', title: 'Bad' })
+      } catch {
+        // expected
+      }
+    })
+
+    await waitFor(() => {
+      expect(qc.getQueryData<Issue>(['issues', 'detail', 'i-1'])?.title).toBe('Existing')
+    })
+    const list = qc.getQueryData<{ pages: IssuesResponse[] }>(['issues', 'list', 't-1', ''])
+    expect(list?.pages[0].items[0].title).toBe('Existing')
+    expect(toastMock.error).toHaveBeenCalled()
+  })
+
+  it('sends only the provided patch fields (no id/team_id)', async () => {
+    const qc = makeQueryClient()
+    apiMock.patch.mockResolvedValue(realIssue)
+
+    const { result } = renderHook(() => useUpdateIssue(), { wrapper: makeWrapper(qc) })
+    await act(async () => {
+      await result.current.mutateAsync({ id: 'i-1', team_id: 't-1', priority: 0 })
+    })
+
+    expect(apiMock.patch).toHaveBeenCalledWith('/issues/i-1', { priority: 0 })
+  })
+})
+
+describe('useDeleteIssue — optimistic removal + rollback', () => {
+  beforeEach(() => {
+    apiMock.delete.mockReset()
+    toastMock.success.mockReset()
+    toastMock.error.mockReset()
+    authMock.isAuthenticated.mockReturnValue(true)
+  })
+
+  it('removes the issue from the list and decrements the total optimistically', async () => {
+    const qc = makeQueryClient()
+    qc.setQueryData(['issues', 'list', 't-1', ''], { pages: [mockPage], pageParams: [1] })
+
+    let resolveDelete!: () => void
+    apiMock.delete.mockReturnValue(
+      new Promise<void>((res) => {
+        resolveDelete = res
+      }),
+    )
+
+    const { result } = renderHook(() => useDeleteIssue(), { wrapper: makeWrapper(qc) })
+    act(() => {
+      result.current.mutate({ id: 'i-1', team_id: 't-1' })
+    })
+
+    await waitFor(() => {
+      const list = qc.getQueryData<{ pages: IssuesResponse[] }>(['issues', 'list', 't-1', ''])
+      expect(list?.pages[0].items).toHaveLength(0)
+      expect(list?.pages[0].total).toBe(0)
+    })
+
+    resolveDelete()
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(toastMock.success).toHaveBeenCalled()
+  })
+
+  it('restores the row on delete error', async () => {
+    const qc = makeQueryClient()
+    qc.setQueryData(['issues', 'list', 't-1', ''], { pages: [mockPage], pageParams: [1] })
+
+    apiMock.delete.mockRejectedValue(new ApiError(500, 'Boom'))
+
+    const { result } = renderHook(() => useDeleteIssue(), { wrapper: makeWrapper(qc) })
+    await act(async () => {
+      try {
+        await result.current.mutateAsync({ id: 'i-1', team_id: 't-1' })
+      } catch {
+        // expected
+      }
+    })
+
+    await waitFor(() => {
+      const list = qc.getQueryData<{ pages: IssuesResponse[] }>(['issues', 'list', 't-1', ''])
+      expect(list?.pages[0].items).toHaveLength(1)
+      expect(list?.pages[0].total).toBe(1)
+    })
+    expect(toastMock.error).toHaveBeenCalled()
+  })
+})
+
+describe('useAddIssueLabel / useRemoveIssueLabel — optimistic label toggle', () => {
+  beforeEach(() => {
+    apiMock.post.mockReset()
+    apiMock.delete.mockReset()
+    authMock.isAuthenticated.mockReturnValue(true)
+  })
+
+  const issueWithLabels: Issue = {
+    ...realIssue,
+    labels: [{ id: 'l-1', name: 'Bug', color: '#f00' }],
+  }
+
+  it('adds a label optimistically to detail + list', async () => {
+    const qc = makeQueryClient()
+    qc.setQueryData(['issues', 'detail', 'i-1'], realIssue)
+    qc.setQueryData(['issues', 'list', 't-1', ''], {
+      pages: [{ ...mockPage, items: [realIssue] }],
+      pageParams: [1],
+    })
+
+    apiMock.post.mockResolvedValue({
+      ...realIssue,
+      labels: [{ id: 'l-2', name: 'UI', color: '#0f0' }],
+    })
+
+    const { result } = renderHook(() => useAddIssueLabel(), { wrapper: makeWrapper(qc) })
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: 'i-1',
+        team_id: 't-1',
+        label: { id: 'l-2', name: 'UI', color: '#0f0' },
+      })
+    })
+
+    expect(apiMock.post).toHaveBeenCalledWith('/issues/i-1/labels/l-2', {})
+    const detail = qc.getQueryData<Issue>(['issues', 'detail', 'i-1'])
+    expect(detail?.labels.some((l) => l.id === 'l-2')).toBe(true)
+  })
+
+  it('removes a label optimistically and calls the sub-resource DELETE', async () => {
+    const qc = makeQueryClient()
+    qc.setQueryData(['issues', 'detail', 'i-1'], issueWithLabels)
+    qc.setQueryData(['issues', 'list', 't-1', ''], {
+      pages: [{ ...mockPage, items: [issueWithLabels] }],
+      pageParams: [1],
+    })
+
+    apiMock.delete.mockResolvedValue(undefined)
+
+    const { result } = renderHook(() => useRemoveIssueLabel(), { wrapper: makeWrapper(qc) })
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: 'i-1',
+        team_id: 't-1',
+        label: { id: 'l-1', name: 'Bug', color: '#f00' },
+      })
+    })
+
+    expect(apiMock.delete).toHaveBeenCalledWith('/issues/i-1/labels/l-1')
+    const detail = qc.getQueryData<Issue>(['issues', 'detail', 'i-1'])
+    expect(detail?.labels.some((l) => l.id === 'l-1')).toBe(false)
   })
 })

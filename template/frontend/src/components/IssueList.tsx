@@ -38,17 +38,26 @@ interface IssueListProps {
   workflowStates: WorkflowState[]
   /** Optional lookup of assignee id → display name (for row avatars). */
   assigneeNames?: Record<string, string>
+  /** Called when a row is activated to open the detail drawer. */
+  onSelectIssue?: (issue: Issue) => void
 }
 
 /**
  * The grouped issues list. Each group renders a header (status dot + name +
  * accurate count) followed by its rows. Used by the issues route.
  */
-export function IssueList({ issues, workflowStates, assigneeNames }: IssueListProps) {
+export function IssueList({ issues, workflowStates, assigneeNames, onSelectIssue }: IssueListProps) {
   const groups = useMemo(
     () => groupIssuesByStatus(issues, workflowStates),
     [issues, workflowStates],
   )
+
+  // Lookup of status_id → workflow state type, to mark terminal rows.
+  const stateTypeById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const s of workflowStates) m.set(s.id, s.type)
+    return m
+  }, [workflowStates])
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,13 +75,18 @@ export function IssueList({ issues, workflowStates, assigneeNames }: IssueListPr
                 No issues
               </p>
             ) : (
-              groupIssues.map((issue) => (
-                <IssueRow
-                  key={issue.id}
-                  issue={issue}
-                  assigneeName={issue.assignee_id ? assigneeNames?.[issue.assignee_id] : undefined}
-                />
-              ))
+              groupIssues.map((issue) => {
+                const type = stateTypeById.get(issue.status_id)
+                return (
+                  <IssueRow
+                    key={issue.id}
+                    issue={issue}
+                    assigneeName={issue.assignee_id ? assigneeNames?.[issue.assignee_id] : undefined}
+                    isTerminal={type === 'completed' || type === 'canceled'}
+                    onSelect={onSelectIssue}
+                  />
+                )
+              })
             )}
           </div>
         </section>

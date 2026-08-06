@@ -21,5 +21,9 @@ export const API = {
     LIST: '/issues',
     CREATE: '/issues',
     DETAIL: (id: string) => `/issues/${id}`,
+    /** Add a label to an issue (idempotent). */
+    ADD_LABEL: (id: string, labelId: string) => `/issues/${id}/labels/${labelId}`,
+    /** Remove a label from an issue. */
+    REMOVE_LABEL: (id: string, labelId: string) => `/issues/${id}/labels/${labelId}`,
   },
 } as const

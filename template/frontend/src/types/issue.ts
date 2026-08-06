@@ -170,3 +170,30 @@ export interface CreateIssueInput {
   /** Optimistic-only: resolved labels for instant display. Not serialized. */
   optimisticLabels?: Label[]
 }
+
+/**
+ * Partial patch for `PATCH /issues/:id`. Only provided fields are sent; the
+ * backend `IssueUpdate` is `@partial_model`. `id` + `team_id` target the issue
+ * and scope the optimistic cache updates (VAL-ISSUES-031–036).
+ */
+export interface UpdateIssueInput {
+  id: string
+  team_id: string
+  title?: string
+  description?: string | null
+  status_id?: string | null
+  priority?: number
+  assignee_id?: string | null
+}
+
+/**
+ * Add/remove a single label on an issue via the labels sub-resource
+ * (`POST/DELETE /issues/:id/labels/:label_id`). `label` carries the resolved
+ * label object so the optimistic update can render the badge instantly
+ * (VAL-ISSUES-036).
+ */
+export interface IssueLabelToggleInput {
+  id: string
+  team_id: string
+  label: IssueLabel
+}
