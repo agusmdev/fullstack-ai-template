@@ -32,11 +32,13 @@ def get_auth_service(
     # app.modules.teams.routers, so importing teams at module level here would cycle.
     from app.modules.teams.repository import TeamMembershipRepository, TeamRepository
     from app.modules.teams.service import TeamService
+    from app.modules.workflows.repository import WorkflowStateRepository
 
     session = session_repo._session
     team_service = TeamService(
         repo=TeamRepository(session),
         membership_repo=TeamMembershipRepository(session),
+        workflow_state_repo=WorkflowStateRepository(session),
     )
 
     return AuthService(

@@ -9,6 +9,7 @@ import pytest
 from app.modules.teams.models import TeamRole
 from app.modules.teams.schemas import TeamCreate, TeamUpdate
 from app.modules.teams.service import TeamService, _derive_key_from_name
+from app.modules.workflows.constants import DEFAULT_WORKFLOW_STATES
 from app.repositories.exceptions import NotFoundError
 
 
@@ -323,3 +324,141 @@ class TestDeleteTeam:
 
         with pytest.raises(NotFoundError):
             await service.delete(sample_team_id, user_id=sample_user_id)
+
+
+@pytest.fixture
+def service_with_workflow(
+    mock_team_repository,
+    mock_team_membership_repository,
+    mock_workflow_state_repository,
+):
+    """TeamService wired with a workflow-state repo (seeding enabled)."""
+    return TeamService(
+        repo=mock_team_repository,
+        membership_repo=mock_team_membership_repository,
+        workflow_state_repo=mock_workflow_state_repository,
+    )
+
+
+class TestSeedDefaultWorkflowStates:
+    async def test_seeds_canonical_five_on_default_team_creation(
+        self,
+        service_with_workflow,
+        mock_team_repository,
+        mock_team_membership_repository,
+        mock_workflow_state_repository,
+        sample_user_id,
+        sample_team,
+    ):
+        mock_team_repository.get_all = AsyncMock(return_value=[])  # no key collisions
+        mock_team_repository.create = AsyncMock(return_value=sample_team)
+
+        await service_with_workflow.create_default_team_for_user(
+            sample_user_id, "New User"
+        )
+
+        # Exactly the 5 canonical workflow states were created.
+        assert mock_workflow_state_repository.create.await_count == len(
+            DEFAULT_WORKFLOW_STATES
+        )
+        # Each created with the new team_id.
+        for call in mock_workflow_state_repository.create.await_args_list:
+            create_arg = call.args[0]
+            assert create_arg.team_id == sample_team.id
+
+    async def test_seeds_on_explicit_team_create(
+        self,
+        service_with_workflow,
+        mock_team_repository,
+        mock_team_membership_repository,
+        mock_workflow_state_repository,
+        sample_user_id,
+        sample_team,
+    ):
+        mock_team_repository.create = AsyncMock(return_value=sample_team)
+
+        await service_with_workflow.create(
+            TeamCreate(name="My Team", key="MY"), user_id=sample_user_id
+        )
+
+        assert mock_workflow_state_repository.create.await_count == len(
+            DEFAULT_WORKFLOW_STATES
+        )
+
+    async def test_no_seeding_when_workflow_repo_is_none(
+        self,
+        service,
+        mock_team_repository,
+        mock_team_membership_repository,
+        mock_workflow_state_repository,
+        sample_user_id,
+        sample_team,
+    ):
+        """The default `service` fixture has no workflow repo — seeding is a no-op."""
+        mock_team_repository.get_all = AsyncMock(return_value=[])
+        mock_team_repository.create = AsyncMock(return_value=sample_team)
+
+        await service.create_default_team_for_user(sample_user_id, "New User")
+
+        mock_workflow_state_repository.create.assert_not_awaited()
+
+    async def test_seeded_states_match_canonical_set(
+        self,
+        service_with_workflow,
+        mock_team_repository,
+        mock_team_membership_repository,
+        mock_workflow_state_repository,
+        sample_user_id,
+        sample_team,
+    ):
+        mock_team_repository.get_all = AsyncMock(return_value=[])
+        mock_team_repository.create = AsyncMock(return_value=sample_team)
+
+        await service_with_workflow.create_default_team_for_user(
+            sample_user_id, "New User"
+        )
+
+        created = [
+            c.args[0] for c in mock_workflow_state_repository.create.await_args_list
+        ]
+        created_names = {s.name for s in created}
+        created_types = {s.type.value for s in created}
+        assert created_names == {"Backlog", "Todo", "In Progress", "Done", "Canceled"}
+        assert created_types == {
+            "backlog",
+            "unstarted",
+            "started",
+            "completed",
+            "canceled",
+        }
+        # positions are distinct and ordered
+        positions = sorted(s.position for s in created)
+        assert positions == [0.0, 1.0, 2.0, 3.0, 4.0]
+
+
+class TestRequireTeamAccess:
+    async def test_delegates_to_role_check(
+        self,
+        service,
+        mock_team_membership_repository,
+        sample_user_id,
+        sample_team_id,
+        sample_membership,
+    ):
+        mock_team_membership_repository.get_all = AsyncMock(
+            return_value=[sample_membership]
+        )
+
+        membership = await service.require_team_access(
+            sample_user_id, sample_team_id, min_role=TeamRole.admin
+        )
+
+        assert membership.role == TeamRole.admin
+
+    async def test_non_member_gets_404(
+        self, service, mock_team_membership_repository, sample_user_id, sample_team_id
+    ):
+        mock_team_membership_repository.get_all = AsyncMock(return_value=[])
+
+        with pytest.raises(NotFoundError):
+            await service.require_team_access(sample_user_id, sample_team_id)

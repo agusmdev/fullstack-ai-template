@@ -7,6 +7,7 @@ the authenticated user's team memberships.
 
 import re
 import uuid
+from typing import TYPE_CHECKING
 
 from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
@@ -19,6 +20,9 @@ from app.modules.teams.schemas import TeamCreate, TeamMembershipCreate
 from app.repositories.base_repository import QueryOptions
 from app.repositories.exceptions import NotFoundError
 from app.services.base_crud_service import BaseService
+
+if TYPE_CHECKING:
+    from app.modules.workflows.repository import WorkflowStateRepository
 
 
 def _derive_key_from_name(name: str) -> str:
@@ -37,14 +41,17 @@ class TeamService(BaseService[Team]):
 
     repo: TeamRepository
     membership_repo: TeamMembershipRepository
+    workflow_state_repo: "WorkflowStateRepository | None"
 
     def __init__(
         self,
         repo: TeamRepository,
         membership_repo: TeamMembershipRepository,
+        workflow_state_repo: "WorkflowStateRepository | None" = None,
     ) -> None:
         self.repo = repo
         self.membership_repo = membership_repo
+        self.workflow_state_repo = workflow_state_repo
 
     # ------------------------------------------------------------------
     # Team-scoping helpers (used by all later domain modules)
@@ -102,6 +109,7 @@ class TeamService(BaseService[Team]):
         await self.membership_repo.create(
             TeamMembershipCreate(user_id=user_id, team_id=team.id, role=TeamRole.admin)
         )
+        await self._seed_default_workflow_states(team.id)
         return team
 
     async def _generate_unique_key(self, name: str) -> str:
@@ -120,6 +128,25 @@ class TeamService(BaseService[Team]):
         while f"{base}{suffix}" in existing_keys:
             suffix += 1
         return f"{base}{suffix}"
+
+    async def _seed_default_workflow_states(self, team_id: uuid.UUID) -> None:
+        """Seed the canonical 5 workflow states for a newly created team.
+
+        No-op when no workflow-state repository is wired (keeps the service usable
+        in contexts that don't need seeding, e.g. some unit tests).
+
+        The workflows imports are deferred to runtime to avoid a module-load
+        circular dependency (teams.service ← workflows package init).
+        """
+        if self.workflow_state_repo is None:
+            return
+        from app.modules.workflows.constants import DEFAULT_WORKFLOW_STATES
+        from app.modules.workflows.schemas import WorkflowStateCreate
+
+        for state in DEFAULT_WORKFLOW_STATES:
+            await self.workflow_state_repo.create(
+                WorkflowStateCreate(team_id=team_id, **state)
+            )
 
     # ------------------------------------------------------------------
     # CRUD (team-scoped)
@@ -160,6 +187,7 @@ class TeamService(BaseService[Team]):
         await self.membership_repo.create(
             TeamMembershipCreate(user_id=user_id, team_id=team.id, role=TeamRole.admin)
         )
+        await self._seed_default_workflow_states(team.id)
         return team
 
     async def update(  # type: ignore[override]
@@ -202,3 +230,18 @@ class TeamService(BaseService[Team]):
         if role_order[membership.role] < role_order[required_role]:
             raise NotFoundError(detail=f"Team '{team_id}' not found")
         return membership
+
+    async def require_team_access(
+        self,
+        user_id: uuid.UUID,
+        team_id: uuid.UUID,
+        *,
+        min_role: TeamRole = TeamRole.guest,
+    ) -> TeamMembership:
+        """Public team-access check used by other domain modules.
+
+        Verifies the user is a member of ``team_id`` with at least ``min_role``.
+        Non-members and users below ``min_role`` raise NotFoundError (404) so the
+        team's existence is not leaked. Returns the membership on success.
+        """
+        return await self._require_role(user_id, team_id, min_role)

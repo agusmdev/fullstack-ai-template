@@ -2,7 +2,9 @@
 
 from fastapi import APIRouter
 
+from app.modules.labels.routers import labels_router
 from app.modules.teams.routers import teams_router
+from app.modules.workflows.routers import workflow_states_router
 from app.user.auth.routers import auth_router
 from app.user.routers import user_router
 
@@ -23,5 +25,7 @@ def get_app_router() -> APIRouter:
     )
 
     router.include_router(teams_router)
+    router.include_router(workflow_states_router)
+    router.include_router(labels_router)
 
     return router

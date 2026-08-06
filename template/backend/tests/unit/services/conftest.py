@@ -92,6 +92,47 @@ def mock_team_membership_repository():
 
 
 @pytest.fixture
+def mock_workflow_state_repository():
+    """Create a mock workflow state repository."""
+    repo = MagicMock()
+    repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
+    repo.get_all = AsyncMock()
+    repo.get_all_paginated = AsyncMock()
+    repo.create = AsyncMock()
+    repo.create_many = AsyncMock()
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.upsert = AsyncMock()
+    return repo
+
+
+@pytest.fixture
+def mock_label_repository():
+    """Create a mock label repository."""
+    repo = MagicMock()
+    repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
+    repo.get_all = AsyncMock()
+    repo.get_all_paginated = AsyncMock()
+    repo.create = AsyncMock()
+    repo.create_many = AsyncMock()
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.upsert = AsyncMock()
+    return repo
+
+
+@pytest.fixture
+def mock_team_service():
+    """Create a mock TeamService for scoping in domain services."""
+    svc = MagicMock()
+    svc.get_team_ids_for_user = AsyncMock(return_value=[])
+    svc.require_team_access = AsyncMock()
+    return svc
+
+
+@pytest.fixture
 def sample_user_id():
     """Generate a sample user UUID."""
     return uuid.UUID("12345678-1234-5678-1234-567812345678")

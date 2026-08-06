@@ -1,1 +1,1 @@
-"""Feature modules: domain entities beyond the core user (items, etc.)."""
+"""Feature modules: domain entities beyond the core user (teams, workflows, labels, etc.)."""
