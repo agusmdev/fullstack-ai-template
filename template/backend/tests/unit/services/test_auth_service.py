@@ -119,18 +119,26 @@ class TestAuthServiceRegister:
         return service
 
     @pytest.fixture
+    def mock_team_service(self):
+        service = MagicMock()
+        service.create_default_team_for_user = AsyncMock()
+        return service
+
+    @pytest.fixture
     def auth_service(
         self,
         mock_user_service,
         mock_session_repository,
         mock_password_reset_repository,
         mock_email_verification_repository,
+        mock_team_service,
     ):
         return AuthService(
             user_service=mock_user_service,
             repo=mock_session_repository,
             password_reset_repo=mock_password_reset_repository,
             email_verification_repo=mock_email_verification_repository,
+            team_service=mock_team_service,
         )
 
     async def test_register_success(
@@ -149,6 +157,54 @@ class TestAuthServiceRegister:
 
         mock_user_service.register.assert_called_once_with(user=user_data)
         assert isinstance(result, SessionResponse)
+
+    async def test_register_creates_default_team(
+        self, auth_service, mock_team_service, sample_user_model
+    ):
+        """Registration creates a default team + admin membership for the user."""
+        mock_session = MagicMock()
+        mock_session.id = "s_new_session"
+        mock_session.expires_at = datetime.now(tz=UTC) + timedelta(days=365)
+        # Wire authenticate to return a session.
+        auth_service.repo.create.return_value = mock_session
+
+        user_data = UserRegister(
+            email="new@example.com", display_name="New User", raw_password="password123"
+        )
+        await auth_service.register(user_data)
+
+        mock_team_service.create_default_team_for_user.assert_awaited_once()
+        call_kwargs = mock_team_service.create_default_team_for_user.await_args.kwargs
+        assert call_kwargs["user_id"] == sample_user_model.id
+        assert call_kwargs["display_name"] == sample_user_model.display_name
+
+    async def test_register_without_team_service_still_works(
+        self,
+        mock_user_service,
+        mock_session_repository,
+        mock_password_reset_repository,
+        mock_email_verification_repository,
+    ):
+        """When team_service is None (default), register skips team creation."""
+        service = AuthService(
+            user_service=mock_user_service,
+            repo=mock_session_repository,
+            password_reset_repo=mock_password_reset_repository,
+            email_verification_repo=mock_email_verification_repository,
+            # team_service defaults to None
+        )
+        mock_session = MagicMock()
+        mock_session.id = "s_new_session"
+        mock_session.expires_at = datetime.now(tz=UTC) + timedelta(days=365)
+        mock_session_repository.create.return_value = mock_session
+
+        user_data = UserRegister(
+            email="new@example.com", display_name="New User", raw_password="password123"
+        )
+        result = await service.register(user_data)
+
+        assert isinstance(result, SessionResponse)
+        mock_user_service.register.assert_awaited_once()
 
 
 class TestAuthServiceCheckSession:

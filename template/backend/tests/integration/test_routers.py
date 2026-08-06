@@ -16,9 +16,9 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.modules.items.dependencies import get_item_service
-from app.modules.items.routers import (
-    items_router,  # noqa: F401  - ensures module import
+from app.modules.teams.dependencies import get_team_service
+from app.modules.teams.routers import (
+    teams_router,  # noqa: F401  - ensures module import
 )
 from app.routers import get_app_router
 from app.user.auth import require_current_user_id
@@ -36,7 +36,12 @@ def user_id():
 
 
 @pytest.fixture
-def router_app(user_id):
+def team_id():
+    return uuid.UUID("99999999-9999-9999-9999-999999999999")
+
+
+@pytest.fixture
+def router_app(user_id, team_id):
     """A minimal FastAPI app mounting the central router with stubbed deps.
 
     Every auth entry point and service factory is overridden so requests never
@@ -72,37 +77,27 @@ def router_app(user_id):
     app.dependency_overrides[AuthenticatedUser.get_current_user] = _load_user
 
     # --- Service overrides ---------------------------------------------
-    item_svc = MagicMock()
-    item_svc.get_by_id = AsyncMock(
-        return_value=SimpleNamespace(
-            id=user_id, user_id=user_id, name="Test Item", description="d"
-        )
+    team_obj = SimpleNamespace(
+        id=team_id,
+        name="Test Team",
+        key="TEST",
+        issue_sequence=0,
     )
-    item_svc.get_by_sku = AsyncMock(
+    team_svc = MagicMock()
+    team_svc.get_by_id = AsyncMock(return_value=team_obj)
+    team_svc.create = AsyncMock(return_value=team_obj)
+    team_svc.update = AsyncMock(return_value=team_obj)
+    team_svc.delete = AsyncMock(return_value=None)
+    team_svc.get_all_paginated = AsyncMock(
         return_value=SimpleNamespace(
-            id=user_id, user_id=user_id, name="SKU Item", description="d"
-        )
-    )
-    item_svc.create = AsyncMock(
-        return_value=SimpleNamespace(
-            id=user_id, user_id=user_id, name="New Item", description="d"
-        )
-    )
-    item_svc.delete = AsyncMock(return_value=None)
-    item_svc.get_all_paginated = AsyncMock(
-        return_value=SimpleNamespace(
-            items=[
-                SimpleNamespace(
-                    id=user_id, user_id=user_id, name="Item 1", description="d"
-                )
-            ],
+            items=[team_obj],
             total=1,
             page=1,
             size=50,
             pages=1,
         )
     )
-    app.dependency_overrides[get_item_service] = lambda: item_svc
+    app.dependency_overrides[get_team_service] = lambda: team_svc
 
     user_svc = MagicMock()
     user_svc.update = AsyncMock(return_value=_make_user())
@@ -124,7 +119,7 @@ def router_app(user_id):
     auth_svc.initiate_email_verification = AsyncMock(return_value="ev_token")
     app.dependency_overrides[get_auth_service] = lambda: auth_svc
 
-    yield app, item_svc, user_svc, auth_svc
+    yield app, team_svc, user_svc, auth_svc
     app.dependency_overrides.clear()
 
 
@@ -153,44 +148,43 @@ class TestRouterPrefixes:
         assert resp.status_code == 200
         assert resp.json()["email"] == "test@example.com"
 
-    def test_items_router_has_own_prefix(self, router_client):
-        # items_router declares its own /items prefix.
-        resp = router_client.get("/items")
+    def test_teams_router_has_own_prefix(self, router_client):
+        # teams_router declares its own /teams prefix.
+        resp = router_client.get("/teams")
         assert resp.status_code == 200
         body = resp.json()
         assert body["total"] == 1
-        assert body["items"][0]["name"] == "Item 1"
+        assert body["items"][0]["name"] == "Test Team"
 
 
-class TestItemsRoutePipeline:
-    """Full request → response cycle for items routes through the mounted router."""
+class TestTeamsRoutePipeline:
+    """Full request → response cycle for teams routes through the mounted router."""
 
-    def test_get_item_by_id_serializes_response(self, router_client, user_id):
-        resp = router_client.get(f"/items/{user_id}")
+    def test_get_team_by_id_serializes_response(self, router_client, team_id):
+        resp = router_client.get(f"/teams/{team_id}")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["id"] == str(user_id)
-        assert body["name"] == "Test Item"
+        assert body["id"] == str(team_id)
+        assert body["name"] == "Test Team"
+        assert body["key"] == "TEST"
+        assert body["issue_sequence"] == 0
 
-    def test_create_item_returns_201(self, router_client, router_app, user_id):
-        _, item_svc, _, _ = router_app
-        resp = router_client.post(
-            "/items", json={"name": "New Item", "description": "d"}
-        )
+    def test_create_team_returns_201(self, router_client, router_app, team_id):
+        _, team_svc, _, _ = router_app
+        resp = router_client.post("/teams", json={"name": "New Team", "key": "NEW"})
         assert resp.status_code == 201
-        assert resp.json()["id"] == str(user_id)
-        item_svc.create.assert_awaited_once()
+        assert resp.json()["id"] == str(team_id)
+        team_svc.create.assert_awaited_once()
 
-    def test_delete_item_returns_204(self, router_client, router_app, user_id):
-        _, item_svc, _, _ = router_app
-        resp = router_client.delete(f"/items/{user_id}")
+    def test_delete_team_returns_204(self, router_client, router_app, team_id):
+        _, team_svc, _, _ = router_app
+        resp = router_client.delete(f"/teams/{team_id}")
         assert resp.status_code == 204
-        item_svc.delete.assert_awaited_once()
+        team_svc.delete.assert_awaited_once()
 
-    def test_get_item_by_sku(self, router_client, user_id):
-        resp = router_client.get("/items/by-sku/ABC")
-        assert resp.status_code == 200
-        assert resp.json()["name"] == "SKU Item"
+    def test_create_team_rejects_short_key(self, router_client):
+        resp = router_client.post("/teams", json={"name": "T", "key": "X"})
+        assert resp.status_code == 422
 
 
 class TestAuthRoutePipeline:
@@ -233,7 +227,7 @@ class TestUserRoutePipeline:
         _, _, user_svc, _ = router_app
         resp = router_client.patch("/users/me", json={"display_name": "Renamed"})
         assert resp.status_code == 200
-        # PATCH /me echoes the updated resource (mirrors items PATCH).
+        # PATCH /me echoes the updated resource.
         assert resp.json()["id"] == str(user_id)
         assert resp.json()["email"] == "test@example.com"
         user_svc.update.assert_awaited_once()
@@ -259,7 +253,7 @@ class TestAppRouterAssembly:
         # One representative path per mounted sub-router.
         assert any(p.startswith("/auth") for p in paths)
         assert any(p.startswith("/users") for p in paths)
-        assert any(p.startswith("/items") for p in paths)
+        assert any(p.startswith("/teams") for p in paths)
 
     def test_auth_and_users_have_tags(self):
         from app.routers import get_app_router
@@ -269,3 +263,4 @@ class TestAppRouterAssembly:
             tags.update(getattr(route, "tags", []) or [])
         assert "auth" in tags
         assert "users" in tags
+        assert "teams" in tags

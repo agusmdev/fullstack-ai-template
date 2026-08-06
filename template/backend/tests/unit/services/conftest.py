@@ -25,21 +25,6 @@ def mock_user_repository():
 
 
 @pytest.fixture
-def mock_item_repository():
-    """Create a mock item repository."""
-    repo = MagicMock()
-    repo.get = AsyncMock()
-    repo.get_by_field = AsyncMock()
-    repo.get_all = AsyncMock()
-    repo.create = AsyncMock()
-    repo.update = AsyncMock()
-    repo.delete = AsyncMock()
-    repo.create_many = AsyncMock()
-    repo.upsert = AsyncMock()
-    return repo
-
-
-@pytest.fixture
 def mock_session_repository():
     """Create a mock session repository."""
     repo = MagicMock()
@@ -77,6 +62,36 @@ def mock_email_verification_repository():
 
 
 @pytest.fixture
+def mock_team_repository():
+    """Create a mock team repository."""
+    repo = MagicMock()
+    repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
+    repo.get_all = AsyncMock()
+    repo.get_all_paginated = AsyncMock()
+    repo.create = AsyncMock()
+    repo.create_many = AsyncMock()
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.upsert = AsyncMock()
+    return repo
+
+
+@pytest.fixture
+def mock_team_membership_repository():
+    """Create a mock team membership repository."""
+    repo = MagicMock()
+    repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
+    repo.get_all = AsyncMock()
+    repo.create = AsyncMock()
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.upsert = AsyncMock()
+    return repo
+
+
+@pytest.fixture
 def sample_user_id():
     """Generate a sample user UUID."""
     return uuid.UUID("12345678-1234-5678-1234-567812345678")
@@ -103,30 +118,3 @@ def sample_user_model(sample_user_id):
         created_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         updated_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
     )
-
-
-@pytest.fixture
-def sample_item_id():
-    """Generate a sample item UUID."""
-    return uuid.UUID("87654321-4321-8765-4321-876543218765")
-
-
-@pytest.fixture
-def sample_item_owner_id():
-    """Generate a sample item owner UUID."""
-    return uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
-
-
-@pytest.fixture
-def sample_item_model(sample_item_id, sample_item_owner_id):
-    """Create a mock Item model instance."""
-    item = MagicMock()
-    item.id = sample_item_id
-    item.user_id = sample_item_owner_id
-    item.name = "Test Item"
-    item.description = "A test item description"
-    item.quantity = 10
-    item.sku = "TEST-SKU-001"
-    item.created_at = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
-    item.updated_at = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
-    return item

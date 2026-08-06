@@ -28,9 +28,21 @@ def get_auth_service(
     ),
     user_service: UserService = Depends(get_user_service),
 ) -> AuthService:
+    # Lazy import to avoid a circular dependency: app.user.auth is imported by
+    # app.modules.teams.routers, so importing teams at module level here would cycle.
+    from app.modules.teams.repository import TeamMembershipRepository, TeamRepository
+    from app.modules.teams.service import TeamService
+
+    session = session_repo._session
+    team_service = TeamService(
+        repo=TeamRepository(session),
+        membership_repo=TeamMembershipRepository(session),
+    )
+
     return AuthService(
         user_service=user_service,
         repo=session_repo,
         password_reset_repo=password_reset_repo,
         email_verification_repo=email_verification_repo,
+        team_service=team_service,
     )

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.database.base import Base
-from app.modules.items.models import Item
+from app.modules.teams.models import Team
 from app.repositories.base_repository import BaseRepository, QueryOptions
 from app.repositories.clauses import conflict_passthrough
 
@@ -36,7 +36,7 @@ class TestQueryOptionsDefaults:
         assert b.pagination_kwargs == {}
 
     def test_carries_base_query(self):
-        q = select(Item)
+        q = select(Team)
         opts = QueryOptions(
             base_query=q, return_scalars=False, response_model=BaseModel
         )
@@ -55,7 +55,7 @@ class TestBaseRepositoryIsAbstract:
     def test_concrete_subclass_must_implement_all_abstract_methods(self):
         """A subclass missing even one abstract method remains uninstantiable."""
 
-        class Partial(BaseRepository[Item]):
+        class Partial(BaseRepository[Team]):
             async def get(self, entity_id, raise_error=True, response_model=None): ...
 
         with pytest.raises(TypeError):
@@ -64,8 +64,8 @@ class TestBaseRepositoryIsAbstract:
     def test_full_subclass_is_instantiable(self):
         """A subclass implementing every abstract method instantiates successfully."""
 
-        class Complete(BaseRepository[Item]):
-            model = Item
+        class Complete(BaseRepository[Team]):
+            model = Team
 
             async def get(self, entity_id, raise_error=True, response_model=None): ...
 

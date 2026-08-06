@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.modules.items.routers import items_router
+from app.modules.teams.routers import teams_router
 from app.user.auth.routers import auth_router
 from app.user.routers import user_router
 
@@ -22,6 +22,6 @@ def get_app_router() -> APIRouter:
         tags=["users"],
     )
 
-    router.include_router(items_router)
+    router.include_router(teams_router)
 
     return router

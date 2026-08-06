@@ -1,28 +1,30 @@
 """Direct tests for module-level dependency factory functions.
 
-These cover the dependency wiring declared in app/modules/items/dependencies.py,
+These cover the dependency wiring declared in app/modules/teams/dependencies.py,
 app/user/dependencies.py, and app/user/auth/dependencies.py — previously only
 exercised transitively.
 """
 
 from unittest.mock import MagicMock
 
-from app.modules.items.dependencies import get_item_service
-from app.modules.items.service import ItemService
+from app.modules.teams.dependencies import get_team_service
+from app.modules.teams.service import TeamService
 from app.user.auth.dependencies import get_auth_service
 from app.user.auth.service import AuthService
 from app.user.dependencies import get_user_service
 from app.user.service import UserService
 
 
-class TestGetItemService:
-    def test_returns_item_service_bound_to_repo(self):
-        repo = MagicMock(name="ItemRepository")
+class TestGetTeamService:
+    def test_returns_team_service_bound_to_repos(self):
+        repo = MagicMock(name="TeamRepository")
+        membership_repo = MagicMock(name="TeamMembershipRepository")
 
-        service = get_item_service(repo=repo)
+        service = get_team_service(repo=repo, membership_repo=membership_repo)
 
-        assert isinstance(service, ItemService)
+        assert isinstance(service, TeamService)
         assert service.repo is repo
+        assert service.membership_repo is membership_repo
 
 
 class TestGetUserService:
@@ -54,3 +56,4 @@ class TestGetAuthService:
         assert service.password_reset_repo is password_reset_repo
         assert service.email_verification_repo is email_verification_repo
         assert service.user_service is user_service
+        assert service.team_service is not None

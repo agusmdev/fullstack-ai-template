@@ -11,7 +11,7 @@ from app.database.base import Base, _convert_url_to_sync
 # This is an explicit registry — add new model modules here when created.
 import app.user.models  # noqa: F401, E402
 import app.user.auth.models  # noqa: F401, E402
-import app.modules.items.models  # noqa: F401, E402
+import app.modules.teams.models  # noqa: F401, E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
