@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { queryKeys } from './query-keys'
 
 describe('queryKeys', () => {
-  describe('users.me', () => {
+  describe('users', () => {
     it('returns a stable me key', () => {
       expect(queryKeys.users.me()).toEqual(['users', 'me'])
     })
@@ -12,20 +12,17 @@ describe('queryKeys', () => {
     })
   })
 
-  describe('items.list', () => {
-    it('returns key with no params', () => {
-      expect(queryKeys.items.list()).toEqual(['items', 'list', undefined])
+  describe('teams', () => {
+    it('returns a stable list key', () => {
+      expect(queryKeys.teams.list()).toEqual(['teams', 'list'])
     })
 
-    it('returns key with params', () => {
-      const params = { page: 1, search: 'test' }
-      expect(queryKeys.items.list(params)).toEqual(['items', 'list', params])
+    it('exposes an all key for invalidation', () => {
+      expect(queryKeys.teams.all).toEqual(['teams'])
     })
 
-    it('includes params in key for cache differentiation', () => {
-      const params1 = { page: 1 }
-      const params2 = { page: 2 }
-      expect(queryKeys.items.list(params1)).not.toEqual(queryKeys.items.list(params2))
+    it('list key is stable across calls (same reference shape)', () => {
+      expect(queryKeys.teams.list()).toEqual(['teams', 'list'])
     })
   })
 })

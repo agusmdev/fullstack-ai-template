@@ -1,5 +1,3 @@
-/// <reference types="vitest/globals" />
-
 import { defineConfig } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -27,18 +25,11 @@ const config = defineConfig({
     viteReact(),
     tailwindcss(),
   ],
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['**/*.test.{ts,tsx}'],
-    poolOptions: {
-      threads: {
-        singleThread: true,
-      },
-    },
-    teardownTimeout: 1000,
-  },
+  // Vitest configuration lives in vitest.config.ts (vitest selects it
+  // automatically and takes precedence over this file). Keeping the test block
+  // out of here avoids a tsc drift: vite's UserConfig has no `test` property,
+  // and the vitest/config type reference cannot augment it because vitest 3.0
+  // ships a nested copy of vite whose UserConfig differs from vite 7's.
 })
 
 export default config

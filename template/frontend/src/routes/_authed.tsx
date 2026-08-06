@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
-import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { isAuthenticated } from '@/lib/auth'
 import { requireAuthBeforeLoad } from '@/lib/auth-guard'
+import { AppShell } from '@/components/AppShell'
 
 /**
- * Pathless layout route that guards every authenticated surface.
+ * Pathless layout route that guards every authenticated surface and renders the
+ * Linear workspace shell (Sidebar + Topbar) around the routed page.
  *
  * Auth is enforced in two complementary places:
  *
@@ -22,8 +24,8 @@ import { requireAuthBeforeLoad } from '@/lib/auth-guard'
  * redirect-after-login (VAL-AUTH-016), and session-persists-across-reload
  * (VAL-AUTH-013, where the effect is a no-op for authenticated users).
  *
- * Note: the visual Linear app shell (Sidebar, Topbar, theme toggle) is added by
- * the `m0-app-shell` feature; this layout only enforces the auth boundary.
+ * Note: the visual Linear app shell (Sidebar, Topbar, theme toggle) is rendered
+ * by <AppShell>; this layout only enforces the auth boundary and provides chrome.
  */
 export const Route = createFileRoute('/_authed')({
   beforeLoad: requireAuthBeforeLoad,
@@ -43,5 +45,5 @@ function AuthedLayout() {
     }
   }, [navigate])
 
-  return <Outlet />
+  return <AppShell />
 }

@@ -11,10 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as ItemsRouteImport } from './routes/items'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedWorkspaceRouteImport } from './routes/_authed/workspace'
+import { Route as AuthedTeamIndexRouteImport } from './routes/_authed/$team/index'
+import { Route as AuthedTeamViewsRouteImport } from './routes/_authed/$team/views'
+import { Route as AuthedTeamSettingsRouteImport } from './routes/_authed/$team/settings'
+import { Route as AuthedTeamProjectsRouteImport } from './routes/_authed/$team/projects'
+import { Route as AuthedTeamIssuesRouteImport } from './routes/_authed/$team/issues'
+import { Route as AuthedTeamCyclesRouteImport } from './routes/_authed/$team/cycles'
+import { Route as AuthedTeamBoardRouteImport } from './routes/_authed/$team/board'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -24,11 +30,6 @@ const RegisterRoute = RegisterRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ItemsRoute = ItemsRouteImport.update({
-  id: '/items',
-  path: '/items',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedRoute = AuthedRouteImport.update({
@@ -45,49 +46,129 @@ const AuthedWorkspaceRoute = AuthedWorkspaceRouteImport.update({
   path: '/workspace',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedTeamIndexRoute = AuthedTeamIndexRouteImport.update({
+  id: '/$team/',
+  path: '/$team/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamViewsRoute = AuthedTeamViewsRouteImport.update({
+  id: '/$team/views',
+  path: '/$team/views',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamSettingsRoute = AuthedTeamSettingsRouteImport.update({
+  id: '/$team/settings',
+  path: '/$team/settings',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamProjectsRoute = AuthedTeamProjectsRouteImport.update({
+  id: '/$team/projects',
+  path: '/$team/projects',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamIssuesRoute = AuthedTeamIssuesRouteImport.update({
+  id: '/$team/issues',
+  path: '/$team/issues',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamCyclesRoute = AuthedTeamCyclesRouteImport.update({
+  id: '/$team/cycles',
+  path: '/$team/cycles',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamBoardRoute = AuthedTeamBoardRouteImport.update({
+  id: '/$team/board',
+  path: '/$team/board',
+  getParentRoute: () => AuthedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/items': typeof ItemsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/workspace': typeof AuthedWorkspaceRoute
+  '/$team/board': typeof AuthedTeamBoardRoute
+  '/$team/cycles': typeof AuthedTeamCyclesRoute
+  '/$team/issues': typeof AuthedTeamIssuesRoute
+  '/$team/projects': typeof AuthedTeamProjectsRoute
+  '/$team/settings': typeof AuthedTeamSettingsRoute
+  '/$team/views': typeof AuthedTeamViewsRoute
+  '/$team': typeof AuthedTeamIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/items': typeof ItemsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/workspace': typeof AuthedWorkspaceRoute
+  '/$team/board': typeof AuthedTeamBoardRoute
+  '/$team/cycles': typeof AuthedTeamCyclesRoute
+  '/$team/issues': typeof AuthedTeamIssuesRoute
+  '/$team/projects': typeof AuthedTeamProjectsRoute
+  '/$team/settings': typeof AuthedTeamSettingsRoute
+  '/$team/views': typeof AuthedTeamViewsRoute
+  '/$team': typeof AuthedTeamIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
-  '/items': typeof ItemsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/_authed/workspace': typeof AuthedWorkspaceRoute
+  '/_authed/$team/board': typeof AuthedTeamBoardRoute
+  '/_authed/$team/cycles': typeof AuthedTeamCyclesRoute
+  '/_authed/$team/issues': typeof AuthedTeamIssuesRoute
+  '/_authed/$team/projects': typeof AuthedTeamProjectsRoute
+  '/_authed/$team/settings': typeof AuthedTeamSettingsRoute
+  '/_authed/$team/views': typeof AuthedTeamViewsRoute
+  '/_authed/$team/': typeof AuthedTeamIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/items' | '/login' | '/register' | '/workspace'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/workspace'
+    | '/$team/board'
+    | '/$team/cycles'
+    | '/$team/issues'
+    | '/$team/projects'
+    | '/$team/settings'
+    | '/$team/views'
+    | '/$team'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/items' | '/login' | '/register' | '/workspace'
+  to:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/workspace'
+    | '/$team/board'
+    | '/$team/cycles'
+    | '/$team/issues'
+    | '/$team/projects'
+    | '/$team/settings'
+    | '/$team/views'
+    | '/$team'
   id:
     | '__root__'
     | '/'
     | '/_authed'
-    | '/items'
     | '/login'
     | '/register'
     | '/_authed/workspace'
+    | '/_authed/$team/board'
+    | '/_authed/$team/cycles'
+    | '/_authed/$team/issues'
+    | '/_authed/$team/projects'
+    | '/_authed/$team/settings'
+    | '/_authed/$team/views'
+    | '/_authed/$team/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
-  ItemsRoute: typeof ItemsRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
 }
@@ -106,13 +187,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/items': {
-      id: '/items'
-      path: '/items'
-      fullPath: '/items'
-      preLoaderRoute: typeof ItemsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed': {
@@ -136,15 +210,78 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedWorkspaceRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/$team/': {
+      id: '/_authed/$team/'
+      path: '/$team'
+      fullPath: '/$team'
+      preLoaderRoute: typeof AuthedTeamIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/views': {
+      id: '/_authed/$team/views'
+      path: '/$team/views'
+      fullPath: '/$team/views'
+      preLoaderRoute: typeof AuthedTeamViewsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/settings': {
+      id: '/_authed/$team/settings'
+      path: '/$team/settings'
+      fullPath: '/$team/settings'
+      preLoaderRoute: typeof AuthedTeamSettingsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/projects': {
+      id: '/_authed/$team/projects'
+      path: '/$team/projects'
+      fullPath: '/$team/projects'
+      preLoaderRoute: typeof AuthedTeamProjectsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/issues': {
+      id: '/_authed/$team/issues'
+      path: '/$team/issues'
+      fullPath: '/$team/issues'
+      preLoaderRoute: typeof AuthedTeamIssuesRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/cycles': {
+      id: '/_authed/$team/cycles'
+      path: '/$team/cycles'
+      fullPath: '/$team/cycles'
+      preLoaderRoute: typeof AuthedTeamCyclesRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/board': {
+      id: '/_authed/$team/board'
+      path: '/$team/board'
+      fullPath: '/$team/board'
+      preLoaderRoute: typeof AuthedTeamBoardRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
 interface AuthedRouteChildren {
   AuthedWorkspaceRoute: typeof AuthedWorkspaceRoute
+  AuthedTeamBoardRoute: typeof AuthedTeamBoardRoute
+  AuthedTeamCyclesRoute: typeof AuthedTeamCyclesRoute
+  AuthedTeamIssuesRoute: typeof AuthedTeamIssuesRoute
+  AuthedTeamProjectsRoute: typeof AuthedTeamProjectsRoute
+  AuthedTeamSettingsRoute: typeof AuthedTeamSettingsRoute
+  AuthedTeamViewsRoute: typeof AuthedTeamViewsRoute
+  AuthedTeamIndexRoute: typeof AuthedTeamIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedWorkspaceRoute: AuthedWorkspaceRoute,
+  AuthedTeamBoardRoute: AuthedTeamBoardRoute,
+  AuthedTeamCyclesRoute: AuthedTeamCyclesRoute,
+  AuthedTeamIssuesRoute: AuthedTeamIssuesRoute,
+  AuthedTeamProjectsRoute: AuthedTeamProjectsRoute,
+  AuthedTeamSettingsRoute: AuthedTeamSettingsRoute,
+  AuthedTeamViewsRoute: AuthedTeamViewsRoute,
+  AuthedTeamIndexRoute: AuthedTeamIndexRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -153,7 +290,6 @@ const AuthedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
-  ItemsRoute: ItemsRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
 }

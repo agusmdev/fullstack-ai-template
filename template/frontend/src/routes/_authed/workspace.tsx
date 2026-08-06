@@ -1,41 +1,66 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useUser } from '@/hooks/useUser'
+import { useEffect } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useTeams, pickDefaultTeam } from '@/hooks/useTeams'
+import { LoadingSkeleton } from '@/components/LoadingSkeleton'
+import { ErrorState } from '@/components/ErrorState'
 
 /**
- * Minimal authenticated workspace landing.
- *
- * This is the route authed users land on after login/register (unless a deep
- * link was preserved). It sits behind the `_authed` guard, so it doubles as the
- * canonical "protected route" for auth assertions:
- *  - unauthenticated direct nav → redirected to `/login` (VAL-AUTH-014)
- *  - a 401 from `/users/me` (bad/expired token) → token cleared → redirected to
- *    `/login` (VAL-AUTH-015)
- *  - reload keeps the user authenticated (token read from localStorage,
- *    VAL-AUTH-013)
- *
- * The full Linear app shell (Sidebar, Topbar, theme toggle, issues board) is
- * built by the `m0-app-shell` and later milestones; this is the authed skeleton.
+ * Workspace landing — resolves the user's default team and redirects into its
+ * issues view (`/$team/issues`). Authed users land here from `/` and after
+ * login (unless a deep link was preserved). While teams load we show a skeleton;
+ * a fresh registration yields exactly one default team.
  */
 export const Route = createFileRoute('/_authed/workspace')({
   component: Workspace,
 })
 
 function Workspace() {
-  const { data: user, isLoading } = useUser()
+  const { data, isLoading, isError, error, refetch } = useTeams()
+  const navigate = useNavigate()
+  const defaultTeam = pickDefaultTeam(data?.items)
 
+  useEffect(() => {
+    if (defaultTeam) {
+      void navigate({
+        to: '/$team/issues',
+        params: { team: defaultTeam.key },
+        replace: true,
+      })
+    }
+  }, [defaultTeam, navigate])
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <LoadingSkeleton rows={3} />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <ErrorState error={error} onRetry={() => refetch()} title="Couldn't load your workspace" />
+      </div>
+    )
+  }
+
+  // Teams loaded but none found (shouldn't happen for authed users).
+  if (!defaultTeam) {
+    return (
+      <div className="p-6">
+        <ErrorState
+          error={new Error('No teams found for this account')}
+          title="No workspace available"
+        />
+      </div>
+    )
+  }
+
+  // Redirect is in flight; render the skeleton in the meantime.
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-72px)] gap-3 p-8 text-center">
-      <h1 className="text-3xl font-bold tracking-tight">Workspace</h1>
-      <p className="text-muted-foreground max-w-md">
-        {isLoading
-          ? 'Loading…'
-          : user
-            ? `Signed in as ${user.email}. This is your team workspace.`
-            : "You're signed in. This is your team workspace."}
-      </p>
-      <p className="text-xs text-muted-foreground/70 max-w-md">
-        The Linear app shell (sidebar, issues, board) arrives with the next milestone.
-      </p>
+    <div className="p-6">
+      <LoadingSkeleton rows={3} />
     </div>
   )
 }

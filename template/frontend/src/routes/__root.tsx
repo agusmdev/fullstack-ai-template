@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19,13 +19,23 @@ const TanStackRouterDevtoolsPanel = lazyDev(
   () => import('@tanstack/react-router-devtools').then(m => m.TanStackRouterDevtoolsPanel)
 )
 
-import { Layout } from '@/components/Layout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { initWebVitals } from '@/lib/web-vitals'
+import { THEME_STORAGE_KEY, applyTheme, getStoredTheme } from '@/lib/theme'
 
 import appCss from '@/styles/app.css?url'
+
+/**
+ * Inline script injected into <head> that resolves the persisted theme
+ * (light/dark/system) from localStorage and toggles the `.dark` class on <html>
+ * BEFORE React renders. This prevents a flash of the wrong theme on first paint
+ * and across reload/logout-login (the preference is independent of auth state).
+ */
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(
+  THEME_STORAGE_KEY
+)})||'system';var d=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}})();`
 
 export const Route = createRootRoute({
   head: () => ({
@@ -38,7 +48,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Manta',
+        title: 'Linear',
       },
     ],
     links: [
@@ -66,18 +76,25 @@ function RootDocument() {
 
   useEffect(() => {
     initWebVitals()
+    // Re-apply the persisted theme after mount: the before-paint init script
+    // prevents the initial flash, but React hydration may reconcile the <html>
+    // class. This restores it immediately so no perceptible flash occurs.
+    applyTheme(getStoredTheme())
   }, [])
 
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the theme init script mutates <html class>
+    // before React hydrates, which would otherwise warn about a mismatch.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
           <AuthProvider queryClient={queryClient}>
             <ErrorBoundary>
-              <Layout />
+              <Outlet />
             </ErrorBoundary>
             <Toaster />
             <React.Suspense>
