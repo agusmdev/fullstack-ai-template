@@ -29,3 +29,26 @@ describe('API.TEAMS', () => {
     expect(API.TEAMS.DETAIL(id)).toBe(`/teams/${id}`)
   })
 })
+
+describe('API.WORKFLOW_STATES', () => {
+  it('LIST points at the workflow-states collection', () => {
+    expect(API.WORKFLOW_STATES.LIST).toBe('/workflow-states')
+  })
+})
+
+describe('API.LABELS', () => {
+  it('LIST points at the labels collection', () => {
+    expect(API.LABELS.LIST).toBe('/labels')
+  })
+})
+
+describe('API.ISSUES', () => {
+  it('LIST and CREATE point at the issues collection', () => {
+    expect(API.ISSUES.LIST).toBe('/issues')
+    expect(API.ISSUES.CREATE).toBe('/issues')
+  })
+
+  it('DETAIL interpolates an arbitrary id into the path', () => {
+    expect(API.ISSUES.DETAIL('issue-9')).toBe('/issues/issue-9')
+  })
+})
