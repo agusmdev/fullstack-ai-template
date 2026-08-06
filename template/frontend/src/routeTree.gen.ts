@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ItemsRouteImport } from './routes/items'
+import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthedWorkspaceRouteImport } from './routes/_authed/workspace'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -29,10 +31,19 @@ const ItemsRoute = ItemsRouteImport.update({
   path: '/items',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedWorkspaceRoute = AuthedWorkspaceRouteImport.update({
+  id: '/workspace',
+  path: '/workspace',
+  getParentRoute: () => AuthedRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -40,30 +51,42 @@ export interface FileRoutesByFullPath {
   '/items': typeof ItemsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/workspace': typeof AuthedWorkspaceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/items': typeof ItemsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/workspace': typeof AuthedWorkspaceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteWithChildren
   '/items': typeof ItemsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/_authed/workspace': typeof AuthedWorkspaceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/items' | '/login' | '/register'
+  fullPaths: '/' | '/items' | '/login' | '/register' | '/workspace'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/items' | '/login' | '/register'
-  id: '__root__' | '/' | '/items' | '/login' | '/register'
+  to: '/' | '/items' | '/login' | '/register' | '/workspace'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authed'
+    | '/items'
+    | '/login'
+    | '/register'
+    | '/_authed/workspace'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
   ItemsRoute: typeof ItemsRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
@@ -92,6 +115,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ItemsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -99,11 +129,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/workspace': {
+      id: '/_authed/workspace'
+      path: '/workspace'
+      fullPath: '/workspace'
+      preLoaderRoute: typeof AuthedWorkspaceRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
+interface AuthedRouteChildren {
+  AuthedWorkspaceRoute: typeof AuthedWorkspaceRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedWorkspaceRoute: AuthedWorkspaceRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthedRoute: AuthedRouteWithChildren,
   ItemsRoute: ItemsRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
@@ -116,7 +165,6 @@ import type { getRouter } from './router.tsx'
 import type { createStart } from '@tanstack/react-start'
 declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
   }
 }

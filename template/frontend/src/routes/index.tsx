@@ -1,7 +1,17 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
+import { isAuthenticated } from '@/lib/auth'
 import './home.css'
 
 export const Route = createFileRoute('/')({
+  // Authenticated users visiting `/` go straight into the workspace rather than
+  // seeing the public landing page (VAL-CROSS-004). Client-only: the token lives
+  // in localStorage, so this can't be evaluated during SSR (see auth-guard.ts).
+  beforeLoad: () => {
+    if (typeof window !== 'undefined' && isAuthenticated()) {
+      throw redirect({ to: '/workspace', replace: true })
+    }
+  },
   component: HomePage,
 })
 
@@ -58,6 +68,16 @@ const techStack = [
 ]
 
 function HomePage() {
+  const navigate = useNavigate()
+  // On a hard navigation/reload to `/`, beforeLoad (skipped during SSR) can't
+  // redirect an authenticated user. Do it here after hydration so logged-in
+  // users land in the workspace (VAL-CROSS-004).
+  useEffect(() => {
+    if (isAuthenticated()) {
+      void navigate({ to: '/workspace', replace: true })
+    }
+  }, [navigate])
+
   return (
     <div className="demo-page">
       {/* Hero Section */}

@@ -18,6 +18,7 @@ function Register() {
     API.AUTH.REGISTER,
     'Account created successfully',
     'Registration failed',
+    { to: '/workspace' },
   )
 
   const form = useForm<RegisterFormData>({

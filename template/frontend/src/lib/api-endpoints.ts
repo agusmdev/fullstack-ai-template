@@ -6,6 +6,9 @@ export const API = {
     REGISTER: '/auth/register',
     LOGOUT: '/auth/logout',
   },
+  USERS: {
+    ME: '/users/me',
+  },
   ITEMS: {
     LIST: '/items',
     CREATE: '/items',

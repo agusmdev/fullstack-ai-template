@@ -16,11 +16,18 @@ describe('getRouter', () => {
     expect(a).not.toBe(b)
   })
 
-  it('registers the root, index, login, and register routes', () => {
+  it('registers the root, index, login, register, and authed routes', () => {
     const router = getRouter()
     const ids = Object.keys(router.routesById)
     expect(ids).toEqual(
-      expect.arrayContaining(['__root__', '/', '/login', '/register']),
+      expect.arrayContaining([
+        '__root__',
+        '/',
+        '/login',
+        '/register',
+        '/_authed',
+        '/_authed/workspace',
+      ]),
     )
   })
 })
@@ -32,7 +39,7 @@ describe('routeTree (generated module)', () => {
     expect(routeTree).toBeDefined()
     const router = getRouter()
     expect(Object.keys(router.routesById)).toEqual(
-      expect.arrayContaining(['/', '/login', '/register']),
+      expect.arrayContaining(['/', '/login', '/register', '/_authed/workspace']),
     )
   })
 })

@@ -2,6 +2,16 @@ import { describe, it, expect } from 'vitest'
 import { queryKeys } from './query-keys'
 
 describe('queryKeys', () => {
+  describe('users.me', () => {
+    it('returns a stable me key', () => {
+      expect(queryKeys.users.me()).toEqual(['users', 'me'])
+    })
+
+    it('exposes an all key for invalidation', () => {
+      expect(queryKeys.users.all).toEqual(['users'])
+    })
+  })
+
   describe('items.list', () => {
     it('returns key with no params', () => {
       expect(queryKeys.items.list()).toEqual(['items', 'list', undefined])
