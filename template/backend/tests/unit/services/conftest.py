@@ -124,6 +124,26 @@ def mock_label_repository():
 
 
 @pytest.fixture
+def mock_issue_repository():
+    """Create a mock issue repository."""
+    repo = MagicMock()
+    repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
+    repo.get_all = AsyncMock()
+    repo.get_all_paginated = AsyncMock()
+    repo.create = AsyncMock()
+    repo.create_many = AsyncMock()
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.upsert = AsyncMock()
+    repo.allocate_identifier = AsyncMock(return_value="ENG-1")
+    repo.add_label = AsyncMock(return_value=None)
+    repo.remove_label = AsyncMock(return_value=None)
+    repo.attach_labels = AsyncMock(return_value=None)
+    return repo
+
+
+@pytest.fixture
 def mock_team_service():
     """Create a mock TeamService for scoping in domain services."""
     svc = MagicMock()

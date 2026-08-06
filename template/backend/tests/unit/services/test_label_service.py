@@ -211,12 +211,12 @@ class TestIssueLabelModel:
             "issue_id",
             "label_id",
         }
-        # label FK present; issue FK deferred to m1-issue-backend
+        # both FKs now wired (issue FK added by m1-issue-backend)
         fk_targets = {
             fk.target_fullname for c in issue_label.columns for fk in c.foreign_keys
         }
         assert "label.id" in fk_targets
-        assert "issue.id" not in fk_targets
+        assert "issue.id" in fk_targets
 
     def test_label_model_fields(self):
         cols = {c.name for c in Label.__table__.columns}
