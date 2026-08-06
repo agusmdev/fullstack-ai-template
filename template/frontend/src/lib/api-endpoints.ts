@@ -17,6 +17,11 @@ export const API = {
   LABELS: {
     LIST: '/labels',
   },
+  PROJECTS: {
+    LIST: '/projects',
+    CREATE: '/projects',
+    DETAIL: (id: string) => `/projects/${id}`,
+  },
   ISSUES: {
     LIST: '/issues',
     CREATE: '/issues',

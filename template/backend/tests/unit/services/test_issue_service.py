@@ -59,6 +59,24 @@ def issue_id():
 
 
 @pytest.fixture
+def project_id():
+    return uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+
+
+@pytest.fixture
+def project_obj(project_id, sample_team_id):
+    return SimpleNamespace(
+        id=project_id,
+        team_id=sample_team_id,
+        name="Q3 Launch",
+        status="planned",
+        lead_id=None,
+        target_date=None,
+        description=None,
+    )
+
+
+@pytest.fixture
 def workflow_state_obj(status_id, sample_team_id):
     return SimpleNamespace(
         id=status_id,
@@ -120,6 +138,7 @@ def service(
     mock_team_service,
     mock_workflow_state_repository,
     mock_label_repository,
+    mock_project_repository,
     workflow_state_obj,
     label_obj,
     membership_obj,
@@ -135,6 +154,7 @@ def service(
         team_service=mock_team_service,
         workflow_state_repo=mock_workflow_state_repository,
         label_repo=mock_label_repository,
+        project_repo=mock_project_repository,
     )
 
 
@@ -1038,4 +1058,130 @@ class TestCrossTeamFieldValidation:
         # status/assignee validation must not run when those fields are unset.
         mock_workflow_state_repository.get.assert_not_awaited()
         mock_team_service.get_membership.assert_not_awaited()
+        mock_issue_repository.update.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Project assignment (cross-team field validation)
+# ---------------------------------------------------------------------------
+
+class TestProjectAssignment:
+    async def test_update_assigns_same_team_project(
+        self,
+        service,
+        mock_team_service,
+        mock_workflow_state_repository,
+        mock_issue_repository,
+        mock_project_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+        project_obj,
+    ):
+        """Assigning an issue to a same-team project succeeds."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_project_repository.get = AsyncMock(return_value=project_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service.update(
+            issue_id,
+            IssueUpdate(project_id=project_obj.id),
+            user_id=sample_user_id,
+        )
+
+        mock_project_repository.get.assert_awaited_once_with(
+            project_obj.id, raise_error=False
+        )
+        mock_issue_repository.update.assert_awaited_once()
+
+    async def test_update_rejects_cross_team_project(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        mock_project_repository,
+        sample_user_id,
+        sample_team_id,
+        other_team_id,
+        issue_id,
+        issue_obj,
+        project_id,
+    ):
+        """A project from another team is rejected on update (404, no leak)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_project_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=project_id, team_id=other_team_id, name="Foreign"
+            )
+        )
+
+        with pytest.raises(NotFoundError):
+            await service.update(
+                issue_id,
+                IssueUpdate(project_id=project_id),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.update.assert_not_awaited()
+
+    async def test_update_rejects_nonexistent_project(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        mock_project_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+        project_id,
+    ):
+        """A nonexistent project ID is rejected (404)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_project_repository.get = AsyncMock(return_value=None)
+
+        with pytest.raises(NotFoundError):
+            await service.update(
+                issue_id,
+                IssueUpdate(project_id=project_id),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.update.assert_not_awaited()
+
+    async def test_update_clearing_project_skips_validation(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        mock_project_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Setting project_id to None (clear) does not trigger validation."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service.update(
+            issue_id,
+            IssueUpdate(project_id=None),
+            user_id=sample_user_id,
+        )
+
+        mock_project_repository.get.assert_not_awaited()
         mock_issue_repository.update.assert_awaited_once()

@@ -21,6 +21,14 @@ export const queryKeys = {
       return ['labels', 'list'] as const
     },
   },
+  projects: {
+    all: ['projects'] as const,
+    list: (teamId?: string) => {
+      if (teamId) return ['projects', 'list', teamId] as const
+      return ['projects', 'list'] as const
+    },
+    detail: (id: string) => ['projects', 'detail', id] as const,
+  },
   issues: {
     all: ['issues'] as const,
     /**

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trash2, Loader2 } from 'lucide-react'
+import { Trash2, Loader2, Folder } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -24,6 +24,7 @@ import { StatusPicker } from '@/components/StatusPicker'
 import { PriorityPicker } from '@/components/PriorityPicker'
 import { AssigneePicker } from '@/components/AssigneePicker'
 import { LabelPicker } from '@/components/LabelPicker'
+import { ProjectPicker } from '@/components/ProjectPicker'
 import { StatusDot } from '@/components/StatusDot'
 import { IssueDetailDrawerSkeleton } from '@/components/IssueDetailDrawerSkeleton'
 import {
@@ -38,6 +39,7 @@ import { ISSUE_TITLE_MAX } from '@/features/issues/issue-schemas'
 import type { Issue, IssueLabel } from '@/types/issue'
 import type { WorkflowState } from '@/types/workflow-state'
 import type { Label } from '@/types/label'
+import type { Project } from '@/types/project'
 
 interface IssueDetailDrawerProps {
   open: boolean
@@ -50,6 +52,8 @@ interface IssueDetailDrawerProps {
   workflowStates: WorkflowState[]
   /** The team's labels. */
   labels: Label[]
+  /** The team's projects (for the project picker + badge). */
+  projects: Project[]
   /** Known assignable members. */
   members: { id: string; name: string }[]
 }
@@ -93,6 +97,7 @@ export function IssueDetailDrawer({
   teamId,
   workflowStates,
   labels,
+  projects,
   members,
 }: IssueDetailDrawerProps) {
   const { data: issue, isLoading } = useIssue(open ? (issueId ?? undefined) : undefined, initialIssue)
@@ -182,6 +187,11 @@ export function IssueDetailDrawer({
       const lbl = issue.labels.find((l) => l.id === removedId)
       if (lbl) removeLabel.mutate({ id: issue.id, team_id: teamId, label: lbl })
     }
+  }
+
+  const handleProjectChange = (projectId: string | null) => {
+    if (!issue || projectId === issue.project_id) return
+    updateIssue.mutate({ id: issue.id, team_id: teamId, project_id: projectId })
   }
 
   // --- Delete -------------------------------------------------------------
@@ -353,7 +363,33 @@ export function IssueDetailDrawer({
                       disabled={busy}
                     />
                   </div>
+                  <div className="flex items-center justify-between gap-3 py-1">
+                    <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Project</span>
+                    <ProjectPicker
+                      value={issue.project_id}
+                      onChange={handleProjectChange}
+                      projects={projects}
+                      disabled={busy}
+                    />
+                  </div>
                 </div>
+
+                {/* Project badge (VAL-PROJECTS-009: badge everywhere) */}
+                {issue.project_id && (
+                  <div className="mt-3 flex flex-wrap gap-1.5 px-1">
+                    {(() => {
+                      const p = projects.find((pr) => pr.id === issue.project_id)
+                      return p ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground"
+                        >
+                          <Folder className="h-3 w-3" />
+                          {p.name}
+                        </span>
+                      ) : null
+                    })()}
+                  </div>
+                )}
 
                 {/* Label badges */}
                 {issue.labels.length > 0 && (

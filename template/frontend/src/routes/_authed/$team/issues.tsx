@@ -15,6 +15,7 @@ import { useTeamRole } from '@/hooks/useTeamRole'
 import { useIssues, flattenIssues, issuesTotal } from '@/hooks/useIssues'
 import { useWorkflowStates } from '@/hooks/useWorkflowStates'
 import { useLabels } from '@/hooks/useLabels'
+import { useProjects } from '@/hooks/useProjects'
 import { useDebounce } from '@/hooks/useDebounce'
 import {
   DEFAULT_SORT_KEY,
@@ -75,9 +76,11 @@ function IssuesView() {
   const issuesQuery = useIssues(teamId, queryParams)
   const statesQuery = useWorkflowStates(teamId)
   const labelsQuery = useLabels(teamId)
+  const projectsQuery = useProjects(teamId)
 
   const workflowStates = statesQuery.data?.items ?? []
   const labels = labelsQuery.data?.items ?? []
+  const projects = projectsQuery.data?.items ?? []
   const issues = flattenIssues(issuesQuery.data)
   const total = issuesTotal(issuesQuery.data)
   const hasMore = issuesQuery.hasNextPage
@@ -90,6 +93,9 @@ function IssuesView() {
     : []
   const assigneeNames: Record<string, string> = Object.fromEntries(
     members.map((m) => [m.id, m.name]),
+  )
+  const projectNames: Record<string, string> = Object.fromEntries(
+    projects.map((p) => [p.id, p.name]),
   )
 
   const hasActive = hasActiveIssueFilters(queryParams)
@@ -186,6 +192,7 @@ function IssuesView() {
               issues={issues}
               workflowStates={workflowStates}
               assigneeNames={assigneeNames}
+              projectNames={projectNames}
               onSelectIssue={setSelectedIssue}
             />
 
@@ -238,6 +245,7 @@ function IssuesView() {
         teamId={teamId ?? ''}
         workflowStates={workflowStates}
         labels={labels}
+        projects={projects}
         members={members}
       />
     </div>

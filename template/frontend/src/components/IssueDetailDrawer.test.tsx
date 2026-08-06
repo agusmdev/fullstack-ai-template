@@ -4,6 +4,7 @@ import { IssueDetailDrawer } from './IssueDetailDrawer'
 import type { Issue } from '@/types/issue'
 import type { WorkflowState } from '@/types/workflow-state'
 import type { Label } from '@/types/label'
+import type { Project } from '@/types/project'
 
 // Mock all hooks used by the drawer so the test is deterministic and isolated.
 const hooks = vi.hoisted(() => ({
@@ -38,6 +39,10 @@ const states: WorkflowState[] = [
 
 const labels: Label[] = [{ id: 'l-1', team_id: 't', name: 'Bug', color: '#f00' }]
 
+const projects: Project[] = [
+  { id: 'p-1', team_id: 't', name: 'Q3 Launch', status: 'planned', lead_id: null, target_date: null, description: null, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+]
+
 const issue: Issue = {
   id: 'i-1',
   team_id: 't',
@@ -69,6 +74,7 @@ function renderDrawer(overrides: Partial<React.ComponentProps<typeof IssueDetail
       teamId="t"
       workflowStates={states}
       labels={labels}
+      projects={projects}
       members={[{ id: 'u-1', name: 'Ada Lovelace' }]}
       {...overrides}
     />,

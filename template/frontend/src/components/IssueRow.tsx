@@ -1,4 +1,4 @@
-import { UserRound } from 'lucide-react'
+import { UserRound, Folder } from 'lucide-react'
 import { PriorityIcon } from '@/components/PriorityIcon'
 import { StatusDot } from '@/components/StatusDot'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,8 @@ interface IssueRowProps {
   assigneeName?: string
   /** True when the issue is in a terminal status (completed/canceled). */
   isTerminal?: boolean
+  /** Name of the project the issue belongs to, if any (for the project badge). */
+  projectName?: string | null
   /** Called when the row is activated (click / Enter) to open the detail drawer. */
   onSelect?: (issue: Issue) => void
   className?: string
@@ -26,7 +28,7 @@ interface IssueRowProps {
  * Issues in a terminal status (completed/canceled) render muted with a
  * strikethrough title (VAL-ISSUES-044).
  */
-export function IssueRow({ issue, assigneeName, isTerminal, onSelect, className }: IssueRowProps) {
+export function IssueRow({ issue, assigneeName, isTerminal, projectName, onSelect, className }: IssueRowProps) {
   const optimistic = isOptimisticIssue(issue)
   const interactive = !!onSelect
   const initials =
@@ -87,6 +89,17 @@ export function IssueRow({ issue, assigneeName, isTerminal, onSelect, className 
             </span>
           ))}
         </div>
+      )}
+
+      {/* Project badge (VAL-PROJECTS-009: badge on the issue everywhere) */}
+      {projectName && (
+        <span
+          className="hidden shrink-0 items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground md:inline-flex"
+          title={`Project: ${projectName}`}
+        >
+          <Folder className="h-3 w-3" />
+          {projectName}
+        </span>
       )}
 
       {issue.assignee_id ? (

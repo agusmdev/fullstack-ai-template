@@ -24,6 +24,7 @@ from app.modules.issues.models import Issue
 from app.modules.issues.repository import IssueRepository
 from app.modules.labels.models import issue_label
 from app.modules.labels.repository import LabelRepository
+from app.modules.projects.repository import ProjectRepository
 from app.modules.teams.models import TeamRole
 from app.modules.teams.service import TeamService
 from app.modules.workflows.models import WorkflowState
@@ -40,6 +41,7 @@ class IssueService(BaseService[Issue]):
     team_service: TeamService
     workflow_state_repo: WorkflowStateRepository
     label_repo: LabelRepository
+    project_repo: ProjectRepository
 
     def __init__(
         self,
@@ -47,11 +49,13 @@ class IssueService(BaseService[Issue]):
         team_service: TeamService,
         workflow_state_repo: WorkflowStateRepository,
         label_repo: LabelRepository,
+        project_repo: ProjectRepository,
     ) -> None:
         self.repo = repo
         self.team_service = team_service
         self.workflow_state_repo = workflow_state_repo
         self.label_repo = label_repo
+        self.project_repo = project_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -113,6 +117,14 @@ class IssueService(BaseService[Issue]):
             raise NotFoundError(
                 detail=f"Assignee '{assignee_id}' is not a member of this team"
             )
+
+    async def _validate_project_in_team(
+        self, project_id: uuid.UUID, team_id: uuid.UUID
+    ) -> None:
+        """Verify a project exists and belongs to ``team_id``."""
+        project = await self.project_repo.get(project_id, raise_error=False)
+        if project is None or project.team_id != team_id:
+            raise NotFoundError(detail=f"Project '{project_id}' not found")
 
     # ------------------------------------------------------------------
     # Read (team-scoped)
@@ -242,13 +254,18 @@ class IssueService(BaseService[Issue]):
         )
 
         # Defense-in-depth: validate referenced entities against the issue's
-        # team so a member can't attach a foreign-team status/assignee by UUID.
+        # team so a member can't attach a foreign-team status/assignee/project
+        # by UUID. ``project_id`` may be None to clear the assignment (no
+        # validation needed in that case).
         status_id = getattr(entity, "status_id", None)
         if status_id is not None:
             await self._validate_status_in_team(status_id, issue.team_id)
         assignee_id = getattr(entity, "assignee_id", None)
         if assignee_id is not None:
             await self._validate_assignee_in_team(assignee_id, issue.team_id)
+        project_id = getattr(entity, "project_id", None)
+        if project_id is not None:
+            await self._validate_project_in_team(project_id, issue.team_id)
 
         updated = await self.repo.update(entity_id, entity)
         # Reload to populate labels (update returns a fresh instance but

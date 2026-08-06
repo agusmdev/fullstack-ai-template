@@ -58,6 +58,7 @@ class IssueUpdate(IssueBase):
     """Schema for updating an issue (all fields optional)."""
 
     parent_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None
 
 
 class IssueResponse(IssueBase, OrmBaseModel):

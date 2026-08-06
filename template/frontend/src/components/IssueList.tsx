@@ -38,6 +38,8 @@ interface IssueListProps {
   workflowStates: WorkflowState[]
   /** Optional lookup of assignee id → display name (for row avatars). */
   assigneeNames?: Record<string, string>
+  /** Optional lookup of project_id → project name (for row project badges). */
+  projectNames?: Record<string, string>
   /** Called when a row is activated to open the detail drawer. */
   onSelectIssue?: (issue: Issue) => void
 }
@@ -46,7 +48,7 @@ interface IssueListProps {
  * The grouped issues list. Each group renders a header (status dot + name +
  * accurate count) followed by its rows. Used by the issues route.
  */
-export function IssueList({ issues, workflowStates, assigneeNames, onSelectIssue }: IssueListProps) {
+export function IssueList({ issues, workflowStates, assigneeNames, projectNames, onSelectIssue }: IssueListProps) {
   const groups = useMemo(
     () => groupIssuesByStatus(issues, workflowStates),
     [issues, workflowStates],
@@ -82,6 +84,7 @@ export function IssueList({ issues, workflowStates, assigneeNames, onSelectIssue
                     key={issue.id}
                     issue={issue}
                     assigneeName={issue.assignee_id ? assigneeNames?.[issue.assignee_id] : undefined}
+                    projectName={issue.project_id ? projectNames?.[issue.project_id] : undefined}
                     isTerminal={type === 'completed' || type === 'canceled'}
                     onSelect={onSelectIssue}
                   />

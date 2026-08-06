@@ -124,6 +124,22 @@ def mock_label_repository():
 
 
 @pytest.fixture
+def mock_project_repository():
+    """Create a mock project repository."""
+    repo = MagicMock()
+    repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
+    repo.get_all = AsyncMock()
+    repo.get_all_paginated = AsyncMock()
+    repo.create = AsyncMock()
+    repo.create_many = AsyncMock()
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.upsert = AsyncMock()
+    return repo
+
+
+@pytest.fixture
 def mock_issue_repository():
     """Create a mock issue repository."""
     repo = MagicMock()

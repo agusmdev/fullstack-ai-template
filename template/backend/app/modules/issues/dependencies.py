@@ -6,6 +6,7 @@ from app.dependencies import get_repository
 from app.modules.issues.repository import IssueRepository
 from app.modules.issues.service import IssueService
 from app.modules.labels.repository import LabelRepository
+from app.modules.projects.repository import ProjectRepository
 from app.modules.teams.dependencies import get_team_service
 from app.modules.workflows.repository import WorkflowStateRepository
 
@@ -17,10 +18,12 @@ def get_issue_service(
         get_repository(WorkflowStateRepository)
     ),
     label_repo: LabelRepository = Depends(get_repository(LabelRepository)),
+    project_repo: ProjectRepository = Depends(get_repository(ProjectRepository)),
 ) -> IssueService:
     return IssueService(
         repo=repo,
         team_service=team_service,
         workflow_state_repo=workflow_state_repo,
         label_repo=label_repo,
+        project_repo=project_repo,
     )

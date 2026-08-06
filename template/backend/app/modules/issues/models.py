@@ -71,9 +71,11 @@ class Issue(TimestampMixin, Base):
         ForeignKey("user.id", ondelete="CASCADE"), index=True
     )
 
-    # M2 links — plain UUID columns without FK constraints (tables don't exist yet).
-    # m2-projects-cycles-backend will add the FK constraints.
-    project_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
+    # M2 links. project_id now has a FK to the project table (added by
+    # m2-projects); cycle_id remains a plain UUID until m2-cycles wires its FK.
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("project.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     cycle_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
 
     # M3 self-reference for sub-issues.
