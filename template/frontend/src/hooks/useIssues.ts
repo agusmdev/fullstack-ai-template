@@ -436,7 +436,7 @@ export function useDeleteIssue() {
   const qc = useQueryClient()
 
   return useMutation<void, Error, { id: string; team_id: string }, DeleteIssueContext>({
-    mutationFn: (input) => api.delete(API.ISSUES.DETAIL(input.id)),
+    mutationFn: (input) => api.delete<void>(API.ISSUES.DETAIL(input.id)),
     onMutate: async (input) => {
       const listPrefix = queryKeys.issues.list(input.team_id)
       await qc.cancelQueries({ queryKey: listPrefix })
@@ -531,12 +531,7 @@ export function useRemoveIssueLabel() {
 
   return useMutation<Issue, Error, IssueLabelToggleInput, UpdateIssueContext>({
     mutationFn: (input) =>
-      api.delete(API.ISSUES.REMOVE_LABEL(input.id, input.label.id)).then(() => {
-        // The sub-resource DELETE returns 200 with the updated issue body; but
-        // our api.delete discards the body. Return a best-effort shape so the
-        // mutation resolves; the settle invalidation reconciles the truth.
-        return { ...input, labels: [] } as unknown as Issue
-      }),
+      api.delete<Issue>(API.ISSUES.REMOVE_LABEL(input.id, input.label.id)),
     onMutate: async (input) => {
       const detailKey = queryKeys.issues.detail(input.id)
       const listPrefix = queryKeys.issues.list(input.team_id)

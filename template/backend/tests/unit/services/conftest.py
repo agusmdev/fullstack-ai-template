@@ -149,6 +149,7 @@ def mock_team_service():
     svc = MagicMock()
     svc.get_team_ids_for_user = AsyncMock(return_value=[])
     svc.require_team_access = AsyncMock()
+    svc.get_membership = AsyncMock()
     return svc
 
 

@@ -21,7 +21,7 @@ from app.modules.issues.models import Issue
 from app.modules.issues.schemas import IssueCreate, IssueUpdate
 from app.modules.issues.service import IssueService
 from app.modules.teams.models import TeamRole
-from app.repositories.exceptions import NotFoundError
+from app.repositories.exceptions import ForbiddenError, NotFoundError
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +71,26 @@ def workflow_state_obj(status_id, sample_team_id):
 
 
 @pytest.fixture
+def label_obj(label_id, sample_team_id):
+    return SimpleNamespace(
+        id=label_id,
+        team_id=sample_team_id,
+        name="Bug",
+        color="#f00",
+    )
+
+
+@pytest.fixture
+def membership_obj(sample_user_id, sample_team_id):
+    return SimpleNamespace(
+        id=uuid.UUID("77777777-0000-0000-0000-000000000000"),
+        user_id=sample_user_id,
+        team_id=sample_team_id,
+        role=TeamRole.member,
+    )
+
+
+@pytest.fixture
 def issue_obj(issue_id, sample_team_id, status_id, sample_user_id):
     return SimpleNamespace(
         id=issue_id,
@@ -95,11 +115,26 @@ def issue_obj(issue_id, sample_team_id, status_id, sample_user_id):
 
 
 @pytest.fixture
-def service(mock_issue_repository, mock_team_service, mock_workflow_state_repository):
+def service(
+    mock_issue_repository,
+    mock_team_service,
+    mock_workflow_state_repository,
+    mock_label_repository,
+    workflow_state_obj,
+    label_obj,
+    membership_obj,
+):
+    # Default same-team lookups so the cross-team validation helpers pass for
+    # tests that don't exercise the rejection paths. Individual tests override
+    # these to assert the foreign-team/non-member rejection.
+    mock_workflow_state_repository.get = AsyncMock(return_value=workflow_state_obj)
+    mock_label_repository.get = AsyncMock(return_value=label_obj)
+    mock_team_service.get_membership = AsyncMock(return_value=membership_obj)
     return IssueService(
         repo=mock_issue_repository,
         team_service=mock_team_service,
         workflow_state_repo=mock_workflow_state_repository,
+        label_repo=mock_label_repository,
     )
 
 
@@ -643,3 +678,364 @@ class TestLabelsSubResource:
             await service.add_label(
                 issue_id, label_id, user_id=sample_user_id
             )
+
+
+# ---------------------------------------------------------------------------
+# Label role gate — guests cannot add/remove labels (VAL-CROSS-025)
+# ---------------------------------------------------------------------------
+
+class TestLabelRoleGate:
+    async def test_add_label_403_for_guest(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        label_id,
+        issue_obj,
+    ):
+        """A guest-role user is forbidden from adding a label (403, not 200)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_team_service.require_team_access = AsyncMock(
+            side_effect=ForbiddenError(detail="guest cannot write")
+        )
+
+        with pytest.raises(ForbiddenError):
+            await service.add_label(issue_id, label_id, user_id=sample_user_id)
+
+        # The write must never reach the repository.
+        mock_issue_repository.add_label.assert_not_awaited()
+
+    async def test_remove_label_403_for_guest(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        label_id,
+        issue_obj,
+    ):
+        """A guest-role user is forbidden from removing a label (403, not 200)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_team_service.require_team_access = AsyncMock(
+            side_effect=ForbiddenError(detail="guest cannot write")
+        )
+
+        with pytest.raises(ForbiddenError):
+            await service.remove_label(issue_id, label_id, user_id=sample_user_id)
+
+        mock_issue_repository.remove_label.assert_not_awaited()
+
+    async def test_add_label_member_role_enforced(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        label_id,
+        issue_obj,
+    ):
+        """add_label calls require_team_access with min_role=member."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+
+        await service.add_label(issue_id, label_id, user_id=sample_user_id)
+
+        mock_team_service.require_team_access.assert_awaited_once_with(
+            sample_user_id, sample_team_id, min_role=TeamRole.member
+        )
+
+    async def test_remove_label_member_role_enforced(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        label_id,
+        issue_obj,
+    ):
+        """remove_label calls require_team_access with min_role=member."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+
+        await service.remove_label(issue_id, label_id, user_id=sample_user_id)
+
+        mock_team_service.require_team_access.assert_awaited_once_with(
+            sample_user_id, sample_team_id, min_role=TeamRole.member
+        )
+
+    async def test_add_label_cross_team_label_rejected(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        mock_label_repository,
+        sample_user_id,
+        sample_team_id,
+        other_team_id,
+        issue_id,
+        label_id,
+        issue_obj,
+    ):
+        """A label from another team cannot be attached (404, no leak)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_label_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=label_id, team_id=other_team_id, name="Foreign", color=None
+            )
+        )
+
+        with pytest.raises(NotFoundError):
+            await service.add_label(issue_id, label_id, user_id=sample_user_id)
+
+        mock_issue_repository.add_label.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Cross-team field validation (defense-in-depth) in create/update
+# ---------------------------------------------------------------------------
+
+class TestCrossTeamFieldValidation:
+    async def test_create_rejects_cross_team_status(
+        self,
+        service,
+        mock_team_service,
+        mock_workflow_state_repository,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        other_team_id,
+        issue_obj,
+    ):
+        """A status from another team is rejected on create."""
+        foreign_status = uuid.UUID("99999999-1111-1111-1111-111111111111")
+        mock_workflow_state_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=foreign_status, team_id=other_team_id, name="Other"
+            )
+        )
+        mock_issue_repository.allocate_identifier = AsyncMock(
+            return_value="ENG-1"
+        )
+        mock_issue_repository.create = AsyncMock(return_value=issue_obj)
+
+        with pytest.raises(NotFoundError):
+            await service.create(
+                IssueCreate(
+                    team_id=sample_team_id, title="X", status_id=foreign_status
+                ),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.create.assert_not_awaited()
+
+    async def test_create_rejects_non_member_assignee(
+        self,
+        service,
+        mock_team_service,
+        mock_workflow_state_repository,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_obj,
+        workflow_state_obj,
+    ):
+        """An assignee who is not a team member is rejected on create."""
+        mock_workflow_state_repository.get_all = AsyncMock(
+            return_value=[workflow_state_obj]
+        )
+        mock_team_service.get_membership = AsyncMock(return_value=None)
+        mock_issue_repository.allocate_identifier = AsyncMock(
+            return_value="ENG-1"
+        )
+        mock_issue_repository.create = AsyncMock(return_value=issue_obj)
+        assignee = uuid.UUID("88888888-2222-2222-2222-222222222222")
+
+        with pytest.raises(NotFoundError):
+            await service.create(
+                IssueCreate(
+                    team_id=sample_team_id, title="X", assignee_id=assignee
+                ),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.create.assert_not_awaited()
+
+    async def test_create_rejects_cross_team_label(
+        self,
+        service,
+        mock_team_service,
+        mock_workflow_state_repository,
+        mock_issue_repository,
+        mock_label_repository,
+        sample_user_id,
+        sample_team_id,
+        other_team_id,
+        issue_obj,
+        workflow_state_obj,
+        label_id,
+    ):
+        """A label from another team is rejected on create (attach_labels)."""
+        mock_workflow_state_repository.get_all = AsyncMock(
+            return_value=[workflow_state_obj]
+        )
+        mock_label_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=label_id, team_id=other_team_id, name="Foreign", color=None
+            )
+        )
+        mock_issue_repository.allocate_identifier = AsyncMock(
+            return_value="ENG-1"
+        )
+        mock_issue_repository.create = AsyncMock(return_value=issue_obj)
+
+        with pytest.raises(NotFoundError):
+            await service.create(
+                IssueCreate(
+                    team_id=sample_team_id, title="X", label_ids=[label_id]
+                ),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.attach_labels.assert_not_awaited()
+
+    async def test_create_accepts_same_team_assignee(
+        self,
+        service,
+        mock_team_service,
+        mock_workflow_state_repository,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_obj,
+        workflow_state_obj,
+    ):
+        """A valid team-member assignee is accepted on create."""
+        mock_workflow_state_repository.get_all = AsyncMock(
+            return_value=[workflow_state_obj]
+        )
+        mock_issue_repository.allocate_identifier = AsyncMock(
+            return_value="ENG-1"
+        )
+        mock_issue_repository.create = AsyncMock(return_value=issue_obj)
+        assignee = uuid.UUID("88888888-3333-3333-3333-333333333333")
+
+        await service.create(
+            IssueCreate(
+                team_id=sample_team_id, title="X", assignee_id=assignee
+            ),
+            user_id=sample_user_id,
+        )
+
+        mock_team_service.get_membership.assert_awaited_once_with(
+            assignee, sample_team_id
+        )
+        mock_issue_repository.create.assert_awaited_once()
+
+    async def test_update_rejects_cross_team_status(
+        self,
+        service,
+        mock_team_service,
+        mock_workflow_state_repository,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        other_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """A status from another team is rejected on update."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        foreign_status = uuid.UUID("99999999-4444-4444-4444-444444444444")
+        mock_workflow_state_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=foreign_status, team_id=other_team_id, name="Other"
+            )
+        )
+
+        with pytest.raises(NotFoundError):
+            await service.update(
+                issue_id,
+                IssueUpdate(status_id=foreign_status),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.update.assert_not_awaited()
+
+    async def test_update_rejects_non_member_assignee(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """A non-member assignee is rejected on update."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_team_service.get_membership = AsyncMock(return_value=None)
+        assignee = uuid.UUID("88888888-5555-5555-5555-555555555555")
+
+        with pytest.raises(NotFoundError):
+            await service.update(
+                issue_id,
+                IssueUpdate(assignee_id=assignee),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.update.assert_not_awaited()
+
+    async def test_update_skips_validation_when_status_unset(
+        self,
+        service,
+        mock_team_service,
+        mock_workflow_state_repository,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Updating only the title does not trigger status/assignee validation."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service.update(
+            issue_id, IssueUpdate(title="Only title"), user_id=sample_user_id
+        )
+
+        # status/assignee validation must not run when those fields are unset.
+        mock_workflow_state_repository.get.assert_not_awaited()
+        mock_team_service.get_membership.assert_not_awaited()
+        mock_issue_repository.update.assert_awaited_once()

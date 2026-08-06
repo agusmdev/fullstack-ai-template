@@ -592,11 +592,15 @@ describe('useAddIssueLabel / useRemoveIssueLabel — optimistic label toggle', (
       pageParams: [1],
     })
 
-    apiMock.delete.mockResolvedValue(undefined)
+    // The sub-resource DELETE returns the updated issue; the mutation must
+    // resolve with that server body (no fabricated Issue cast).
+    const removedIssue: Issue = { ...issueWithLabels, labels: [] }
+    apiMock.delete.mockResolvedValue(removedIssue)
 
     const { result } = renderHook(() => useRemoveIssueLabel(), { wrapper: makeWrapper(qc) })
+    let resolved: Issue | undefined
     await act(async () => {
-      await result.current.mutateAsync({
+      resolved = await result.current.mutateAsync({
         id: 'i-1',
         team_id: 't-1',
         label: { id: 'l-1', name: 'Bug', color: '#f00' },
@@ -604,6 +608,7 @@ describe('useAddIssueLabel / useRemoveIssueLabel — optimistic label toggle', (
     })
 
     expect(apiMock.delete).toHaveBeenCalledWith('/issues/i-1/labels/l-1')
+    expect(resolved).toEqual(removedIssue)
     const detail = qc.getQueryData<Issue>(['issues', 'detail', 'i-1'])
     expect(detail?.labels.some((l) => l.id === 'l-1')).toBe(false)
   })

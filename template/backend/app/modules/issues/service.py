@@ -2,7 +2,11 @@
 
 Enforces:
   - Team scoping: every query is restricted to the user's team memberships.
-  - Team membership: writes require at least ``member`` role.
+  - Team membership: writes require at least ``member`` role — including the
+    labels sub-resource (``add_label``/``remove_label``); guests are read-only
+    (VAL-CROSS-025).
+  - Cross-team field validation (defense-in-depth): referenced entities
+    (label/status/assignee) are verified to belong to the issue's team.
   - Auto-identifier: ``TEAM-NN`` generated atomically on create.
   - Default status: falls back to the team's first workflow state (by position).
   - No N+1: labels eager-loaded via ``selectinload`` on list and detail queries.
@@ -19,6 +23,7 @@ from sqlalchemy.orm import selectinload
 from app.modules.issues.models import Issue
 from app.modules.issues.repository import IssueRepository
 from app.modules.labels.models import issue_label
+from app.modules.labels.repository import LabelRepository
 from app.modules.teams.models import TeamRole
 from app.modules.teams.service import TeamService
 from app.modules.workflows.models import WorkflowState
@@ -34,16 +39,19 @@ class IssueService(BaseService[Issue]):
     repo: IssueRepository
     team_service: TeamService
     workflow_state_repo: WorkflowStateRepository
+    label_repo: LabelRepository
 
     def __init__(
         self,
         repo: IssueRepository,
         team_service: TeamService,
         workflow_state_repo: WorkflowStateRepository,
+        label_repo: LabelRepository,
     ) -> None:
         self.repo = repo
         self.team_service = team_service
         self.workflow_state_repo = workflow_state_repo
+        self.label_repo = label_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -70,6 +78,41 @@ class IssueService(BaseService[Issue]):
         """Raise NotFoundError if the issue belongs to a team outside team_ids."""
         if issue.team_id not in team_ids:
             raise NotFoundError(detail="Issue not found")
+
+    # ------------------------------------------------------------------
+    # Cross-team field validation (defense-in-depth)
+    # ------------------------------------------------------------------
+    # A member could attach a foreign-team referenced entity (label/status/
+    # assignee) by guessing its UUID. These helpers verify each referenced
+    # entity belongs to the same team as the issue being mutated. A 404
+    # (NotFound) is raised rather than 403 so a foreign-team entity's existence
+    # is never leaked (consistent with cross-team denial).
+
+    async def _validate_label_in_team(
+        self, label_id: uuid.UUID, team_id: uuid.UUID
+    ) -> None:
+        """Verify a label exists and belongs to ``team_id``."""
+        label = await self.label_repo.get(label_id, raise_error=False)
+        if label is None or label.team_id != team_id:
+            raise NotFoundError(detail=f"Label '{label_id}' not found")
+
+    async def _validate_status_in_team(
+        self, status_id: uuid.UUID, team_id: uuid.UUID
+    ) -> None:
+        """Verify a workflow status exists and belongs to ``team_id``."""
+        state = await self.workflow_state_repo.get(status_id, raise_error=False)
+        if state is None or state.team_id != team_id:
+            raise NotFoundError(detail=f"Status '{status_id}' not found")
+
+    async def _validate_assignee_in_team(
+        self, assignee_id: uuid.UUID, team_id: uuid.UUID
+    ) -> None:
+        """Verify the assignee is a member of ``team_id``."""
+        membership = await self.team_service.get_membership(assignee_id, team_id)
+        if membership is None:
+            raise NotFoundError(
+                detail=f"Assignee '{assignee_id}' is not a member of this team"
+            )
 
     # ------------------------------------------------------------------
     # Read (team-scoped)
@@ -147,16 +190,26 @@ class IssueService(BaseService[Issue]):
             user_id, team_id, min_role=TeamRole.member
         )
 
-        # Resolve default status to team's first workflow state.
+        # Resolve default status to team's first workflow state, or validate a
+        # caller-supplied status belongs to the issue's team (defense-in-depth).
         status_id = getattr(entity, "status_id", None)
         if status_id is None:
             status_id = await self._resolve_default_status(team_id)
+        else:
+            await self._validate_status_in_team(status_id, team_id)
+
+        # Defense-in-depth: referenced entities must belong to the issue's team.
+        assignee_id = getattr(entity, "assignee_id", None)
+        if assignee_id is not None:
+            await self._validate_assignee_in_team(assignee_id, team_id)
+
+        label_ids = getattr(entity, "label_ids", None)
+        if label_ids:
+            for lid in label_ids:
+                await self._validate_label_in_team(lid, team_id)
 
         # Allocate identifier (atomic; held until create commits).
         identifier = await self.repo.allocate_identifier(team_id)
-
-        # Extract non-column fields before serialising for INSERT.
-        label_ids = getattr(entity, "label_ids", None)
 
         # Exclude label_ids (not a model column) from the INSERT payload.
         create_data = entity.model_dump(exclude={"label_ids"})
@@ -187,6 +240,16 @@ class IssueService(BaseService[Issue]):
         await self.team_service.require_team_access(
             user_id, issue.team_id, min_role=TeamRole.member
         )
+
+        # Defense-in-depth: validate referenced entities against the issue's
+        # team so a member can't attach a foreign-team status/assignee by UUID.
+        status_id = getattr(entity, "status_id", None)
+        if status_id is not None:
+            await self._validate_status_in_team(status_id, issue.team_id)
+        assignee_id = getattr(entity, "assignee_id", None)
+        if assignee_id is not None:
+            await self._validate_assignee_in_team(assignee_id, issue.team_id)
+
         updated = await self.repo.update(entity_id, entity)
         # Reload to populate labels (update returns a fresh instance but
         # selectinload only fires on explicit select queries).
@@ -217,8 +280,16 @@ class IssueService(BaseService[Issue]):
         *,
         user_id: uuid.UUID,
     ) -> Issue:
-        """Add a label to an issue (idempotent). Both must be same-team."""
+        """Add a label to an issue (idempotent). Both must be same-team.
+
+        Enforces the ``member`` role — guests are read-only (VAL-CROSS-025) —
+        and validates the label belongs to the issue's team (defense-in-depth).
+        """
         issue = await self.get_by_id(entity_id, user_id=user_id)
+        await self.team_service.require_team_access(
+            user_id, issue.team_id, min_role=TeamRole.member
+        )
+        await self._validate_label_in_team(label_id, issue.team_id)
         await self.repo.add_label(issue.id, label_id)
         return await self.repo.get(issue.id, raise_error=True)
 
@@ -229,7 +300,14 @@ class IssueService(BaseService[Issue]):
         *,
         user_id: uuid.UUID,
     ) -> Issue:
-        """Remove a label from an issue."""
+        """Remove a label from an issue.
+
+        Enforces the ``member`` role — guests are read-only (VAL-CROSS-025),
+        mirroring ``update()``/``delete()``.
+        """
         issue = await self.get_by_id(entity_id, user_id=user_id)
+        await self.team_service.require_team_access(
+            user_id, issue.team_id, min_role=TeamRole.member
+        )
         await self.repo.remove_label(issue.id, label_id)
         return await self.repo.get(issue.id, raise_error=True)
