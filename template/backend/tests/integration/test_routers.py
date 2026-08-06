@@ -97,6 +97,7 @@ def router_app(user_id, team_id):
             pages=1,
         )
     )
+    team_svc.get_role_map_for_user = AsyncMock(return_value={team_id: "admin"})
     app.dependency_overrides[get_team_service] = lambda: team_svc
 
     user_svc = MagicMock()

@@ -10,7 +10,7 @@ from app.modules.teams.models import TeamRole
 from app.modules.teams.schemas import TeamCreate, TeamUpdate
 from app.modules.teams.service import TeamService, _derive_key_from_name
 from app.modules.workflows.constants import DEFAULT_WORKFLOW_STATES
-from app.repositories.exceptions import NotFoundError
+from app.repositories.exceptions import ForbiddenError, NotFoundError
 
 
 @pytest.fixture
@@ -278,9 +278,14 @@ class TestUpdateTeam:
                 sample_team_id, TeamUpdate(name="X"), user_id=sample_user_id
             )
 
-    async def test_update_by_guest_raises_404(
+    async def test_update_by_guest_raises_403(
         self, service, mock_team_membership_repository, sample_user_id, sample_team_id
     ):
+        """A guest IS a member but lacks the admin role → 403 Forbidden.
+
+        This is distinct from a non-member (404) so the client can tell
+        role-based denial apart from cross-team isolation (VAL-CROSS-025).
+        """
         mock_team_membership_repository.get_all = AsyncMock(
             return_value=[
                 SimpleNamespace(
@@ -292,7 +297,7 @@ class TestUpdateTeam:
             ]
         )
 
-        with pytest.raises(NotFoundError):
+        with pytest.raises(ForbiddenError):
             await service.update(
                 sample_team_id, TeamUpdate(name="X"), user_id=sample_user_id
             )
@@ -458,7 +463,81 @@ class TestRequireTeamAccess:
     async def test_non_member_gets_404(
         self, service, mock_team_membership_repository, sample_user_id, sample_team_id
     ):
+        """Cross-team access (not a member) → 404, so existence isn't leaked."""
         mock_team_membership_repository.get_all = AsyncMock(return_value=[])
 
         with pytest.raises(NotFoundError):
             await service.require_team_access(sample_user_id, sample_team_id)
+
+    async def test_insufficient_role_gets_403(
+        self,
+        service,
+        mock_team_membership_repository,
+        sample_user_id,
+        sample_team_id,
+    ):
+        """Member present but below required role → 403 Forbidden (VAL-CROSS-025)."""
+        mock_team_membership_repository.get_all = AsyncMock(
+            return_value=[
+                SimpleNamespace(
+                    id=uuid.uuid4(),
+                    user_id=sample_user_id,
+                    team_id=sample_team_id,
+                    role=TeamRole.member,
+                )
+            ]
+        )
+
+        with pytest.raises(ForbiddenError):
+            await service.require_team_access(
+                sample_user_id, sample_team_id, min_role=TeamRole.admin
+            )
+
+    async def test_guest_read_access_allowed(
+        self,
+        service,
+        mock_team_membership_repository,
+        sample_user_id,
+        sample_team_id,
+    ):
+        """Reads (default min_role=guest) work for a guest member."""
+        mock_team_membership_repository.get_all = AsyncMock(
+            return_value=[
+                SimpleNamespace(
+                    id=uuid.uuid4(),
+                    user_id=sample_user_id,
+                    team_id=sample_team_id,
+                    role=TeamRole.guest,
+                )
+            ]
+        )
+
+        membership = await service.require_team_access(sample_user_id, sample_team_id)
+
+        assert membership.role == TeamRole.guest
+
+
+class TestGetRoleMapForUser:
+    async def test_maps_team_ids_to_roles(
+        self, service, mock_team_membership_repository, sample_user_id, sample_team_id
+    ):
+        other_team = uuid.uuid4()
+        mock_team_membership_repository.get_all = AsyncMock(
+            return_value=[
+                SimpleNamespace(team_id=sample_team_id, role=TeamRole.admin),
+                SimpleNamespace(team_id=other_team, role=TeamRole.guest),
+            ]
+        )
+
+        role_map = await service.get_role_map_for_user(sample_user_id)
+
+        assert role_map == {sample_team_id: TeamRole.admin, other_team: TeamRole.guest}
+
+    async def test_empty_when_no_memberships(
+        self, service, mock_team_membership_repository, sample_user_id
+    ):
+        mock_team_membership_repository.get_all = AsyncMock(return_value=[])
+
+        role_map = await service.get_role_map_for_user(sample_user_id)
+
+        assert role_map == {}

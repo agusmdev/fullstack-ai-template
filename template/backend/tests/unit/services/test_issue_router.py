@@ -104,7 +104,7 @@ class TestAuthGuard:
         app.include_router(issues_router)
         with TestClient(app, base_url="http://test") as c:
             response = c.get("/issues")
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
 
 class TestList:

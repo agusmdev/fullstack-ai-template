@@ -8,7 +8,12 @@ from fastapi_pagination import Page, Params
 from app.core.logging import log_action, log_entity
 from app.modules.teams.dependencies import get_team_service
 from app.modules.teams.filters import TeamFilter
-from app.modules.teams.schemas import TeamCreate, TeamResponse, TeamUpdate
+from app.modules.teams.schemas import (
+    TeamCreate,
+    TeamListItemResponse,
+    TeamResponse,
+    TeamUpdate,
+)
 from app.modules.teams.service import TeamService
 from app.user.auth import require_current_user_id
 
@@ -29,16 +34,32 @@ async def list_teams(
     team_filter: TeamFilter = Depends(),
     user_id: uuid.UUID = Depends(require_current_user_id),
     team_service: TeamService = Depends(get_team_service),
-) -> Page[TeamResponse]:
-    """List teams the authenticated user is a member of."""
+) -> Page[TeamListItemResponse]:
+    """List teams the authenticated user is a member of.
+
+    Each item is enriched with ``my_role`` — the requesting user's role in that
+    team — so the SPA can gate role-based UI (writes for guests, admin-only
+    actions for members) without a second request (VAL-CROSS-025).
+    """
     log_action("list")
     result = await team_service.get_all_paginated(
         pagination_params=pagination,
         entity_filter=team_filter,
         user_id=user_id,
     )
-    return Page[TeamResponse](
-        items=[TeamResponse.model_validate(t) for t in result.items],
+    # The page is already scoped to the user's teams, so every item has a role.
+    role_map = await team_service.get_role_map_for_user(user_id)
+    return Page[TeamListItemResponse](
+        items=[
+            TeamListItemResponse(
+                id=t.id,
+                name=t.name,
+                key=t.key,
+                issue_sequence=t.issue_sequence,
+                my_role=role_map[t.id],
+            )
+            for t in result.items
+        ],
         total=result.total,
         page=result.page,
         size=result.size,

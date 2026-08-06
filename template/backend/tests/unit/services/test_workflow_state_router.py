@@ -75,14 +75,15 @@ class TestAuthGuard:
     def test_no_token_rejected(self):
         """Without overriding auth, the router must reject unauthenticated calls.
 
-        The template's HTTPBearer(auto_error=True) returns 403 for a missing
-        Authorization header (same behaviour as every other guarded router).
+        A missing Authorization header surfaces 401 Unauthorized (the custom
+        ``_Bearer401`` maps FastAPI's default 403 to 401 so clients can react
+        with their logout+redirect flow — VAL-CROSS-022).
         """
         app = FastAPI()
         app.include_router(workflow_states_router)
         with TestClient(app, base_url="http://test") as c:
             response = c.get("/workflow-states")
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
 
 class TestList:

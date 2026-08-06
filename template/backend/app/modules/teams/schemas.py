@@ -36,6 +36,17 @@ class TeamResponse(TeamBase, OrmBaseModel):
     issue_sequence: int = 0
 
 
+class TeamListItemResponse(TeamResponse):
+    """Team list item enriched with the requesting user's role in the team.
+
+    The frontend uses ``my_role`` to gate role-based UI (e.g. disable the
+    "New issue" button for guests, hide admin-only actions from members)
+    without a second round-trip (VAL-CROSS-025).
+    """
+
+    my_role: TeamRole
+
+
 class TeamMembershipBase(BaseModel):
     """Common membership fields."""
 

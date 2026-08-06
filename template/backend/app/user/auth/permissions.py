@@ -26,9 +26,33 @@ def _typed_state(request: Request) -> _RequestState:
     return cast("_RequestState", request.state)
 
 
+class _Bearer401(HTTPBearer):
+    """HTTPBearer that raises **401** (not 403) when credentials are missing.
+
+    HTTP 401 Unauthorized is the semantically correct status for missing or
+    invalid credentials. FastAPI's stock :class:`HTTPBearer` returns 403 when the
+    ``Authorization`` header is absent — a well-known quirk. Overriding it here
+    ensures every unauthenticated request to a guarded endpoint surfaces a 401,
+    so clients (and the SPA's logout+redirect flow) can react correctly
+    (VAL-CROSS-022, VAL-CROSS-023).
+    """
+
+    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:  # type: ignore[override]
+        try:
+            return await super().__call__(request)
+        except HTTPException as exc:
+            if exc.status_code == 403 and exc.detail == "Not authenticated":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
+                ) from exc
+            raise
+
+
 async def _get_authenticated_user(
     request: Request,
-    http_auth: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=True)),
+    http_auth: HTTPAuthorizationCredentials = Depends(_Bearer401(auto_error=True)),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> User:
     """Validate session, cache user in request.state, and populate logging context.
@@ -56,7 +80,7 @@ class AuthenticatedUser:
     @classmethod
     async def current_session_id(
         cls,
-        http_auth: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=True)),
+        http_auth: HTTPAuthorizationCredentials = Depends(_Bearer401(auto_error=True)),
     ) -> str:
         """Return the raw session token without validating it.
 

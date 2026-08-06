@@ -32,6 +32,7 @@ const mockTeams: TeamsResponse = {
       name: "user@example.com's Workspace",
       key: 'USER',
       issue_sequence: 0,
+      my_role: 'admin',
       created_at: '',
       updated_at: '',
       deleted_at: null,

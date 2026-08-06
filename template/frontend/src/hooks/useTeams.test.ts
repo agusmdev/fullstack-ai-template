@@ -25,7 +25,7 @@ function makeWrapper(qc: QueryClient) {
 
 const mockTeams: TeamsResponse = {
   items: [
-    { id: 't-1', name: 'Acme', key: 'ACME', issue_sequence: 3, created_at: '', updated_at: '', deleted_at: null },
+    { id: 't-1', name: 'Acme', key: 'ACME', issue_sequence: 3, my_role: 'admin', created_at: '', updated_at: '', deleted_at: null },
   ],
   total: 1,
   page: 1,

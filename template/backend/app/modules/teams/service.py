@@ -18,7 +18,7 @@ from app.modules.teams.models import Team, TeamMembership, TeamRole
 from app.modules.teams.repository import TeamMembershipRepository, TeamRepository
 from app.modules.teams.schemas import TeamCreate, TeamMembershipCreate
 from app.repositories.base_repository import QueryOptions
-from app.repositories.exceptions import NotFoundError
+from app.repositories.exceptions import ForbiddenError, NotFoundError
 from app.services.base_crud_service import BaseService
 
 if TYPE_CHECKING:
@@ -90,6 +90,25 @@ class TeamService(BaseService[Team]):
             )
         )
         return memberships[0] if memberships else None
+
+    async def get_memberships_for_user(
+        self, user_id: uuid.UUID
+    ) -> list[TeamMembership]:
+        """Return all of the user's membership records (team_id + role)."""
+        return await self.membership_repo.get_all(
+            options=QueryOptions(
+                base_query=select(TeamMembership).where(
+                    TeamMembership.user_id == user_id
+                )
+            )
+        )
+
+    async def get_role_map_for_user(
+        self, user_id: uuid.UUID
+    ) -> dict[uuid.UUID, TeamRole]:
+        """Map each of the user's team_ids to their role in that team."""
+        memberships = await self.get_memberships_for_user(user_id)
+        return {m.team_id: m.role for m in memberships}
 
     # ------------------------------------------------------------------
     # Onboarding
@@ -211,9 +230,19 @@ class TeamService(BaseService[Team]):
     async def _require_role(
         self, user_id: uuid.UUID, team_id: uuid.UUID, required_role: TeamRole
     ) -> TeamMembership:
-        """Return the membership if the user has at least the required role, else 403/404.
+        """Return the membership if the user has at least the required role.
 
-        A non-member gets a 404 (team not found) to avoid leaking existence.
+        Two distinct failure modes keep cross-team isolation separate from
+        role-based authorization:
+
+        - **Not a member** of ``team_id`` → :class:`NotFoundError` (404). The
+          team's existence is not leaked to a user who does not belong to it
+          (cross-team denial, VAL-CROSS-024).
+        - **A member but below ``required_role``** → :class:`ForbiddenError`
+          (403). The user is authenticated and belongs to the team, so a 403
+          ``forbidden`` is the correct, explicit signal that the *role* is
+          insufficient (VAL-CROSS-025 — guest blocked from writes, member
+          blocked from admin-only actions).
         """
         memberships = await self.membership_repo.get_all(
             options=QueryOptions(
@@ -228,7 +257,12 @@ class TeamService(BaseService[Team]):
         membership = memberships[0]
         role_order = {TeamRole.guest: 0, TeamRole.member: 1, TeamRole.admin: 2}
         if role_order[membership.role] < role_order[required_role]:
-            raise NotFoundError(detail=f"Team '{team_id}' not found")
+            raise ForbiddenError(
+                detail=(
+                    f"This action requires the '{required_role.value}' role"
+                    f" (you are '{membership.role.value}')"
+                )
+            )
         return membership
 
     async def require_team_access(
@@ -241,7 +275,9 @@ class TeamService(BaseService[Team]):
         """Public team-access check used by other domain modules.
 
         Verifies the user is a member of ``team_id`` with at least ``min_role``.
-        Non-members and users below ``min_role`` raise NotFoundError (404) so the
-        team's existence is not leaked. Returns the membership on success.
+        A non-member raises :class:`NotFoundError` (404) so the team's existence
+        is not leaked (cross-team isolation). A member below ``min_role`` raises
+        :class:`ForbiddenError` (403) (role-based authorization). Returns the
+        membership on success.
         """
         return await self._require_role(user_id, team_id, min_role)

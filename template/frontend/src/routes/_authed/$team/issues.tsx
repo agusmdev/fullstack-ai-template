@@ -11,6 +11,7 @@ import { CreateIssueDialog } from '@/components/CreateIssueDialog'
 import { IssueDetailDrawer } from '@/components/IssueDetailDrawer'
 import { useTeams } from '@/hooks/useTeams'
 import { useUser } from '@/hooks/useUser'
+import { useTeamRole } from '@/hooks/useTeamRole'
 import { useIssues, flattenIssues, issuesTotal } from '@/hooks/useIssues'
 import { useWorkflowStates } from '@/hooks/useWorkflowStates'
 import { useLabels } from '@/hooks/useLabels'
@@ -66,6 +67,7 @@ function IssuesView() {
 
   const { data: teamsData, isLoading: teamsLoading } = useTeams()
   const { data: user } = useUser()
+  const { canWrite } = useTeamRole(teamKey)
 
   const teamObj = (teamsData?.items ?? []).find((t) => t.key === teamKey)
   const teamId = teamObj?.id
@@ -106,7 +108,12 @@ function IssuesView() {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-6 py-3">
         <h1 className="text-base font-semibold text-foreground">Issues</h1>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
+        <Button
+          size="sm"
+          onClick={() => setCreateOpen(true)}
+          disabled={!canWrite}
+          title={canWrite ? undefined : 'Guests have read-only access to this team'}
+        >
           <Plus className="h-4 w-4" />
           New issue
         </Button>
@@ -160,10 +167,16 @@ function IssuesView() {
               title="No issues yet"
               description="Create your first issue to start tracking work in this team."
               action={
-                <Button size="sm" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Create issue
-                </Button>
+                canWrite ? (
+                  <Button size="sm" onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Create issue
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Guests have read-only access to this team.
+                  </p>
+                )
               }
             />
           )

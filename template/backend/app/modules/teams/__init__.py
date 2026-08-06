@@ -6,6 +6,7 @@ from .repository import TeamMembershipRepository, TeamRepository
 from .routers import teams_router
 from .schemas import (
     TeamCreate,
+    TeamListItemResponse,
     TeamMembershipCreate,
     TeamMembershipResponse,
     TeamResponse,
@@ -17,6 +18,7 @@ __all__ = [
     "Team",
     "TeamCreate",
     "TeamFilter",
+    "TeamListItemResponse",
     "TeamMembership",
     "TeamMembershipCreate",
     "TeamMembershipRepository",

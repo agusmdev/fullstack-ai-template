@@ -52,6 +52,7 @@ def team_service(team_obj, team_id):
             items=[team_obj], total=1, page=1, size=50, pages=1
         )
     )
+    svc.get_role_map_for_user = AsyncMock(return_value={team_id: "admin"})
     return svc
 
 
@@ -77,6 +78,14 @@ class TestListTeams:
         assert body["items"][0]["name"] == "Test Team"
         assert body["items"][0]["key"] == "TEST"
         team_service.get_all_paginated.assert_awaited_once()
+
+    def test_enriches_items_with_my_role(self, client, team_service, team_id):
+        """Each list item carries the requesting user's role (VAL-CROSS-025)."""
+        response = client.get("/teams")
+
+        assert response.status_code == 200
+        assert response.json()["items"][0]["my_role"] == "admin"
+        team_service.get_role_map_for_user.assert_awaited_once()
 
     def test_propagates_user_id_to_service(self, client, team_service, user_id):
         client.get("/teams")
