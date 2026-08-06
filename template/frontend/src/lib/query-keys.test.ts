@@ -51,8 +51,21 @@ describe('queryKeys', () => {
   })
 
   describe('issues', () => {
-    it('returns a team-scoped list key when a teamId is given', () => {
-      expect(queryKeys.issues.list('t-1')).toEqual(['issues', 'list', 't-1'])
+    it('returns a team-scoped list key with a params segment when a teamId is given', () => {
+      expect(queryKeys.issues.list('t-1')).toEqual(['issues', 'list', 't-1', ''])
+    })
+
+    it('includes the serialized params segment when provided', () => {
+      expect(queryKeys.issues.list('t-1', 'q:bug')).toEqual([
+        'issues',
+        'list',
+        't-1',
+        'q:bug',
+      ])
+    })
+
+    it('returns a prefix-only list key without a teamId', () => {
+      expect(queryKeys.issues.list()).toEqual(['issues', 'list'])
     })
 
     it('returns a detail key for a single issue', () => {

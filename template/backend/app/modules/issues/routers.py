@@ -38,6 +38,9 @@ async def list_issues(
     label_id: uuid.UUID | None = Query(
         default=None, description="Filter by label membership"
     ),
+    unassigned: bool | None = Query(
+        default=None, description="Filter to issues with no assignee"
+    ),
     order_by: list[str] | None = Query(
         default=None,
         description="Sort fields (prefix '-' for desc, e.g. -created_at, priority)",
@@ -49,7 +52,8 @@ async def list_issues(
 
     Supports filter (status/priority/assignee via fastapi_filter), search
     (title ilike), sort (created/updated/priority via ``order_by``), pagination,
-    and label filtering via ``label_id``.
+    label filtering via ``label_id``, and an ``unassigned`` flag for issues with
+    no assignee (VAL-ISSUES-021).
     """
     log_action("list")
     # Override the filter's order_by — FastAPI's Depends() doesn't parse
@@ -62,6 +66,7 @@ async def list_issues(
         user_id=user_id,
         team_id=team_id,
         label_id=label_id,
+        unassigned=unassigned,
     )
     return cast(
         "Page[IssueResponse]",

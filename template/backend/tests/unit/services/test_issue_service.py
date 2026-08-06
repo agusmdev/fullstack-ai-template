@@ -220,6 +220,37 @@ class TestGetAllPaginated:
         # Verify the repo was called (label filter is in the query, not a separate call)
         mock_issue_repository.get_all_paginated.assert_awaited_once()
 
+    async def test_unassigned_filter_accepted(
+        self,
+        service,
+        mock_issue_repository,
+        mock_team_service,
+        sample_user_id,
+        sample_team_id,
+        issue_obj,
+    ):
+        """``unassigned`` is accepted and results returned (VAL-ISSUES-021)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get_all_paginated = AsyncMock(
+            return_value=SimpleNamespace(
+                items=[issue_obj], total=1, page=1, size=50, pages=1
+            )
+        )
+
+        result = await service.get_all_paginated(
+            Params(), user_id=sample_user_id, unassigned=True
+        )
+
+        assert result.total == 1
+        # The unassigned filter is built into the base_query passed to the repo
+        # as the third positional argument (QueryOptions).
+        args, _kwargs = mock_issue_repository.get_all_paginated.await_args
+        opts = args[2]
+        assert opts is not None
+        assert opts.base_query is not None
+
 
 # ---------------------------------------------------------------------------
 # get_by_id

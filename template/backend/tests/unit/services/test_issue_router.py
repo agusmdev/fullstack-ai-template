@@ -129,6 +129,20 @@ class TestList:
         _args, kwargs = service.get_all_paginated.await_args
         assert kwargs["label_id"] == label_id
 
+    def test_passes_unassigned_flag(self, client, service):
+        """The ``unassigned`` query param is forwarded to the service (VAL-ISSUES-021)."""
+        client.get("/issues", params={"unassigned": "true"})
+
+        _args, kwargs = service.get_all_paginated.await_args
+        assert kwargs["unassigned"] is True
+
+    def test_unassigned_defaults_to_none(self, client, service):
+        """When ``unassigned`` is absent, the service receives ``None`` (no filter)."""
+        client.get("/issues")
+
+        _args, kwargs = service.get_all_paginated.await_args
+        assert kwargs["unassigned"] is None
+
     def test_filter_params_accepted(self, client, service, status_id):
         """Status, priority, assignee filters are accepted as query params."""
         response = client.get(

@@ -83,11 +83,13 @@ class IssueService(BaseService[Issue]):
         user_id: uuid.UUID,
         team_id: uuid.UUID | None = None,
         label_id: uuid.UUID | None = None,
+        unassigned: bool | None = None,
     ) -> Page[Issue]:
         """List issues for the user's teams, eager-loading labels (no N+1).
 
-        Supports optional ``team_id`` (restrict to one team) and ``label_id``
-        (filter by M2M label membership via subquery).
+        Supports optional ``team_id`` (restrict to one team), ``label_id``
+        (filter by M2M label membership via subquery), and ``unassigned`` (filter
+        to issues with no assignee — VAL-ISSUES-021).
         """
         team_ids = await self.team_service.get_team_ids_for_user(user_id)
         if team_id is not None:
@@ -108,6 +110,8 @@ class IssueService(BaseService[Issue]):
                     )
                 )
             )
+        if unassigned:
+            base_query = base_query.where(Issue.assignee_id.is_(None))
         opts = QueryOptions(base_query=base_query)
         return await self.repo.get_all_paginated(pagination_params, entity_filter, opts)
 

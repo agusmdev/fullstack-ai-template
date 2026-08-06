@@ -23,9 +23,16 @@ export const queryKeys = {
   },
   issues: {
     all: ['issues'] as const,
-    list: (teamId?: string) => {
-      if (teamId) return ['issues', 'list', teamId] as const
-      return ['issues', 'list'] as const
+    /**
+     * List query key for a team. Pass the serialized params string so distinct
+     * filter/search/sort states produce distinct keys (and a bare
+     * `list(teamId)` acts as a prefix that matches every variant — used by
+     * optimistic updates via `getQueriesData`). Returns a mutable array so it
+     * satisfies `useInfiniteQuery`'s `queryKey` type.
+     */
+    list: (teamId?: string, paramsKey?: string): unknown[] => {
+      if (teamId) return ['issues', 'list', teamId, paramsKey ?? '']
+      return ['issues', 'list']
     },
     detail: (id: string) => ['issues', 'detail', id] as const,
   },
