@@ -7,7 +7,9 @@ RUN apt-get update && \
 
 COPY --from=ghcr.io/astral-sh/uv:0.5.7 /uv /bin/uv
 
-# Set working directory
+# Set a clean working directory. This also prevents stale files from a locally
+# retagged base image from being mixed into the application's source tree.
+RUN rm -rf /app
 WORKDIR /app
 
 # Copy application files
