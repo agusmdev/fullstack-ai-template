@@ -24,7 +24,21 @@ const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
 }))
 
-vi.mock('@/lib/api-client', () => ({ api: apiMock }))
+vi.mock('@/lib/api-client', () => ({
+  api: apiMock,
+  ApiError: class ApiError extends Error {
+    status: number
+    code?: string
+    fields?: Record<string, string[]>
+    constructor(status: number, message: string, code?: string, fields?: Record<string, string[]>) {
+      super(message)
+      this.name = 'ApiError'
+      this.status = status
+      this.code = code
+      this.fields = fields
+    }
+  },
+}))
 vi.mock('@/lib/auth', () => ({
   isAuthenticated: authMock.isAuthenticated,
 }))
@@ -153,6 +167,59 @@ describe('useUpdateProject', () => {
 
     expect(apiMock.patch).toHaveBeenCalledWith('/projects/p-1', { name: 'Renamed' })
     expect(toastMock.success).toHaveBeenCalledWith('Project updated')
+  })
+
+  it('optimistically patches the detail + list cache before the API resolves', async () => {
+    apiMock.patch.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({ ...mockProject, status: 'started' }), 50)),
+    )
+    const qc = makeQueryClient()
+    const wrapper = makeWrapper(qc)
+
+    // Seed the detail + list caches directly.
+    qc.setQueryData(['projects', 'detail', 'p-1'], mockProject)
+    qc.setQueryData(['projects', 'list', 't-1'], mockProjects)
+
+    const { result } = renderHook(() => useUpdateProject(), { wrapper })
+
+    result.current.mutate({
+      id: 'p-1',
+      team_id: 't-1',
+      status: 'started',
+      lead_id: 'u-2',
+    })
+
+    // Before the PATCH settles, the cache should already reflect the patch.
+    await waitFor(() => {
+      const detail = qc.getQueryData<Project>(['projects', 'detail', 'p-1'])
+      expect(detail?.status).toBe('started')
+    })
+    const detail = qc.getQueryData<Project>(['projects', 'detail', 'p-1'])
+    expect(detail?.lead_id).toBe('u-2')
+
+    const list = qc.getQueryData<ProjectsResponse>(['projects', 'list', 't-1'])
+    expect(list?.items[0]?.status).toBe('started')
+    expect(list?.items[0]?.lead_id).toBe('u-2')
+  })
+
+  it('rolls back the optimistic patch on error', async () => {
+    apiMock.patch.mockRejectedValue(new Error('boom'))
+    const qc = makeQueryClient()
+    const wrapper = makeWrapper(qc)
+    qc.setQueryData(['projects', 'detail', 'p-1'], mockProject)
+    qc.setQueryData(['projects', 'list', 't-1'], mockProjects)
+
+    const { result } = renderHook(() => useUpdateProject(), { wrapper })
+
+    await expect(
+      result.current.mutateAsync({ id: 'p-1', team_id: 't-1', status: 'started' }),
+    ).rejects.toThrow('boom')
+
+    // Cache restored to original values.
+    const detail = qc.getQueryData<Project>(['projects', 'detail', 'p-1'])
+    expect(detail?.status).toBe('planned')
+    const list = qc.getQueryData<ProjectsResponse>(['projects', 'list', 't-1'])
+    expect(list?.items[0]?.status).toBe('planned')
   })
 })
 

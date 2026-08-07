@@ -107,14 +107,29 @@ export function useCreateProject() {
   })
 }
 
+/** Snapshot of detail + list caches for rollback on an update error. */
+interface UpdateProjectContext {
+  detailKey: readonly unknown[]
+  previousDetail: Project | undefined
+  previousLists: Array<readonly [readonly unknown[], ProjectsResponse | undefined]>
+}
+
 /**
- * Update a project (optimistic). Applies the patch to the list + detail caches
- * instantly and rolls back on error.
+ * Update a project with an **optimistic patch** that propagates instantly to
+ * both the detail cache and the team list cache (VAL-PROJECTS-002,
+ * VAL-PERF-002).
+ *
+ * - `onMutate`: cancels in-flight refetches, snapshots the detail + list
+ *   caches, and applies the patch everywhere so the detail page header + list
+ *   card reflect the change at once.
+ * - `onError`: rolls every snapshot back and surfaces an error toast; no stuck
+ *   intermediate state (VAL-PERF-008).
+ * - `onSettled`: invalidates detail + list so the server truth reconciles.
  */
 export function useUpdateProject() {
   const qc = useQueryClient()
 
-  return useMutation<Project, Error, UpdateProjectInput>({
+  return useMutation<Project, Error, UpdateProjectInput, UpdateProjectContext>({
     mutationFn: (input) => {
       // Omit id + team_id (scoping/routing keys) from the PATCH body.
       const body: Record<string, unknown> = { ...input }
@@ -122,11 +137,43 @@ export function useUpdateProject() {
       delete body.team_id
       return api.patch<Project>(API.PROJECTS.DETAIL(input.id), body)
     },
+    onMutate: async (input) => {
+      const { id, team_id, ...patch } = input
+      const detailKey = queryKeys.projects.detail(id)
+      const listPrefix = queryKeys.projects.list(team_id)
+
+      await qc.cancelQueries({ queryKey: detailKey })
+      await qc.cancelQueries({ queryKey: listPrefix })
+
+      const previousDetail = qc.getQueryData<Project>(detailKey)
+      const previousLists = qc.getQueriesData<ProjectsResponse>({
+        queryKey: listPrefix,
+      })
+
+      const cachePatch = patch as Partial<Project>
+      if (previousDetail) {
+        qc.setQueryData<Project>(detailKey, { ...previousDetail, ...cachePatch })
+      }
+      for (const [key, data] of previousLists) {
+        if (!data) continue
+        qc.setQueryData<ProjectsResponse>(key, patchProjectInList(data, id, cachePatch))
+      }
+
+      return { detailKey, previousDetail, previousLists }
+    },
+    onError: (error, _input, context) => {
+      if (context) {
+        if (context.previousDetail !== undefined) {
+          qc.setQueryData(context.detailKey, context.previousDetail)
+        }
+        for (const [key, data] of context.previousLists) {
+          qc.setQueryData(key, data)
+        }
+      }
+      toastApiError(error, 'Failed to update project')
+    },
     onSuccess: () => {
       toast.success('Project updated')
-    },
-    onError: (error) => {
-      toastApiError(error, 'Failed to update project')
     },
     onSettled: (_data, _error, input) => {
       void qc.invalidateQueries({
@@ -137,6 +184,23 @@ export function useUpdateProject() {
       })
     },
   })
+}
+
+/**
+ * Apply a patch to a single project within a list cache (non-mutating).
+ * Used by the optimistic update in `useUpdateProject`.
+ */
+function patchProjectInList(
+  old: ProjectsResponse,
+  projectId: string,
+  patch: Partial<Project>,
+): ProjectsResponse {
+  return {
+    ...old,
+    items: old.items.map((p) =>
+      p.id === projectId ? { ...p, ...patch } : p,
+    ),
+  }
 }
 
 /**

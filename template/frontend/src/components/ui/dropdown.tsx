@@ -111,6 +111,7 @@ export function DropdownMenuItem({ className, inset, onClick, ...props }: Dropdo
   const { setOpen } = useDropdownMenuContext()
   return (
     <button
+      type="button"
       role="menuitem"
       onClick={(e) => {
         onClick?.(e)

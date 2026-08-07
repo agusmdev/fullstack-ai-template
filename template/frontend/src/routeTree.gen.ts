@@ -9,28 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthedRouteImport } from './routes/_authed'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedWorkspaceRouteImport } from './routes/_authed/workspace'
 import { Route as AuthedTeamIndexRouteImport } from './routes/_authed/$team/index'
-import { Route as AuthedTeamBoardRouteImport } from './routes/_authed/$team/board'
-import { Route as AuthedTeamCyclesRouteImport } from './routes/_authed/$team/cycles'
-import { Route as AuthedTeamIssuesRouteImport } from './routes/_authed/$team/issues'
-import { Route as AuthedTeamProjectsRouteImport } from './routes/_authed/$team/projects'
-import { Route as AuthedTeamSettingsRouteImport } from './routes/_authed/$team/settings'
 import { Route as AuthedTeamViewsRouteImport } from './routes/_authed/$team/views'
-import { Route as AuthedTeamCycleIdRouteImport } from './routes/_authed/$team/cycle/$id'
+import { Route as AuthedTeamSettingsRouteImport } from './routes/_authed/$team/settings'
+import { Route as AuthedTeamProjectsRouteImport } from './routes/_authed/$team/projects'
+import { Route as AuthedTeamIssuesRouteImport } from './routes/_authed/$team/issues'
+import { Route as AuthedTeamCyclesRouteImport } from './routes/_authed/$team/cycles'
+import { Route as AuthedTeamBoardRouteImport } from './routes/_authed/$team/board'
 import { Route as AuthedTeamProjectIdRouteImport } from './routes/_authed/$team/project/$id'
+import { Route as AuthedTeamCycleIdRouteImport } from './routes/_authed/$team/cycle/$id'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthedRoute = AuthedRouteImport.update({
-  id: '/_authed',
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -38,9 +34,13 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedWorkspaceRoute = AuthedWorkspaceRouteImport.update({
@@ -53,24 +53,9 @@ const AuthedTeamIndexRoute = AuthedTeamIndexRouteImport.update({
   path: '/$team/',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedTeamBoardRoute = AuthedTeamBoardRouteImport.update({
-  id: '/$team/board',
-  path: '/$team/board',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedTeamCyclesRoute = AuthedTeamCyclesRouteImport.update({
-  id: '/$team/cycles',
-  path: '/$team/cycles',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedTeamIssuesRoute = AuthedTeamIssuesRouteImport.update({
-  id: '/$team/issues',
-  path: '/$team/issues',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedTeamProjectsRoute = AuthedTeamProjectsRouteImport.update({
-  id: '/$team/projects',
-  path: '/$team/projects',
+const AuthedTeamViewsRoute = AuthedTeamViewsRouteImport.update({
+  id: '/$team/views',
+  path: '/$team/views',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedTeamSettingsRoute = AuthedTeamSettingsRouteImport.update({
@@ -78,19 +63,34 @@ const AuthedTeamSettingsRoute = AuthedTeamSettingsRouteImport.update({
   path: '/$team/settings',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedTeamViewsRoute = AuthedTeamViewsRouteImport.update({
-  id: '/$team/views',
-  path: '/$team/views',
+const AuthedTeamProjectsRoute = AuthedTeamProjectsRouteImport.update({
+  id: '/$team/projects',
+  path: '/$team/projects',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedTeamCycleIdRoute = AuthedTeamCycleIdRouteImport.update({
-  id: '/$team/cycle/$id',
-  path: '/$team/cycle/$id',
+const AuthedTeamIssuesRoute = AuthedTeamIssuesRouteImport.update({
+  id: '/$team/issues',
+  path: '/$team/issues',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamCyclesRoute = AuthedTeamCyclesRouteImport.update({
+  id: '/$team/cycles',
+  path: '/$team/cycles',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamBoardRoute = AuthedTeamBoardRouteImport.update({
+  id: '/$team/board',
+  path: '/$team/board',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedTeamProjectIdRoute = AuthedTeamProjectIdRouteImport.update({
   id: '/$team/project/$id',
   path: '/$team/project/$id',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTeamCycleIdRoute = AuthedTeamCycleIdRouteImport.update({
+  id: '/$team/cycle/$id',
+  path: '/$team/cycle/$id',
   getParentRoute: () => AuthedRoute,
 } as any)
 
@@ -105,7 +105,7 @@ export interface FileRoutesByFullPath {
   '/$team/projects': typeof AuthedTeamProjectsRoute
   '/$team/settings': typeof AuthedTeamSettingsRoute
   '/$team/views': typeof AuthedTeamViewsRoute
-  '/$team/': typeof AuthedTeamIndexRoute
+  '/$team': typeof AuthedTeamIndexRoute
   '/$team/cycle/$id': typeof AuthedTeamCycleIdRoute
   '/$team/project/$id': typeof AuthedTeamProjectIdRoute
 }
@@ -154,7 +154,7 @@ export interface FileRouteTypes {
     | '/$team/projects'
     | '/$team/settings'
     | '/$team/views'
-    | '/$team/'
+    | '/$team'
     | '/$team/cycle/$id'
     | '/$team/project/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -199,18 +199,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authed': {
-      id: '/_authed'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthedRouteImport
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -220,11 +213,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/workspace': {
@@ -237,43 +237,8 @@ declare module '@tanstack/react-router' {
     '/_authed/$team/': {
       id: '/_authed/$team/'
       path: '/$team'
-      fullPath: '/$team/'
+      fullPath: '/$team'
       preLoaderRoute: typeof AuthedTeamIndexRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/$team/board': {
-      id: '/_authed/$team/board'
-      path: '/$team/board'
-      fullPath: '/$team/board'
-      preLoaderRoute: typeof AuthedTeamBoardRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/$team/cycles': {
-      id: '/_authed/$team/cycles'
-      path: '/$team/cycles'
-      fullPath: '/$team/cycles'
-      preLoaderRoute: typeof AuthedTeamCyclesRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/$team/issues': {
-      id: '/_authed/$team/issues'
-      path: '/$team/issues'
-      fullPath: '/$team/issues'
-      preLoaderRoute: typeof AuthedTeamIssuesRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/$team/projects': {
-      id: '/_authed/$team/projects'
-      path: '/$team/projects'
-      fullPath: '/$team/projects'
-      preLoaderRoute: typeof AuthedTeamProjectsRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/$team/settings': {
-      id: '/_authed/$team/settings'
-      path: '/$team/settings'
-      fullPath: '/$team/settings'
-      preLoaderRoute: typeof AuthedTeamSettingsRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/$team/views': {
@@ -283,11 +248,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedTeamViewsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/$team/cycle/$id': {
-      id: '/_authed/$team/cycle/$id'
-      path: '/$team/cycle/$id'
-      fullPath: '/$team/cycle/$id'
-      preLoaderRoute: typeof AuthedTeamCycleIdRouteImport
+    '/_authed/$team/settings': {
+      id: '/_authed/$team/settings'
+      path: '/$team/settings'
+      fullPath: '/$team/settings'
+      preLoaderRoute: typeof AuthedTeamSettingsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/projects': {
+      id: '/_authed/$team/projects'
+      path: '/$team/projects'
+      fullPath: '/$team/projects'
+      preLoaderRoute: typeof AuthedTeamProjectsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/issues': {
+      id: '/_authed/$team/issues'
+      path: '/$team/issues'
+      fullPath: '/$team/issues'
+      preLoaderRoute: typeof AuthedTeamIssuesRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/cycles': {
+      id: '/_authed/$team/cycles'
+      path: '/$team/cycles'
+      fullPath: '/$team/cycles'
+      preLoaderRoute: typeof AuthedTeamCyclesRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/board': {
+      id: '/_authed/$team/board'
+      path: '/$team/board'
+      fullPath: '/$team/board'
+      preLoaderRoute: typeof AuthedTeamBoardRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/$team/project/$id': {
@@ -295,6 +288,13 @@ declare module '@tanstack/react-router' {
       path: '/$team/project/$id'
       fullPath: '/$team/project/$id'
       preLoaderRoute: typeof AuthedTeamProjectIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$team/cycle/$id': {
+      id: '/_authed/$team/cycle/$id'
+      path: '/$team/cycle/$id'
+      fullPath: '/$team/cycle/$id'
+      preLoaderRoute: typeof AuthedTeamCycleIdRouteImport
       parentRoute: typeof AuthedRoute
     }
   }
@@ -338,3 +338,11 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

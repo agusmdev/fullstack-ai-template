@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { createFileRoute, useParams, Link } from '@tanstack/react-router'
-import { ArrowLeft, Folder, Inbox, Loader2 } from 'lucide-react'
+import { ArrowLeft, Folder, Inbox, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorState } from '@/components/ErrorState'
 import { IssueList } from '@/components/IssueList'
 import { IssueListSkeleton } from '@/components/IssueListSkeleton'
 import { IssueDetailDrawer } from '@/components/IssueDetailDrawer'
+import { ProjectFormDialog } from '@/components/ProjectFormDialog'
 import { useTeams } from '@/hooks/useTeams'
 import { useUser } from '@/hooks/useUser'
+import { useTeamRole } from '@/hooks/useTeamRole'
 import { useProject, useProjects } from '@/hooks/useProjects'
 import { useCycles } from '@/hooks/useCycles'
 import { useIssues, flattenIssues, issuesTotal } from '@/hooks/useIssues'
@@ -44,9 +46,11 @@ function formatDate(iso: string | null | undefined): string {
 function ProjectDetailView() {
   const { team: teamKey, id: projectId } = useParams({ strict: false })
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
 
   const { data: teamsData, isLoading: teamsLoading } = useTeams()
   const { data: user } = useUser()
+  const { canWrite } = useTeamRole(teamKey)
   const teamObj = (teamsData?.items ?? []).find((t) => t.key === teamKey)
   const teamId = teamObj?.id
 
@@ -137,6 +141,16 @@ function ProjectDetailView() {
           >
             {status.label}
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto h-7 gap-1 px-2"
+            onClick={() => setEditOpen(true)}
+            disabled={!canWrite}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </Button>
         </div>
         <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
           <span>Lead: {lead?.name ?? 'Unassigned'}</span>
@@ -183,6 +197,14 @@ function ProjectDetailView() {
         projects={projects}
         cycles={cycles}
         members={members}
+      />
+
+      <ProjectFormDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        teamId={teamId ?? ''}
+        members={members}
+        project={project}
       />
     </div>
   )
