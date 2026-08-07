@@ -27,8 +27,19 @@ vi.mock('@/hooks/useTeamRole', () => ({
 }))
 
 /** Dispatch a keydown from a given element (defaults to window). */
-function pressKey(key: string, target?: Element) {
-  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+function pressKey(
+  key: string,
+  target?: Element,
+  modifiers?: { metaKey?: boolean; ctrlKey?: boolean; altKey?: boolean },
+) {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    metaKey: modifiers?.metaKey ?? false,
+    ctrlKey: modifiers?.ctrlKey ?? false,
+    altKey: modifiers?.altKey ?? false,
+  })
   if (target) Object.defineProperty(event, 'target', { value: target })
   act(() => {
     ;(target ?? window).dispatchEvent(event)
@@ -95,6 +106,55 @@ describe('KeyboardShortcutsProvider', () => {
     renderProvider()
     pressKey('c', screen.getByTestId('text-area'))
     expect(screen.getByTestId('create').textContent).toBe('0')
+  })
+
+  // --- Modifier-key guard (Cmd/Ctrl/Alt must not trigger single-key shortcuts) ---
+  it('Cmd+C does NOT open Create Issue and does not preventDefault', () => {
+    renderProvider()
+    const event = pressKey('c', undefined, { metaKey: true })
+    expect(screen.getByTestId('create').textContent).toBe('0')
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it('Ctrl+C does NOT open Create Issue and does not preventDefault', () => {
+    renderProvider()
+    const event = pressKey('c', undefined, { ctrlKey: true })
+    expect(screen.getByTestId('create').textContent).toBe('0')
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it('Alt+C does NOT open Create Issue and does not preventDefault', () => {
+    renderProvider()
+    const event = pressKey('c', undefined, { altKey: true })
+    expect(screen.getByTestId('create').textContent).toBe('0')
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it('Cmd+G does not arm the g-sequence', () => {
+    renderProvider()
+    pressKey('g', undefined, { metaKey: true })
+    pressKey('i') // not part of an armed sequence
+    expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('Ctrl+G does not arm the g-sequence', () => {
+    renderProvider()
+    pressKey('g', undefined, { ctrlKey: true })
+    pressKey('i')
+    expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('Cmd+[ does not navigate issues', () => {
+    renderProvider()
+    // selected starts at '2'; Cmd+[ must not move to '1'
+    pressKey('[', undefined, { metaKey: true })
+    expect(screen.getByTestId('selected').textContent).toBe('2')
+  })
+
+  it('Cmd+] does not navigate issues', () => {
+    renderProvider()
+    pressKey(']', undefined, { metaKey: true })
+    expect(screen.getByTestId('selected').textContent).toBe('2')
   })
 
   it('`g` then `i` navigates to Issues (VAL-SHORTCUTS-002)', () => {

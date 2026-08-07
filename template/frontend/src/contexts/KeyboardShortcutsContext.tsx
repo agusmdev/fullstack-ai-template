@@ -136,6 +136,15 @@ export function KeyboardShortcutsProvider({
         return
       }
 
+      // Modifier-key guard: any single-key shortcut combined with a modifier
+      // (Cmd/Ctrl/Alt) is a native browser/OS shortcut (copy, find, browser
+      // back/forward, etc.), NOT one of ours. Bail before the single-key
+      // dispatch so we never preventDefault or open/spuriously trigger.
+      // Without this, Cmd+C/Ctrl+C (copy) matches the `c` branch and opens
+      // Create Issue while blocking native copy; Cmd+G arms the g-sequence;
+      // Cmd+[ / Cmd+] hijacks browser back/forward.
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+
       const typing = isTypingTarget(event)
       const overlaysOpen = overlayCountRef.current > 0
       const key = event.key.toLowerCase()
