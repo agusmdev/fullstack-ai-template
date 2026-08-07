@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.modules.cycles.routers import cycles_router
+from app.modules.issue_dependencies.routers import issue_dependencies_router
 from app.modules.issues.routers import issues_router
 from app.modules.labels.routers import labels_router
 from app.modules.projects.routers import projects_router
@@ -35,5 +36,6 @@ def get_app_router() -> APIRouter:
     router.include_router(projects_router)
     router.include_router(cycles_router)
     router.include_router(views_router)
+    router.include_router(issue_dependencies_router)
 
     return router

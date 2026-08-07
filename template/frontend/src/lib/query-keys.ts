@@ -54,6 +54,12 @@ export const queryKeys = {
     /** Children of a parent issue (sub-issues). */
     subIssues: (parentId: string) => ['issues', 'subIssues', parentId] as const,
   },
+  issueDependencies: {
+    all: ['issueDependencies'] as const,
+    /** Dependencies involving a specific issue (either side — reciprocal). */
+    forIssue: (issueId: string) =>
+      ['issueDependencies', 'issue', issueId] as const,
+  },
   views: {
     all: ['views'] as const,
     list: (teamId?: string) => {

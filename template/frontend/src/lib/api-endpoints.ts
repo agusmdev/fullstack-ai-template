@@ -41,4 +41,9 @@ export const API = {
     /** Remove a label from an issue. */
     REMOVE_LABEL: (id: string, labelId: string) => `/issues/${id}/labels/${labelId}`,
   },
+  ISSUE_DEPENDENCIES: {
+    LIST: '/issue-dependencies',
+    CREATE: '/issue-dependencies',
+    DETAIL: (id: string) => `/issue-dependencies/${id}`,
+  },
 } as const

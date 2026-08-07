@@ -17,6 +17,10 @@ const hooks = vi.hoisted(() => ({
   useSubIssues: vi.fn(),
   useCreateIssue: vi.fn(),
   useTopLevelIssues: vi.fn(),
+  useIssueDependencies: vi.fn(),
+  useCreateIssueDependency: vi.fn(),
+  useDeleteIssueDependency: vi.fn(),
+  useTeamIssuesForPicker: vi.fn(),
 }))
 
 vi.mock('@/hooks/useIssues', () => ({
@@ -28,6 +32,17 @@ vi.mock('@/hooks/useIssues', () => ({
   useSubIssues: hooks.useSubIssues,
   useCreateIssue: hooks.useCreateIssue,
   useTopLevelIssues: hooks.useTopLevelIssues,
+}))
+
+vi.mock('@/hooks/useIssueDependencies', () => ({
+  useIssueDependencies: hooks.useIssueDependencies,
+  useCreateIssueDependency: hooks.useCreateIssueDependency,
+  useDeleteIssueDependency: hooks.useDeleteIssueDependency,
+  useTeamIssuesForPicker: hooks.useTeamIssuesForPicker,
+  splitDependencies: (deps: { blocker_id: string; blocked_id: string }[], issueId: string) => ({
+    blocking: deps.filter((d) => d.blocker_id === issueId),
+    blockedBy: deps.filter((d) => d.blocked_id === issueId),
+  }),
 }))
 
 const noopMutation = {
@@ -103,6 +118,10 @@ describe('IssueDetailDrawer', () => {
     hooks.useSubIssues.mockReturnValue({ data: undefined, isLoading: false })
     hooks.useCreateIssue.mockReturnValue({ ...noopMutation })
     hooks.useTopLevelIssues.mockReturnValue({ data: undefined })
+    hooks.useIssueDependencies.mockReturnValue({ data: undefined, isLoading: false })
+    hooks.useCreateIssueDependency.mockReturnValue({ ...noopMutation })
+    hooks.useDeleteIssueDependency.mockReturnValue({ ...noopMutation })
+    hooks.useTeamIssuesForPicker.mockReturnValue({ data: undefined })
   })
 
   it('renders complete correct data on open (VAL-ISSUES-030)', () => {

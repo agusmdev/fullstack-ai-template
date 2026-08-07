@@ -28,6 +28,7 @@ import { ProjectPicker } from '@/components/ProjectPicker'
 import { CyclePicker } from '@/components/CyclePicker'
 import { StatusDot } from '@/components/StatusDot'
 import { SubIssuesPanel } from '@/components/SubIssuesPanel'
+import { DependenciesPanel } from '@/components/DependenciesPanel'
 import { IssueDetailDrawerSkeleton } from '@/components/IssueDetailDrawerSkeleton'
 import {
   useIssue,
@@ -448,6 +449,14 @@ export function IssueDetailDrawer({
 
                 {/* Sub-issues panel (VAL-SUBISSUES-001/003/005/006) */}
                 <SubIssuesPanel
+                  issueId={issue.id}
+                  teamId={teamId}
+                  workflowStates={workflowStates}
+                  onSelectIssue={onSelectIssue}
+                />
+
+                {/* Dependencies panel (VAL-DEPS-001/002/003/004/005) */}
+                <DependenciesPanel
                   issueId={issue.id}
                   teamId={teamId}
                   workflowStates={workflowStates}
