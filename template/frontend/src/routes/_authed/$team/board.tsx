@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, useParams } from '@tanstack/react-router'
-import { Plus, Inbox, SearchX } from 'lucide-react'
+import { Plus, Inbox, SearchX, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorState } from '@/components/ErrorState'
@@ -9,6 +9,7 @@ import { IssueBoardSkeleton } from '@/components/IssueBoardSkeleton'
 import { IssueFiltersBar } from '@/components/IssueFiltersBar'
 import { ViewToggle } from '@/components/ViewToggle'
 import { CreateIssueDialog } from '@/components/CreateIssueDialog'
+import { SaveViewDialog } from '@/components/SaveViewDialog'
 import { IssueDetailDrawer } from '@/components/IssueDetailDrawer'
 import { useTeams } from '@/hooks/useTeams'
 import { useUser } from '@/hooks/useUser'
@@ -45,6 +46,7 @@ export const Route = createFileRoute('/_authed/$team/board')({
 function BoardView() {
   const { team: teamKey } = useParams({ strict: false })
   const [createOpen, setCreateOpen] = useState(false)
+  const [saveViewOpen, setSaveViewOpen] = useState(false)
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
 
   const urlSearch = Route.useSearch()
@@ -116,15 +118,31 @@ function BoardView() {
           <h1 className="text-base font-semibold text-foreground">Board</h1>
           <ViewToggle teamKey={teamKey ?? ''} active="board" search={rawSearch} />
         </div>
-        <Button
-          size="sm"
-          onClick={() => setCreateOpen(true)}
-          disabled={!canWrite}
-          title={canWrite ? undefined : 'Guests have read-only access to this team'}
-        >
-          <Plus className="h-4 w-4" />
-          New issue
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSaveViewOpen(true)}
+            disabled={!canWrite || !teamId}
+            title={
+              !canWrite
+                ? 'Guests have read-only access to this team'
+                : 'Save the current filters and sort as a view'
+            }
+          >
+            <Bookmark className="h-4 w-4" />
+            Save view
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            disabled={!canWrite}
+            title={canWrite ? undefined : 'Guests have read-only access to this team'}
+          >
+            <Plus className="h-4 w-4" />
+            New issue
+          </Button>
+        </div>
       </div>
 
       {/* Filter bar — shared with the Issues list via URL search params */}
@@ -203,6 +221,14 @@ function BoardView() {
         workflowStates={workflowStates}
         labels={labels}
         members={members}
+      />
+
+      {/* Save the current filters + group_by + sort as a named view (M3). */}
+      <SaveViewDialog
+        open={saveViewOpen}
+        onOpenChange={setSaveViewOpen}
+        teamId={teamId ?? ''}
+        search={rawSearch}
       />
 
       {/* Detail drawer — status picker here is the non-DnD move path */}

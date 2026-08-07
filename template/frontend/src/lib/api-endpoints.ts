@@ -27,6 +27,11 @@ export const API = {
     CREATE: '/cycles',
     DETAIL: (id: string) => `/cycles/${id}`,
   },
+  VIEWS: {
+    LIST: '/views',
+    CREATE: '/views',
+    DETAIL: (id: string) => `/views/${id}`,
+  },
   ISSUES: {
     LIST: '/issues',
     CREATE: '/issues',

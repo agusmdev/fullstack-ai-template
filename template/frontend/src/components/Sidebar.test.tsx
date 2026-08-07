@@ -7,10 +7,19 @@ import type { Team } from '@/types/team'
 
 const { useTeamsMock } = vi.hoisted(() => ({ useTeamsMock: vi.fn() }))
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+const { useViewsMock } = vi.hoisted(() => ({ useViewsMock: vi.fn() }))
 
 vi.mock('@/hooks/useTeams', () => ({ useTeams: useTeamsMock }))
+vi.mock('@/hooks/useViews', () => ({
+  useViews: useViewsMock,
+  useDeleteView: () => ({ mutate: vi.fn() }),
+}))
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
+  useRouterState: ({ select }: { select?: (s: unknown) => unknown }) =>
+    select
+      ? select({ location: { search: {}, pathname: '/ENG/issues' } })
+      : { location: { search: {}, pathname: '/ENG/issues' } },
   Link: ({
     to,
     params,
@@ -48,6 +57,8 @@ describe('Sidebar team switcher', () => {
   beforeEach(() => {
     useTeamsMock.mockReset()
     navigateMock.mockReset()
+    // Saved-views section defaults to empty (no saved views).
+    useViewsMock.mockReturnValue({ data: { items: [] }, isLoading: false })
   })
 
   it('renders the active team identity', () => {

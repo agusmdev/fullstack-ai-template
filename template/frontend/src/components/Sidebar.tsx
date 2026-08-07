@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Inbox, LayoutGrid, Folder, Repeat2, Eye, Bookmark, ChevronsUpDown, Check } from 'lucide-react'
+import { Inbox, LayoutGrid, Folder, Repeat2, Eye, ChevronsUpDown, Check } from 'lucide-react'
 import { useTeams } from '@/hooks/useTeams'
+import { SavedViews } from '@/components/SavedViews'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu,
@@ -122,16 +123,8 @@ export function Sidebar({ teamKey }: { teamKey?: string }) {
         ))}
       </nav>
 
-      {/* Saved views (M0 placeholder) */}
-      <div className="mt-2 flex-1 border-t border-border px-2 py-3">
-        <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
-          Views
-        </p>
-        <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground/60">
-          <Bookmark className="h-4 w-4" />
-          No saved views
-        </div>
-      </div>
+      {/* Saved views (M3) */}
+      <SavedViews teamKey={activeKey} teamId={current?.id} />
     </aside>
   )
 }

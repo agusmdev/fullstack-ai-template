@@ -52,4 +52,12 @@ export const queryKeys = {
     },
     detail: (id: string) => ['issues', 'detail', id] as const,
   },
+  views: {
+    all: ['views'] as const,
+    list: (teamId?: string) => {
+      if (teamId) return ['views', 'list', teamId] as const
+      return ['views', 'list'] as const
+    },
+    detail: (id: string) => ['views', 'detail', id] as const,
+  },
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, useParams } from '@tanstack/react-router'
-import { Plus, Inbox, SearchX, Loader2 } from 'lucide-react'
+import { Plus, Inbox, SearchX, Loader2, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorState } from '@/components/ErrorState'
@@ -9,6 +9,7 @@ import { IssueListSkeleton } from '@/components/IssueListSkeleton'
 import { IssueFiltersBar } from '@/components/IssueFiltersBar'
 import { ViewToggle } from '@/components/ViewToggle'
 import { CreateIssueDialog } from '@/components/CreateIssueDialog'
+import { SaveViewDialog } from '@/components/SaveViewDialog'
 import { IssueDetailDrawer } from '@/components/IssueDetailDrawer'
 import { useTeams } from '@/hooks/useTeams'
 import { useUser } from '@/hooks/useUser'
@@ -47,6 +48,7 @@ export const Route = createFileRoute('/_authed/$team/issues')({
 function IssuesView() {
   const { team: teamKey } = useParams({ strict: false })
   const [createOpen, setCreateOpen] = useState(false)
+  const [saveViewOpen, setSaveViewOpen] = useState(false)
   // The currently-selected issue (for the detail drawer). Holds the issue object
   // already in the list cache so the drawer renders instantly without a flash,
   // while still refetching for freshness (VAL-ISSUES-030, VAL-ISSUES-048).
@@ -101,15 +103,31 @@ function IssuesView() {
           <h1 className="text-base font-semibold text-foreground">Issues</h1>
           <ViewToggle teamKey={teamKey ?? ''} active="list" search={rawSearch} />
         </div>
-        <Button
-          size="sm"
-          onClick={() => setCreateOpen(true)}
-          disabled={!canWrite}
-          title={canWrite ? undefined : 'Guests have read-only access to this team'}
-        >
-          <Plus className="h-4 w-4" />
-          New issue
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSaveViewOpen(true)}
+            disabled={!canWrite || !teamId}
+            title={
+              !canWrite
+                ? 'Guests have read-only access to this team'
+                : 'Save the current filters and sort as a view'
+            }
+          >
+            <Bookmark className="h-4 w-4" />
+            Save view
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            disabled={!canWrite}
+            title={canWrite ? undefined : 'Guests have read-only access to this team'}
+          >
+            <Plus className="h-4 w-4" />
+            New issue
+          </Button>
+        </div>
       </div>
 
       {/* Filter bar (shown once data is available and there is something to
@@ -221,6 +239,14 @@ function IssuesView() {
         workflowStates={workflowStates}
         labels={labels}
         members={members}
+      />
+
+      {/* Save the current filters + group_by + sort as a named view (M3). */}
+      <SaveViewDialog
+        open={saveViewOpen}
+        onOpenChange={setSaveViewOpen}
+        teamId={teamId ?? ''}
+        search={rawSearch}
       />
 
       {/* Detail drawer (opens on row click). Closes by clearing the selection. */}
