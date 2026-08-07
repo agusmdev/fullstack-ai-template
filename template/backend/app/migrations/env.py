@@ -19,6 +19,7 @@ import app.modules.projects.models  # noqa: F401, E402
 import app.modules.cycles.models  # noqa: F401, E402
 import app.modules.views.models  # noqa: F401, E402
 import app.modules.issue_dependencies.models  # noqa: F401, E402
+import app.modules.comments.models  # noqa: F401, E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

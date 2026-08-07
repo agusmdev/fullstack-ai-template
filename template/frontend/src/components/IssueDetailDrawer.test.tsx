@@ -45,6 +45,12 @@ vi.mock('@/hooks/useIssueDependencies', () => ({
   }),
 }))
 
+// Stub the comments thread so the drawer test stays focused on drawer behavior
+// (the thread has its own dedicated tests in CommentsThread.test.tsx).
+vi.mock('@/components/CommentsThread', () => ({
+  CommentsThread: () => <div data-testid="comments-stub" />,
+}))
+
 const noopMutation = {
   mutate: vi.fn(),
   mutateAsync: vi.fn(),

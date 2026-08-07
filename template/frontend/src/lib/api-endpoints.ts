@@ -46,4 +46,10 @@ export const API = {
     CREATE: '/issue-dependencies',
     DETAIL: (id: string) => `/issue-dependencies/${id}`,
   },
+  COMMENTS: {
+    LIST: '/comments',
+    CREATE: '/comments',
+    /** Used for GET / PATCH / DELETE. */
+    DETAIL: (id: string) => `/comments/${id}`,
+  },
 } as const

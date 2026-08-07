@@ -60,6 +60,11 @@ export const queryKeys = {
     forIssue: (issueId: string) =>
       ['issueDependencies', 'issue', issueId] as const,
   },
+  comments: {
+    all: ['comments'] as const,
+    /** The comment thread on a specific issue. */
+    forIssue: (issueId: string) => ['comments', 'issue', issueId] as const,
+  },
   views: {
     all: ['views'] as const,
     list: (teamId?: string) => {

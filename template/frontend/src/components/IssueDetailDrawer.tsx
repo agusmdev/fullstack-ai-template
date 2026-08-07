@@ -29,6 +29,7 @@ import { CyclePicker } from '@/components/CyclePicker'
 import { StatusDot } from '@/components/StatusDot'
 import { SubIssuesPanel } from '@/components/SubIssuesPanel'
 import { DependenciesPanel } from '@/components/DependenciesPanel'
+import { CommentsThread } from '@/components/CommentsThread'
 import { IssueDetailDrawerSkeleton } from '@/components/IssueDetailDrawerSkeleton'
 import {
   useIssue,
@@ -462,6 +463,9 @@ export function IssueDetailDrawer({
                   workflowStates={workflowStates}
                   onSelectIssue={onSelectIssue}
                 />
+
+                {/* Comments thread (VAL-COMMENTS-001..008) */}
+                <CommentsThread issueId={issue.id} teamId={teamId} />
 
                 {/* Metadata */}
                 <div className="mt-6 border-t border-border pt-3 text-xs text-muted-foreground">

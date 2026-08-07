@@ -172,6 +172,22 @@ def mock_view_repository():
 
 
 @pytest.fixture
+def mock_comment_repository():
+    """Create a mock comment repository."""
+    repo = MagicMock()
+    repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
+    repo.get_all = AsyncMock()
+    repo.get_all_paginated = AsyncMock()
+    repo.create = AsyncMock()
+    repo.create_many = AsyncMock()
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.upsert = AsyncMock()
+    return repo
+
+
+@pytest.fixture
 def mock_issue_repository():
     """Create a mock issue repository."""
     repo = MagicMock()
@@ -198,6 +214,8 @@ def mock_team_service():
     svc.get_team_ids_for_user = AsyncMock(return_value=[])
     svc.require_team_access = AsyncMock()
     svc.get_membership = AsyncMock()
+    svc.get_memberships_for_user = AsyncMock(return_value=[])
+    svc.get_role_map_for_user = AsyncMock(return_value={})
     return svc
 
 
