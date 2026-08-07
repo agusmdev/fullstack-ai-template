@@ -7,6 +7,7 @@ import type { Team } from '@/types/team'
 
 const { useTeamsMock } = vi.hoisted(() => ({ useTeamsMock: vi.fn() }))
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+const { isAuthenticatedMock } = vi.hoisted(() => ({ isAuthenticatedMock: vi.fn() }))
 
 vi.mock('@/hooks/useTeams', () => ({
   useTeams: useTeamsMock,
@@ -14,6 +15,7 @@ vi.mock('@/hooks/useTeams', () => ({
     teams && teams.length > 0 ? teams[0] : null,
 }))
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => navigateMock }))
+vi.mock('@/lib/auth', () => ({ isAuthenticated: isAuthenticatedMock }))
 
 function makeTeam(key: string): Team {
   return {
@@ -38,6 +40,9 @@ describe('useTeamAccessGuard', () => {
   beforeEach(() => {
     useTeamsMock.mockReset()
     navigateMock.mockReset()
+    isAuthenticatedMock.mockReset()
+    // Authenticated by default (the team guard is meaningful for signed-in users).
+    isAuthenticatedMock.mockReturnValue(true)
   })
 
   it('does not redirect when the team key belongs to the user (valid)', () => {
@@ -83,6 +88,17 @@ describe('useTeamAccessGuard', () => {
       isLoading: false,
     })
     renderHook(() => useTeamAccessGuard(undefined), {
+      wrapper: makeWrapper(new QueryClient()),
+    })
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('does not redirect for an unauthenticated user (auth guard handles it)', () => {
+    // An unauth user has no teams (401); the team guard must NOT bounce the URL
+    // so the _authed layout captures the original deep-link path for /login.
+    isAuthenticatedMock.mockReturnValue(false)
+    useTeamsMock.mockReturnValue({ data: { items: [] }, isLoading: false })
+    renderHook(() => useTeamAccessGuard('FOREIGN'), {
       wrapper: makeWrapper(new QueryClient()),
     })
     expect(navigateMock).not.toHaveBeenCalled()

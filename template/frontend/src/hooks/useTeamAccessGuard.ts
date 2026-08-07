@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTeams, pickDefaultTeam } from '@/hooks/useTeams'
+import { isAuthenticated } from '@/lib/auth'
 
 /**
  * SPA-side cross-team guard (VAL-CROSS-024).
@@ -24,6 +25,11 @@ export function useTeamAccessGuard(teamKey: string | undefined) {
 
   useEffect(() => {
     if (isValid) return
+    // An unauthenticated user is handled by the `_authed` layout's auth guard,
+    // which redirects to /login preserving the originally requested path
+    // (VAL-AUTH-016, VAL-CROSS-008). Acting here would mutate the URL before
+    // that guard captures it, clobbering the deep-link redirect target. No-op.
+    if (!isAuthenticated()) return
     const fallback = pickDefaultTeam(teams)
     void navigate({
       to: '/$team/issues',

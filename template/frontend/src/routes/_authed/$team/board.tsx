@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createFileRoute, useParams } from '@tanstack/react-router'
-import { Plus, Inbox, SearchX, Bookmark } from 'lucide-react'
+import { Plus, Inbox, SearchX, Bookmark, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorState } from '@/components/ErrorState'
@@ -76,6 +76,8 @@ function BoardView() {
   const cycles = cyclesQuery.data?.items ?? []
   const issues = flattenIssues(issuesQuery.data)
   const total = issuesTotal(issuesQuery.data)
+  const hasMore = issuesQuery.hasNextPage
+  const fetchingMore = issuesQuery.isFetchingNextPage
 
   const members = user
     ? [{ id: user.id, name: user.display_name || user.email }]
@@ -182,7 +184,8 @@ function BoardView() {
       )}
 
       {/* Body */}
-      <div className="flex-1 overflow-hidden p-4">
+      <div className="flex flex-1 flex-col gap-2 overflow-hidden p-4">
+        <div className="min-h-0 flex-1 overflow-hidden">
         {initialLoading ? (
           <IssueBoardSkeleton columns={Math.min(workflowStates.length || 4, 5)} />
         ) : issuesQuery.isError ? (
@@ -230,6 +233,29 @@ function BoardView() {
             onSelectIssue={setSelectedIssue}
             onMoveIssue={handleMoveIssue}
           />
+        )}
+        </div>
+
+        {/* Pagination: load more for long boards (mirrors the Issues list so the
+            board isn't silently capped at the first page — VAL-PERF-012). */}
+        {hasMore && total > 0 && (
+          <div className="flex shrink-0 items-center justify-center pb-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => issuesQuery.fetchNextPage()}
+              disabled={fetchingMore}
+            >
+              {fetchingMore ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading…
+                </>
+              ) : (
+                `Load more (${total - issues.length} remaining)`
+              )}
+            </Button>
+          </div>
         )}
       </div>
 
