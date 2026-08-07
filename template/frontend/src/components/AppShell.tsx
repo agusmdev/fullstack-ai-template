@@ -1,6 +1,8 @@
 import { Outlet, useParams } from '@tanstack/react-router'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { CommandPalette } from './CommandPalette'
+import { CommandPaletteProvider } from '@/contexts/CommandPaletteContext'
 import { useTeamAccessGuard } from '@/hooks/useTeamAccessGuard'
 
 /**
@@ -13,6 +15,10 @@ import { useTeamAccessGuard } from '@/hooks/useTeamAccessGuard'
  * Also enforces the SPA-side cross-team guard: if the URL's team segment is not
  * one of the user's teams, the user is redirected to their default team so no
  * foreign team's data is ever rendered (VAL-CROSS-024).
+ *
+ * Wraps the shell in `CommandPaletteProvider` so the Cmd+K command palette and
+ * the Topbar trigger share palette state, and renders a single `CommandPalette`
+ * (palette UI + hosted create dialogs) for the whole workspace.
  */
 export function AppShell() {
   const params = useParams({ strict: false })
@@ -20,14 +26,17 @@ export function AppShell() {
   useTeamAccessGuard(teamKey)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <Sidebar teamKey={teamKey} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar teamKey={teamKey} />
-        <main className="flex-1 overflow-auto">
-          <Outlet />
-        </main>
+    <CommandPaletteProvider>
+      <div className="flex h-screen overflow-hidden bg-background text-foreground">
+        <Sidebar teamKey={teamKey} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar teamKey={teamKey} />
+          <main className="flex-1 overflow-auto">
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+      <CommandPalette teamKey={teamKey} />
+    </CommandPaletteProvider>
   )
 }

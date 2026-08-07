@@ -1,28 +1,51 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { toast } from 'sonner'
 import { SearchTrigger } from './SearchTrigger'
+import {
+  CommandPaletteProvider,
+  useCommandPalette,
+} from '@/contexts/CommandPaletteContext'
 
-const toastMock = vi.hoisted(() => ({ info: vi.fn() }))
+/** Shows the palette open state so the trigger can be asserted to open it. */
+function StateProbe() {
+  const { paletteOpen } = useCommandPalette()
+  return <span data-testid="palette-open">{String(paletteOpen)}</span>
+}
 
-vi.mock('sonner', () => ({ toast: toastMock }))
+function renderTrigger() {
+  return render(
+    <CommandPaletteProvider>
+      <SearchTrigger />
+      <StateProbe />
+    </CommandPaletteProvider>,
+  )
+}
 
 describe('SearchTrigger', () => {
-  beforeEach(() => toastMock.info.mockReset())
-  afterEach(() => vi.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => cleanup())
 
   it('renders a search affordance with an accessible label', () => {
-    render(<SearchTrigger />)
+    renderTrigger()
     expect(screen.getByLabelText('Search and run commands')).toBeInTheDocument()
   })
 
   it('shows the ⌘K keyboard hint', () => {
-    render(<SearchTrigger />)
+    renderTrigger()
     expect(screen.getByText('⌘K')).toBeInTheDocument()
   })
 
-  it('shows a coming-soon toast when clicked', () => {
-    render(<SearchTrigger />)
+  it('opens the command palette when clicked (VAL-CMDK-002)', () => {
+    const toastSpy = vi.spyOn(toast, 'info')
+    renderTrigger()
+    // Palette closed initially.
+    expect(screen.getByTestId('palette-open').textContent).toBe('false')
     fireEvent.click(screen.getByLabelText('Search and run commands'))
-    expect(toastMock.info).toHaveBeenCalledWith('Command palette coming soon')
+    // Palette is now open.
+    expect(screen.getByTestId('palette-open').textContent).toBe('true')
+    // No "coming soon" toast is fired anymore.
+    expect(toastSpy).not.toHaveBeenCalled()
+    toastSpy.mockRestore()
   })
 })

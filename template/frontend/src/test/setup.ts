@@ -7,6 +7,20 @@ import { cleanup } from '@testing-library/react'
 import { afterEach, vi, afterAll } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 
+// jsdom does not implement ResizeObserver, but `cmdk` (used by the command
+// palette) and some Radix primitives rely on it at mount. Provide a no-op
+// polyfill so components render in the test environment.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+
+// jsdom also omits Element.scrollIntoView, which cmdk calls to keep the
+// active item in view. Provide a no-op so palette interactions work in tests.
+Element.prototype.scrollIntoView = () => {}
+
 // Cleanup after each test
 afterEach(() => {
   cleanup()
