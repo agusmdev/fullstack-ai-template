@@ -1,1 +1,23 @@
+# Python cache
+__pycache__
+*.pyc
+
+# Virtual env (created inside the image)
 .venv
+
+# VCS & tooling caches
+.git
+.gitignore
+.pytest_cache
+.ruff_cache
+.claude
+
+# Tests are not needed in the production image
+tests/
+
+# Misc
+*.log
+.env
+scorecard.png
+Dockerfile
+.dockerignore

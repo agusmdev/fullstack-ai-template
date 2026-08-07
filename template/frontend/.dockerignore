@@ -1,11 +1,34 @@
+# Dependencies (installed inside the image)
 node_modules
+
+# Build output (generated inside the image)
 .output
-.tanstack
+dist
+
+# VCS & editor
+.git
+.gitignore
 .vscode
+
+# Husky / config not needed for build
 .husky
-playwright-report
+
+# Test artifacts
 e2e
+playwright-report
+coverage
+*.test.*
+*.spec.*
+vitest.config.ts
+playwright.config.ts
+
+# Docs & misc
 *.log
 .env
 .env.local
 .DS_Store
+.tanstack
+.claude
+scorecard.png
+Dockerfile
+.dockerignore
