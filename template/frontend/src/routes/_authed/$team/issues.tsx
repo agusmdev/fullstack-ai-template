@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { createFileRoute, useParams } from '@tanstack/react-router'
 import { Plus, Inbox, SearchX, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,26 +7,20 @@ import { ErrorState } from '@/components/ErrorState'
 import { IssueList } from '@/components/IssueList'
 import { IssueListSkeleton } from '@/components/IssueListSkeleton'
 import { IssueFiltersBar } from '@/components/IssueFiltersBar'
+import { ViewToggle } from '@/components/ViewToggle'
 import { CreateIssueDialog } from '@/components/CreateIssueDialog'
 import { IssueDetailDrawer } from '@/components/IssueDetailDrawer'
 import { useTeams } from '@/hooks/useTeams'
 import { useUser } from '@/hooks/useUser'
 import { useTeamRole } from '@/hooks/useTeamRole'
 import { useIssues, flattenIssues, issuesTotal } from '@/hooks/useIssues'
+import { useIssueFilters } from '@/hooks/useIssueFilters'
 import { useWorkflowStates } from '@/hooks/useWorkflowStates'
 import { useLabels } from '@/hooks/useLabels'
 import { useProjects } from '@/hooks/useProjects'
 import { useCycles } from '@/hooks/useCycles'
-import { useDebounce } from '@/hooks/useDebounce'
-import {
-  DEFAULT_SORT_KEY,
-  hasActiveIssueFilters,
-  type Issue,
-  type IssuesQueryParams,
-} from '@/types/issue'
-
-/** Debounce delay (ms) for the title search input. */
-const SEARCH_DEBOUNCE_MS = 250
+import { validateIssueSearch } from '@/lib/issue-search'
+import type { Issue } from '@/types/issue'
 
 /**
  * Issues view — the team-scoped grouped issues list with server-side
@@ -36,6 +30,8 @@ const SEARCH_DEBOUNCE_MS = 250
  *   position) with accurate per-group counts (VAL-ISSUES-015–018).
  * - Filter bar: status / priority / assignee (incl. Unassigned) / label, all
  *   applied server-side and composed with AND semantics (VAL-ISSUES-019–024).
+ * - Filters live in the URL so the list↔board toggle preserves scope + filters
+ *   (VAL-BOARD-005).
  * - Title search is a case-insensitive substring, debounced (VAL-ISSUES-025).
  * - Sort by created (default newest-first) / updated / priority (VAL-ISSUES-026–028).
  * - Long lists paginate via "load more"; total matches the backend total
@@ -44,6 +40,7 @@ const SEARCH_DEBOUNCE_MS = 250
  * - Polls on a short interval so the list stays fresh (VAL-ISSUES-049).
  */
 export const Route = createFileRoute('/_authed/$team/issues')({
+  validateSearch: validateIssueSearch,
   component: IssuesView,
 })
 
@@ -55,17 +52,9 @@ function IssuesView() {
   // while still refetching for freshness (VAL-ISSUES-030, VAL-ISSUES-048).
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
 
-  // Filter/search/sort state. The search input is immediate (responsive UI);
-  // a debounced copy feeds the query so typing doesn't fire a request per key.
-  const [searchInput, setSearchInput] = useState('')
-  const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_MS)
-  const [params, setParams] = useState<IssuesQueryParams>({ sort: DEFAULT_SORT_KEY })
-
-  // Effective params object passed to the query (stable per debounced value).
-  const queryParams: IssuesQueryParams = useMemo(
-    () => ({ ...params, search: debouncedSearch }),
-    [params, debouncedSearch],
-  )
+  const urlSearch = Route.useSearch()
+  const { params: queryParams, searchInput, setSearchInput, setParams, clear, hasActive, urlSearch: rawSearch } =
+    useIssueFilters(urlSearch)
 
   const { data: teamsData, isLoading: teamsLoading } = useTeams()
   const { data: user } = useUser()
@@ -101,14 +90,6 @@ function IssuesView() {
     projects.map((p) => [p.id, p.name]),
   )
 
-  const hasActive = hasActiveIssueFilters(queryParams)
-  const handleParamsChange = (patch: Partial<IssuesQueryParams>) =>
-    setParams((prev) => ({ ...prev, ...patch }))
-  const handleClear = () => {
-    setParams({ sort: DEFAULT_SORT_KEY })
-    setSearchInput('')
-  }
-
   const initialLoading =
     teamsLoading || (teamId ? issuesQuery.isLoading || statesQuery.isLoading : true)
 
@@ -116,7 +97,10 @@ function IssuesView() {
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-6 py-3">
-        <h1 className="text-base font-semibold text-foreground">Issues</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-base font-semibold text-foreground">Issues</h1>
+          <ViewToggle teamKey={teamKey ?? ''} active="list" search={rawSearch} />
+        </div>
         <Button
           size="sm"
           onClick={() => setCreateOpen(true)}
@@ -136,8 +120,8 @@ function IssuesView() {
             params={queryParams}
             searchInput={searchInput}
             onSearchInputChange={setSearchInput}
-            onParamsChange={handleParamsChange}
-            onClear={handleClear}
+            onParamsChange={setParams}
+            onClear={clear}
             hasActive={hasActive}
             workflowStates={workflowStates}
             labels={labels}
@@ -164,7 +148,7 @@ function IssuesView() {
               title="No matching issues"
               description="No issues match the current filters. Try adjusting or clearing them."
               action={
-                <Button size="sm" variant="outline" onClick={handleClear}>
+                <Button size="sm" variant="outline" onClick={clear}>
                   Clear filters
                 </Button>
               }
