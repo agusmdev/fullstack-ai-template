@@ -14,10 +14,10 @@ from app.modules.projects.service import ProjectService
 from app.modules.teams.models import TeamRole
 from app.repositories.exceptions import ForbiddenError, NotFoundError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_user_id():
@@ -76,6 +76,7 @@ def service(mock_project_repository, mock_team_service):
 # Model tests
 # ---------------------------------------------------------------------------
 
+
 class TestProjectModel:
     def test_project_table_registered(self):
         from app.database.base import Base
@@ -111,6 +112,7 @@ class TestProjectModel:
 # ---------------------------------------------------------------------------
 # get_all_paginated
 # ---------------------------------------------------------------------------
+
 
 class TestGetAllPaginated:
     async def test_scopes_to_user_teams(
@@ -168,9 +170,7 @@ class TestGetAllPaginated:
             return_value=[sample_team_id]
         )
         mock_project_repository.get_all_paginated = AsyncMock(
-            return_value=SimpleNamespace(
-                items=[], total=0, page=1, size=50, pages=1
-            )
+            return_value=SimpleNamespace(items=[], total=0, page=1, size=50, pages=1)
         )
 
         result = await service.get_all_paginated(
@@ -183,6 +183,7 @@ class TestGetAllPaginated:
 # ---------------------------------------------------------------------------
 # get_by_id
 # ---------------------------------------------------------------------------
+
 
 class TestGetById:
     async def test_returns_project_for_member(
@@ -225,6 +226,7 @@ class TestGetById:
 # ---------------------------------------------------------------------------
 # create
 # ---------------------------------------------------------------------------
+
 
 class TestCreate:
     async def test_requires_member_role(
@@ -383,9 +385,7 @@ class TestCreate:
         mock_project_repository.create = AsyncMock(return_value=project_obj)
 
         await service.create(
-            ProjectCreate(
-                team_id=sample_team_id, name="P", target_date=target
-            ),
+            ProjectCreate(team_id=sample_team_id, name="P", target_date=target),
             user_id=sample_user_id,
         )
 
@@ -396,6 +396,7 @@ class TestCreate:
 # ---------------------------------------------------------------------------
 # update
 # ---------------------------------------------------------------------------
+
 
 class TestUpdate:
     async def test_update_member_enforced(
@@ -537,6 +538,7 @@ class TestUpdate:
 # ---------------------------------------------------------------------------
 # delete
 # ---------------------------------------------------------------------------
+
 
 class TestDelete:
     async def test_delete_member_enforced(

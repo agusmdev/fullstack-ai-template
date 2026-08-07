@@ -162,6 +162,7 @@ export function useCreateIssue() {
         priority: input.priority,
         assignee_id: input.assignee_id,
         label_ids: input.label_ids,
+        parent_id: input.parent_id,
       }
       return api.post<Issue>(API.ISSUES.CREATE, payload)
     },
@@ -224,6 +225,10 @@ export function useCreateIssue() {
     },
     onSettled: (_data, _error, input) => {
       void qc.invalidateQueries({ queryKey: queryKeys.issues.list(input.team_id) })
+      // If a sub-issue was created, refresh the parent's sub-issues panel.
+      if (input.parent_id) {
+        void qc.invalidateQueries({ queryKey: ['issues', 'subIssues'] })
+      }
     },
   })
 }
@@ -335,6 +340,52 @@ export function useIssue(issueId: string | undefined, initialIssue?: Issue) {
   })
 }
 
+/**
+ * Fetch the children (sub-issues) of a parent issue
+ * (`GET /issues?parent_id=<id>&team_id=<team>`).
+ *
+ * Used by the SubIssuesPanel in the detail drawer and the list nesting. Polls
+ * on a short interval so child counts and progress stay fresh (VAL-SUBISSUES-006).
+ */
+export function useSubIssues(
+  parentId: string | undefined,
+  teamId: string | undefined,
+) {
+  return useQuery<IssuesResponse, Error>({
+    queryKey: queryKeys.issues.subIssues(parentId!),
+    queryFn: () => {
+      const sp = new URLSearchParams()
+      sp.set('team_id', teamId!)
+      sp.set('parent_id', parentId!)
+      sp.set('size', '100')
+      return api.get<IssuesResponse>(`${API.ISSUES.LIST}?${sp.toString()}`)
+    },
+    enabled: !!parentId && !!teamId && isAuthenticated(),
+    refetchInterval: ISSUES_REFETCH_INTERVAL,
+    refetchOnWindowFocus: true,
+  })
+}
+
+/**
+ * Fetch the team's **top-level** issues (``parent_id IS NULL``) for the
+ * "link existing" sub-issue picker. Disabled until ``enabled`` is true to
+ * avoid unnecessary requests when the picker is closed.
+ */
+export function useTopLevelIssues(teamId: string | undefined, enabled = false) {
+  return useQuery<IssuesResponse, Error>({
+    queryKey: ['issues', 'topLevel', teamId],
+    queryFn: () => {
+      const sp = new URLSearchParams()
+      sp.set('team_id', teamId!)
+      sp.set('top_level', 'true')
+      sp.set('size', '100')
+      return api.get<IssuesResponse>(`${API.ISSUES.LIST}?${sp.toString()}`)
+    },
+    enabled: !!teamId && enabled && isAuthenticated(),
+    staleTime: 10_000,
+  })
+}
+
 // --- Update (inline edits + picker changes) ------------------------------
 
 /** Snapshot of detail + list caches for rollback on an update error. */
@@ -371,6 +422,7 @@ export function useUpdateIssue() {
       if (input.assignee_id !== undefined) body.assignee_id = input.assignee_id
       if (input.project_id !== undefined) body.project_id = input.project_id
       if (input.cycle_id !== undefined) body.cycle_id = input.cycle_id
+      if (input.parent_id !== undefined) body.parent_id = input.parent_id
       return api.patch<Issue>(API.ISSUES.DETAIL(input.id), body)
     },
     onMutate: async (input) => {
@@ -415,6 +467,8 @@ export function useUpdateIssue() {
     onSettled: (_data, _error, input) => {
       void qc.invalidateQueries({ queryKey: queryKeys.issues.detail(input.id) })
       void qc.invalidateQueries({ queryKey: queryKeys.issues.list(input.team_id) })
+      // Refresh any open sub-issues panel (attach/detach changes child sets).
+      void qc.invalidateQueries({ queryKey: ['issues', 'subIssues'] })
     },
   })
 }

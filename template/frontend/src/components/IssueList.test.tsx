@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { IssueList, groupIssuesByStatus } from './IssueList'
 import type { Issue } from '@/types/issue'
 import type { WorkflowState } from '@/types/workflow-state'
@@ -12,7 +12,7 @@ const states: WorkflowState[] = [
   { id: 's-canceled', team_id: 't', name: 'Canceled', type: 'canceled', position: 4, color: '#eee' },
 ]
 
-function makeIssue(id: string, statusId: string, title: string, identifier: string): Issue {
+function makeIssue(id: string, statusId: string, title: string, identifier: string, parentId: string | null = null): Issue {
   return {
     id,
     team_id: 't',
@@ -25,7 +25,7 @@ function makeIssue(id: string, statusId: string, title: string, identifier: stri
     creator_id: 'u',
     project_id: null,
     cycle_id: null,
-    parent_id: null,
+    parent_id: parentId,
     sort_order: 0,
     estimate: null,
     due_date: null,
@@ -74,6 +74,19 @@ describe('groupIssuesByStatus', () => {
     expect(backlog.issues).toHaveLength(2)
     expect(progress.issues).toHaveLength(1)
   })
+
+  it('includes all issues in status groups (board uses this)', () => {
+    const issues = [
+      makeIssue('parent', 's-backlog', 'Parent', 'T-1'),
+      makeIssue('child', 's-progress', 'Child', 'T-2', 'parent'),
+    ]
+    const groups = groupIssuesByStatus(issues, states)
+    const backlog = groups.find((g) => g.state.name === 'Backlog')!
+    const progress = groups.find((g) => g.state.name === 'In Progress')!
+    // Both parent and child are grouped by their own status (board behavior).
+    expect(backlog.issues.map((i) => i.id)).toEqual(['parent'])
+    expect(progress.issues.map((i) => i.id)).toEqual(['child'])
+  })
 })
 
 describe('IssueList', () => {
@@ -105,5 +118,55 @@ describe('IssueList', () => {
     const issues = [makeIssue('1', 's-backlog', 'First', 'ENG-1')]
     render(<IssueList issues={issues} workflowStates={states} />)
     expect(screen.getByText('ENG-1')).toBeInTheDocument()
+  })
+
+  it('renders children nested under their parent (VAL-SUBISSUES-002)', () => {
+    const issues = [
+      makeIssue('parent', 's-backlog', 'Parent issue', 'T-1'),
+      makeIssue('child1', 's-progress', 'Child one', 'T-2', 'parent'),
+      makeIssue('child2', 's-done', 'Child two', 'T-3', 'parent'),
+    ]
+    render(<IssueList issues={issues} workflowStates={states} />)
+
+    // The parent and both children should all be visible (expanded by default).
+    expect(screen.getByText('Parent issue')).toBeInTheDocument()
+    expect(screen.getByText('Child one')).toBeInTheDocument()
+    expect(screen.getByText('Child two')).toBeInTheDocument()
+    // The child count badge shows "2".
+    expect(screen.getByText('2')).toBeInTheDocument()
+  })
+
+  it('collapse toggle hides children (VAL-SUBISSUES-002)', () => {
+    const issues = [
+      makeIssue('parent', 's-backlog', 'Parent issue', 'T-1'),
+      makeIssue('child1', 's-progress', 'Child one', 'T-2', 'parent'),
+    ]
+    render(<IssueList issues={issues} workflowStates={states} />)
+
+    // Children visible by default.
+    expect(screen.getByText('Child one')).toBeInTheDocument()
+
+    // Click the collapse toggle.
+    const toggle = screen.getByLabelText('Collapse sub-issues')
+    fireEvent.click(toggle)
+
+    // Child is now hidden.
+    expect(screen.queryByText('Child one')).not.toBeInTheDocument()
+    // The expand toggle is now available.
+    expect(screen.getByLabelText('Expand sub-issues')).toBeInTheDocument()
+  })
+
+  it('onSelectIssue fires for both parent and child rows', () => {
+    const onSelect = vi.fn()
+    const issues = [
+      makeIssue('parent', 's-backlog', 'Parent issue', 'T-1'),
+      makeIssue('child', 's-progress', 'Child issue', 'T-2', 'parent'),
+    ]
+    render(<IssueList issues={issues} workflowStates={states} onSelectIssue={onSelect} />)
+
+    fireEvent.click(screen.getByText('Child issue'))
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'child' }),
+    )
   })
 })

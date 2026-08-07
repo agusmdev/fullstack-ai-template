@@ -15,6 +15,8 @@ interface IssueRowProps {
   projectName?: string | null
   /** Called when the row is activated (click / Enter) to open the detail drawer. */
   onSelect?: (issue: Issue) => void
+  /** Indentation level for nested sub-issues (0 = top-level, 1 = child). */
+  indent?: number
   className?: string
 }
 
@@ -28,7 +30,7 @@ interface IssueRowProps {
  * Issues in a terminal status (completed/canceled) render muted with a
  * strikethrough title (VAL-ISSUES-044).
  */
-export function IssueRow({ issue, assigneeName, isTerminal, projectName, onSelect, className }: IssueRowProps) {
+export function IssueRow({ issue, assigneeName, isTerminal, projectName, onSelect, indent = 0, className }: IssueRowProps) {
   const optimistic = isOptimisticIssue(issue)
   const interactive = !!onSelect
   const initials =
@@ -55,10 +57,12 @@ export function IssueRow({ issue, assigneeName, isTerminal, projectName, onSelec
             }
           : undefined
       }
+      style={indent > 0 ? { marginLeft: `${indent * 24}px` } : undefined}
       className={cn(
         'group flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 transition-colors',
         interactive && 'cursor-pointer hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
         optimistic && 'opacity-60',
+        indent > 0 && 'border-l-2 border-l-primary/30',
         className,
       )}
     >

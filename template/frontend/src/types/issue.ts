@@ -173,6 +173,8 @@ export interface CreateIssueInput {
   priority: number
   assignee_id?: string | null
   label_ids?: string[]
+  /** Parent issue id to create this issue as a sub-issue (VAL-SUBISSUES-001). */
+  parent_id?: string | null
   /** Optimistic-only: resolved labels for instant display. Not serialized. */
   optimisticLabels?: Label[]
 }
@@ -192,6 +194,8 @@ export interface UpdateIssueInput {
   assignee_id?: string | null
   project_id?: string | null
   cycle_id?: string | null
+  /** Parent issue id (set to attach as sub-issue; null to detach). */
+  parent_id?: string | null
 }
 
 /**

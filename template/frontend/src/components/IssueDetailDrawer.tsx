@@ -27,6 +27,7 @@ import { LabelPicker } from '@/components/LabelPicker'
 import { ProjectPicker } from '@/components/ProjectPicker'
 import { CyclePicker } from '@/components/CyclePicker'
 import { StatusDot } from '@/components/StatusDot'
+import { SubIssuesPanel } from '@/components/SubIssuesPanel'
 import { IssueDetailDrawerSkeleton } from '@/components/IssueDetailDrawerSkeleton'
 import {
   useIssue,
@@ -60,6 +61,8 @@ interface IssueDetailDrawerProps {
   cycles: Cycle[]
   /** Known assignable members. */
   members: { id: string; name: string }[]
+  /** Called when a sub-issue is activated (opens the child's own drawer). */
+  onSelectIssue?: (issue: Issue) => void
 }
 
 /**
@@ -104,6 +107,7 @@ export function IssueDetailDrawer({
   projects,
   cycles,
   members,
+  onSelectIssue,
 }: IssueDetailDrawerProps) {
   const { data: issue, isLoading } = useIssue(open ? (issueId ?? undefined) : undefined, initialIssue)
   const updateIssue = useUpdateIssue()
@@ -441,6 +445,14 @@ export function IssueDetailDrawer({
                     ))}
                   </div>
                 )}
+
+                {/* Sub-issues panel (VAL-SUBISSUES-001/003/005/006) */}
+                <SubIssuesPanel
+                  issueId={issue.id}
+                  teamId={teamId}
+                  workflowStates={workflowStates}
+                  onSelectIssue={onSelectIssue}
+                />
 
                 {/* Metadata */}
                 <div className="mt-6 border-t border-border pt-3 text-xs text-muted-foreground">

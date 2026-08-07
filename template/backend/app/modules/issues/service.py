@@ -31,7 +31,7 @@ from app.modules.teams.service import TeamService
 from app.modules.workflows.models import WorkflowState
 from app.modules.workflows.repository import WorkflowStateRepository
 from app.repositories.base_repository import QueryOptions
-from app.repositories.exceptions import NotFoundError
+from app.repositories.exceptions import NotFoundError, ReferencedError
 from app.services.base_crud_service import BaseService
 
 
@@ -138,6 +138,44 @@ class IssueService(BaseService[Issue]):
         if cycle is None or cycle.team_id != team_id:
             raise NotFoundError(detail=f"Cycle '{cycle_id}' not found")
 
+    async def _validate_parent_in_team(
+        self, parent_id: uuid.UUID, team_id: uuid.UUID
+    ) -> Issue:
+        """Verify the parent issue exists and belongs to ``team_id``.
+
+        Returns the parent issue so callers can traverse its ancestry for cycle
+        detection. A 404 (NotFound) is raised rather than 403 so a foreign-team
+        issue's existence is never leaked (consistent with cross-team denial).
+        """
+        parent = await self.repo.get(parent_id, raise_error=False)
+        if parent is None or parent.team_id != team_id:
+            raise NotFoundError(detail=f"Parent issue '{parent_id}' not found")
+        return parent
+
+    async def _check_no_cycle(
+        self, issue_id: uuid.UUID, proposed_parent_id: uuid.UUID, team_id: uuid.UUID
+    ) -> None:
+        """Reject a parent assignment that would create a circular reference.
+
+        Walks up the parent chain from ``proposed_parent_id``. If ``issue_id``
+        is found among the ancestors, the assignment would create a cycle and a
+        :class:`ReferencedError` (400) is raised. The walk is bounded to a
+        reasonable depth as a safety net against pathological chains.
+        """
+        current = proposed_parent_id
+        depth = 0
+        max_depth = 100
+        while current is not None and depth < max_depth:
+            if current == issue_id:
+                raise ReferencedError(
+                    detail="Setting this parent would create a circular reference"
+                )
+            ancestor = await self.repo.get(current, raise_error=False)
+            if ancestor is None or ancestor.team_id != team_id:
+                break
+            current = ancestor.parent_id
+            depth += 1
+
     # ------------------------------------------------------------------
     # Read (team-scoped)
     # ------------------------------------------------------------------
@@ -151,12 +189,16 @@ class IssueService(BaseService[Issue]):
         team_id: uuid.UUID | None = None,
         label_id: uuid.UUID | None = None,
         unassigned: bool | None = None,
+        parent_id: uuid.UUID | None = None,
+        top_level: bool | None = None,
     ) -> Page[Issue]:
         """List issues for the user's teams, eager-loading labels (no N+1).
 
         Supports optional ``team_id`` (restrict to one team), ``label_id``
-        (filter by M2M label membership via subquery), and ``unassigned`` (filter
-        to issues with no assignee — VAL-ISSUES-021).
+        (filter by M2M label membership via subquery), ``unassigned`` (filter
+        to issues with no assignee — VAL-ISSUES-021), ``parent_id`` (fetch the
+        children of a specific parent issue — VAL-SUBISSUES-001), and
+        ``top_level`` (filter to issues with no parent — parent_id IS NULL).
         """
         team_ids = await self.team_service.get_team_ids_for_user(user_id)
         if team_id is not None:
@@ -179,6 +221,10 @@ class IssueService(BaseService[Issue]):
             )
         if unassigned:
             base_query = base_query.where(Issue.assignee_id.is_(None))
+        if parent_id is not None:
+            base_query = base_query.where(Issue.parent_id == parent_id)
+        if top_level:
+            base_query = base_query.where(Issue.parent_id.is_(None))
         opts = QueryOptions(base_query=base_query)
         return await self.repo.get_all_paginated(pagination_params, entity_filter, opts)
 
@@ -236,6 +282,12 @@ class IssueService(BaseService[Issue]):
             for lid in label_ids:
                 await self._validate_label_in_team(lid, team_id)
 
+        # Validate the parent issue (sub-issues) belongs to the same team
+        # (defense-in-depth — VAL-SUBISSUES-001).
+        parent_id = getattr(entity, "parent_id", None)
+        if parent_id is not None:
+            await self._validate_parent_in_team(parent_id, team_id)
+
         # Allocate identifier (atomic; held until create commits).
         identifier = await self.repo.allocate_identifier(team_id)
 
@@ -285,6 +337,17 @@ class IssueService(BaseService[Issue]):
         cycle_id = getattr(entity, "cycle_id", None)
         if cycle_id is not None:
             await self._validate_cycle_in_team(cycle_id, issue.team_id)
+
+        # Validate parent_id (sub-issues): must belong to the same team, cannot
+        # be the issue itself, and must not create a circular reference
+        # (VAL-SUBISSUES-001, VAL-SUBISSUES-005). A None parent_id (clear) is
+        # always valid — it detaches the child to top-level.
+        parent_id = getattr(entity, "parent_id", None)
+        if parent_id is not None:
+            if parent_id == entity_id:
+                raise ReferencedError(detail="An issue cannot be its own parent")
+            await self._validate_parent_in_team(parent_id, issue.team_id)
+            await self._check_no_cycle(entity_id, parent_id, issue.team_id)
 
         updated = await self.repo.update(entity_id, entity)
         # Reload to populate labels (update returns a fresh instance but

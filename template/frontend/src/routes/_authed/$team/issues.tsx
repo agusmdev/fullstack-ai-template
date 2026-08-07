@@ -261,6 +261,7 @@ function IssuesView() {
         projects={projects}
         cycles={cycles}
         members={members}
+        onSelectIssue={setSelectedIssue}
       />
     </div>
   )

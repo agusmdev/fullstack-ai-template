@@ -22,12 +22,12 @@ from app.modules.issues.models import Issue
 from app.modules.issues.schemas import IssueCreate, IssueUpdate
 from app.modules.issues.service import IssueService
 from app.modules.teams.models import TeamRole
-from app.repositories.exceptions import ForbiddenError, NotFoundError
-
+from app.repositories.exceptions import ForbiddenError, NotFoundError, ReferencedError
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_user_id():
@@ -182,6 +182,7 @@ def service(
 # Model tests
 # ---------------------------------------------------------------------------
 
+
 class TestIssueModel:
     def test_issue_table_registered(self):
         from app.database.base import Base
@@ -215,9 +216,7 @@ class TestIssueModel:
         from app.modules.labels.models import issue_label
 
         fk_targets = {
-            fk.target_fullname
-            for c in issue_label.columns
-            for fk in c.foreign_keys
+            fk.target_fullname for c in issue_label.columns for fk in c.foreign_keys
         }
         assert "issue.id" in fk_targets
         assert "label.id" in fk_targets
@@ -226,6 +225,7 @@ class TestIssueModel:
 # ---------------------------------------------------------------------------
 # get_all_paginated
 # ---------------------------------------------------------------------------
+
 
 class TestGetAllPaginated:
     async def test_scopes_to_user_teams(
@@ -331,6 +331,7 @@ class TestGetAllPaginated:
 # get_by_id
 # ---------------------------------------------------------------------------
 
+
 class TestGetById:
     async def test_returns_issue_for_member(
         self,
@@ -373,6 +374,7 @@ class TestGetById:
 # create
 # ---------------------------------------------------------------------------
 
+
 class TestCreate:
     async def test_requires_member_role(
         self,
@@ -388,9 +390,7 @@ class TestCreate:
         mock_workflow_state_repository.get_all = AsyncMock(
             return_value=[workflow_state_obj]
         )
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
 
         await service.create(
@@ -416,9 +416,7 @@ class TestCreate:
         mock_workflow_state_repository.get_all = AsyncMock(
             return_value=[workflow_state_obj]
         )
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-42"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-42")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
 
         await service.create(
@@ -446,9 +444,7 @@ class TestCreate:
         mock_workflow_state_repository.get_all = AsyncMock(
             return_value=[workflow_state_obj]
         )
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
 
         await service.create(
@@ -474,15 +470,11 @@ class TestCreate:
         """When status_id is provided, the default resolution is skipped."""
         custom_status = uuid.UUID("77777777-7777-7777-7777-777777777777")
         mock_workflow_state_repository.get_all = AsyncMock(return_value=[])
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
 
         await service.create(
-            IssueCreate(
-                team_id=sample_team_id, title="Test", status_id=custom_status
-            ),
+            IssueCreate(team_id=sample_team_id, title="Test", status_id=custom_status),
             user_id=sample_user_id,
         )
 
@@ -505,9 +497,7 @@ class TestCreate:
         mock_workflow_state_repository.get_all = AsyncMock(
             return_value=[workflow_state_obj]
         )
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
 
         await service.create(
@@ -524,7 +514,6 @@ class TestCreate:
         sample_user_id,
     ):
         """Creating without a team_id should raise NotFoundError."""
-        from app.modules.issues.schemas import IssueCreate as IC
 
         # We can't create a valid IssueCreate without team_id, so test the path
         # where team_id is explicitly None on a mock entity
@@ -551,16 +540,12 @@ class TestCreate:
         mock_workflow_state_repository.get_all = AsyncMock(
             return_value=[workflow_state_obj]
         )
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
         mock_issue_repository.get = AsyncMock(return_value=issue_obj)
 
         await service.create(
-            IssueCreate(
-                team_id=sample_team_id, title="Test", label_ids=[label_id]
-            ),
+            IssueCreate(team_id=sample_team_id, title="Test", label_ids=[label_id]),
             user_id=sample_user_id,
         )
 
@@ -572,6 +557,7 @@ class TestCreate:
 # ---------------------------------------------------------------------------
 # update
 # ---------------------------------------------------------------------------
+
 
 class TestUpdate:
     async def test_update_member_enforced(
@@ -622,6 +608,7 @@ class TestUpdate:
 # delete
 # ---------------------------------------------------------------------------
 
+
 class TestDelete:
     async def test_delete_member_enforced(
         self,
@@ -648,6 +635,7 @@ class TestDelete:
 # Labels sub-resource
 # ---------------------------------------------------------------------------
 
+
 class TestLabelsSubResource:
     async def test_add_label(
         self,
@@ -665,13 +653,9 @@ class TestLabelsSubResource:
         )
         mock_issue_repository.get = AsyncMock(return_value=issue_obj)
 
-        result = await service.add_label(
-            issue_id, label_id, user_id=sample_user_id
-        )
+        result = await service.add_label(issue_id, label_id, user_id=sample_user_id)
 
-        mock_issue_repository.add_label.assert_awaited_once_with(
-            issue_obj.id, label_id
-        )
+        mock_issue_repository.add_label.assert_awaited_once_with(issue_obj.id, label_id)
         assert result == issue_obj
 
     async def test_remove_label(
@@ -690,9 +674,7 @@ class TestLabelsSubResource:
         )
         mock_issue_repository.get = AsyncMock(return_value=issue_obj)
 
-        result = await service.remove_label(
-            issue_id, label_id, user_id=sample_user_id
-        )
+        result = await service.remove_label(issue_id, label_id, user_id=sample_user_id)
 
         mock_issue_repository.remove_label.assert_awaited_once_with(
             issue_obj.id, label_id
@@ -715,14 +697,13 @@ class TestLabelsSubResource:
         mock_issue_repository.get = AsyncMock(return_value=issue_obj)
 
         with pytest.raises(NotFoundError):
-            await service.add_label(
-                issue_id, label_id, user_id=sample_user_id
-            )
+            await service.add_label(issue_id, label_id, user_id=sample_user_id)
 
 
 # ---------------------------------------------------------------------------
 # Label role gate — guests cannot add/remove labels (VAL-CROSS-025)
 # ---------------------------------------------------------------------------
+
 
 class TestLabelRoleGate:
     async def test_add_label_403_for_guest(
@@ -856,6 +837,7 @@ class TestLabelRoleGate:
 # Cross-team field validation (defense-in-depth) in create/update
 # ---------------------------------------------------------------------------
 
+
 class TestCrossTeamFieldValidation:
     async def test_create_rejects_cross_team_status(
         self,
@@ -875,9 +857,7 @@ class TestCrossTeamFieldValidation:
                 id=foreign_status, team_id=other_team_id, name="Other"
             )
         )
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
 
         with pytest.raises(NotFoundError):
@@ -906,17 +886,13 @@ class TestCrossTeamFieldValidation:
             return_value=[workflow_state_obj]
         )
         mock_team_service.get_membership = AsyncMock(return_value=None)
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
         assignee = uuid.UUID("88888888-2222-2222-2222-222222222222")
 
         with pytest.raises(NotFoundError):
             await service.create(
-                IssueCreate(
-                    team_id=sample_team_id, title="X", assignee_id=assignee
-                ),
+                IssueCreate(team_id=sample_team_id, title="X", assignee_id=assignee),
                 user_id=sample_user_id,
             )
 
@@ -945,16 +921,12 @@ class TestCrossTeamFieldValidation:
                 id=label_id, team_id=other_team_id, name="Foreign", color=None
             )
         )
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
 
         with pytest.raises(NotFoundError):
             await service.create(
-                IssueCreate(
-                    team_id=sample_team_id, title="X", label_ids=[label_id]
-                ),
+                IssueCreate(team_id=sample_team_id, title="X", label_ids=[label_id]),
                 user_id=sample_user_id,
             )
 
@@ -975,16 +947,12 @@ class TestCrossTeamFieldValidation:
         mock_workflow_state_repository.get_all = AsyncMock(
             return_value=[workflow_state_obj]
         )
-        mock_issue_repository.allocate_identifier = AsyncMock(
-            return_value="ENG-1"
-        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-1")
         mock_issue_repository.create = AsyncMock(return_value=issue_obj)
         assignee = uuid.UUID("88888888-3333-3333-3333-333333333333")
 
         await service.create(
-            IssueCreate(
-                team_id=sample_team_id, title="X", assignee_id=assignee
-            ),
+            IssueCreate(team_id=sample_team_id, title="X", assignee_id=assignee),
             user_id=sample_user_id,
         )
 
@@ -1084,6 +1052,7 @@ class TestCrossTeamFieldValidation:
 # ---------------------------------------------------------------------------
 # Project assignment (cross-team field validation)
 # ---------------------------------------------------------------------------
+
 
 class TestProjectAssignment:
     async def test_update_assigns_same_team_project(
@@ -1211,6 +1180,7 @@ class TestProjectAssignment:
 # Cycle assignment (cross-team field validation)
 # ---------------------------------------------------------------------------
 
+
 class TestCycleAssignment:
     async def test_update_assigns_same_team_cycle(
         self,
@@ -1330,3 +1300,291 @@ class TestCycleAssignment:
 
         mock_cycle_repository.get.assert_not_awaited()
         mock_issue_repository.update.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Sub-issues: parent_id validation, cycle detection, filtering
+# ---------------------------------------------------------------------------
+
+
+class TestSubIssues:
+    """Tests for the parent_id self-reference (sub-issues).
+
+    Covers:
+      - Create with a valid same-team parent succeeds.
+      - Create with a cross-team parent is rejected (404, no leak).
+      - Update setting parent_id validates same team + not self + no cycle.
+      - Update clearing parent_id (None) detaches the child (no validation).
+      - Self-reference (parent_id == issue id) is rejected.
+      - Circular reference (A→B→A) is rejected.
+      - List filtering by parent_id / top_level.
+    """
+
+    async def test_create_with_valid_parent(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        mock_workflow_state_repository,
+        workflow_state_obj,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Creating an issue with a same-team parent_id succeeds."""
+        mock_workflow_state_repository.get_all = AsyncMock(
+            return_value=[workflow_state_obj]
+        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-2")
+        mock_issue_repository.create = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=issue_id, team_id=sample_team_id, parent_id=None
+            )
+        )
+
+        await service.create(
+            IssueCreate(team_id=sample_team_id, title="Child", parent_id=issue_id),
+            user_id=sample_user_id,
+        )
+
+        mock_issue_repository.create.assert_awaited_once()
+
+    async def test_create_rejects_cross_team_parent(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        mock_workflow_state_repository,
+        workflow_state_obj,
+        sample_user_id,
+        sample_team_id,
+        other_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """A parent from another team is rejected on create (404, no leak)."""
+        mock_workflow_state_repository.get_all = AsyncMock(
+            return_value=[workflow_state_obj]
+        )
+        mock_issue_repository.allocate_identifier = AsyncMock(return_value="ENG-2")
+        mock_issue_repository.create = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=issue_id, team_id=other_team_id, parent_id=None
+            )
+        )
+
+        with pytest.raises(NotFoundError):
+            await service.create(
+                IssueCreate(team_id=sample_team_id, title="Child", parent_id=issue_id),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.create.assert_not_awaited()
+
+    async def test_update_sets_same_team_parent(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Updating parent_id to a same-team issue succeeds."""
+        parent_id = uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=parent_id, team_id=sample_team_id, parent_id=None
+            )
+        )
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service.update(
+            issue_id,
+            IssueUpdate(parent_id=parent_id),
+            user_id=sample_user_id,
+        )
+
+        mock_issue_repository.update.assert_awaited_once()
+
+    async def test_update_clearing_parent_skips_validation(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Setting parent_id to None (detach) does not trigger validation."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service.update(
+            issue_id, IssueUpdate(parent_id=None), user_id=sample_user_id
+        )
+
+        mock_issue_repository.update.assert_awaited_once()
+
+    async def test_update_rejects_self_reference(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """An issue cannot be its own parent."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        with pytest.raises(ReferencedError):
+            await service.update(
+                issue_id,
+                IssueUpdate(parent_id=issue_id),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.update.assert_not_awaited()
+
+    async def test_update_rejects_circular_reference(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Setting parent_id to a descendant is rejected (cycle guard).
+
+        Scenario: issue being updated = A; proposed parent = B where B's
+        parent is A. Walking B's ancestry hits A → cycle.
+        """
+        child_id = uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        # get() validates the parent (B); B's parent_id points to A.
+        mock_issue_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=child_id,
+                team_id=sample_team_id,
+                parent_id=issue_id,
+            )
+        )
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        with pytest.raises(ReferencedError):
+            await service.update(
+                issue_id,
+                IssueUpdate(parent_id=child_id),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.update.assert_not_awaited()
+
+    async def test_update_rejects_cross_team_parent(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        other_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """A parent from another team is rejected on update (404, no leak)."""
+        parent_id = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(
+            return_value=SimpleNamespace(
+                id=parent_id, team_id=other_team_id, parent_id=None
+            )
+        )
+
+        with pytest.raises(NotFoundError):
+            await service.update(
+                issue_id,
+                IssueUpdate(parent_id=parent_id),
+                user_id=sample_user_id,
+            )
+
+        mock_issue_repository.update.assert_not_awaited()
+
+    async def test_list_filters_by_parent_id(
+        self,
+        service,
+        mock_issue_repository,
+        mock_team_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """``parent_id`` filter is passed through to the query."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get_all_paginated = AsyncMock(
+            return_value=SimpleNamespace(
+                items=[issue_obj], total=1, page=1, size=50, pages=1
+            )
+        )
+
+        await service.get_all_paginated(
+            Params(), user_id=sample_user_id, parent_id=issue_id
+        )
+
+        args, _kwargs = mock_issue_repository.get_all_paginated.await_args
+        opts = args[2]
+        assert opts is not None
+        assert opts.base_query is not None
+
+    async def test_list_top_level_filter(
+        self,
+        service,
+        mock_issue_repository,
+        mock_team_service,
+        sample_user_id,
+        sample_team_id,
+        issue_obj,
+    ):
+        """``top_level`` filter restricts to issues with no parent."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get_all_paginated = AsyncMock(
+            return_value=SimpleNamespace(
+                items=[issue_obj], total=1, page=1, size=50, pages=1
+            )
+        )
+
+        await service.get_all_paginated(
+            Params(), user_id=sample_user_id, top_level=True
+        )
+
+        args, _kwargs = mock_issue_repository.get_all_paginated.await_args
+        opts = args[2]
+        assert opts is not None
+        assert opts.base_query is not None

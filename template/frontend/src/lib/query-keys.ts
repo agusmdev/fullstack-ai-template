@@ -51,6 +51,8 @@ export const queryKeys = {
       return ['issues', 'list']
     },
     detail: (id: string) => ['issues', 'detail', id] as const,
+    /** Children of a parent issue (sub-issues). */
+    subIssues: (parentId: string) => ['issues', 'subIssues', parentId] as const,
   },
   views: {
     all: ['views'] as const,

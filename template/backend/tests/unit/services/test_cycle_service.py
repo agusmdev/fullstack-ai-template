@@ -15,10 +15,10 @@ from app.modules.cycles.service import CycleService
 from app.modules.teams.models import TeamRole
 from app.repositories.exceptions import ForbiddenError, NotFoundError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_user_id():
@@ -61,6 +61,7 @@ def service(mock_cycle_repository, mock_team_service):
 # Model tests
 # ---------------------------------------------------------------------------
 
+
 class TestCycleModel:
     def test_cycle_table_registered(self):
         from app.database.base import Base
@@ -98,6 +99,7 @@ class TestCycleModel:
 # ---------------------------------------------------------------------------
 # Schema tests (date-window validation)
 # ---------------------------------------------------------------------------
+
 
 class TestCycleSchemas:
     def test_create_requires_name_start_end(self):
@@ -159,6 +161,7 @@ class TestCycleSchemas:
 # get_all_paginated
 # ---------------------------------------------------------------------------
 
+
 class TestGetAllPaginated:
     async def test_scopes_to_user_teams(
         self,
@@ -205,6 +208,7 @@ class TestGetAllPaginated:
 # get_by_id
 # ---------------------------------------------------------------------------
 
+
 class TestGetById:
     async def test_returns_cycle_for_member(
         self,
@@ -246,6 +250,7 @@ class TestGetById:
 # ---------------------------------------------------------------------------
 # create
 # ---------------------------------------------------------------------------
+
 
 class TestCreate:
     async def test_requires_member_role(
@@ -312,6 +317,7 @@ class TestCreate:
 # ---------------------------------------------------------------------------
 # update
 # ---------------------------------------------------------------------------
+
 
 class TestUpdate:
     async def test_update_member_enforced(
@@ -394,6 +400,7 @@ class TestUpdate:
 # ---------------------------------------------------------------------------
 # delete
 # ---------------------------------------------------------------------------
+
 
 class TestDelete:
     async def test_delete_member_enforced(

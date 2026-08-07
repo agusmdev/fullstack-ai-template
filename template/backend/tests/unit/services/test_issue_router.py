@@ -136,6 +136,20 @@ class TestList:
         _args, kwargs = service.get_all_paginated.await_args
         assert kwargs["unassigned"] is True
 
+    def test_passes_parent_id(self, client, service, issue_id):
+        """The ``parent_id`` query param is forwarded to fetch children (VAL-SUBISSUES-001)."""
+        client.get("/issues", params={"parent_id": str(issue_id)})
+
+        _args, kwargs = service.get_all_paginated.await_args
+        assert kwargs["parent_id"] == issue_id
+
+    def test_passes_top_level_flag(self, client, service):
+        """The ``top_level`` query param is forwarded to the service."""
+        client.get("/issues", params={"top_level": "true"})
+
+        _args, kwargs = service.get_all_paginated.await_args
+        assert kwargs["top_level"] is True
+
     def test_unassigned_defaults_to_none(self, client, service):
         """When ``unassigned`` is absent, the service receives ``None`` (no filter)."""
         client.get("/issues")
@@ -184,9 +198,7 @@ class TestCreate:
         assert kwargs["user_id"] == user_id
 
     def test_rejects_missing_title(self, client, team_id):
-        response = client.post(
-            "/issues", json={"team_id": str(team_id)}
-        )
+        response = client.post("/issues", json={"team_id": str(team_id)})
 
         assert response.status_code == 422
 
@@ -215,9 +227,7 @@ class TestCreate:
 
 class TestUpdate:
     def test_updates_issue(self, client, service, issue_id):
-        response = client.patch(
-            f"/issues/{issue_id}", json={"title": "Updated title"}
-        )
+        response = client.patch(f"/issues/{issue_id}", json={"title": "Updated title"})
 
         assert response.status_code == 200
         service.update.assert_awaited_once()
@@ -236,9 +246,7 @@ class TestLabelsSubResource:
         response = client.post(f"/issues/{issue_id}/labels/{label_id}")
 
         assert response.status_code == 200
-        service.add_label.assert_awaited_once_with(
-            issue_id, label_id, user_id=user_id
-        )
+        service.add_label.assert_awaited_once_with(issue_id, label_id, user_id=user_id)
 
     def test_remove_label(self, client, service, issue_id, label_id, user_id):
         response = client.delete(f"/issues/{issue_id}/labels/{label_id}")

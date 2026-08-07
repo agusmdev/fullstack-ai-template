@@ -243,6 +243,7 @@ function BoardView() {
         projects={projects}
         cycles={cycles}
         members={members}
+        onSelectIssue={setSelectedIssue}
       />
     </div>
   )

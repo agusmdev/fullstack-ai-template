@@ -14,6 +14,9 @@ const hooks = vi.hoisted(() => ({
   useDeleteIssue: vi.fn(),
   useAddIssueLabel: vi.fn(),
   useRemoveIssueLabel: vi.fn(),
+  useSubIssues: vi.fn(),
+  useCreateIssue: vi.fn(),
+  useTopLevelIssues: vi.fn(),
 }))
 
 vi.mock('@/hooks/useIssues', () => ({
@@ -22,6 +25,9 @@ vi.mock('@/hooks/useIssues', () => ({
   useDeleteIssue: hooks.useDeleteIssue,
   useAddIssueLabel: hooks.useAddIssueLabel,
   useRemoveIssueLabel: hooks.useRemoveIssueLabel,
+  useSubIssues: hooks.useSubIssues,
+  useCreateIssue: hooks.useCreateIssue,
+  useTopLevelIssues: hooks.useTopLevelIssues,
 }))
 
 const noopMutation = {
@@ -94,6 +100,9 @@ describe('IssueDetailDrawer', () => {
     hooks.useDeleteIssue.mockReturnValue({ ...noopMutation })
     hooks.useAddIssueLabel.mockReturnValue({ ...noopMutation })
     hooks.useRemoveIssueLabel.mockReturnValue({ ...noopMutation })
+    hooks.useSubIssues.mockReturnValue({ data: undefined, isLoading: false })
+    hooks.useCreateIssue.mockReturnValue({ ...noopMutation })
+    hooks.useTopLevelIssues.mockReturnValue({ data: undefined })
   })
 
   it('renders complete correct data on open (VAL-ISSUES-030)', () => {

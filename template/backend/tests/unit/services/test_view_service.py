@@ -13,10 +13,10 @@ from app.modules.views.schemas import ViewCreate, ViewUpdate
 from app.modules.views.service import ViewService
 from app.repositories.exceptions import ForbiddenError, NotFoundError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_user_id():
@@ -71,6 +71,7 @@ def service(mock_view_repository, mock_team_service):
 # Model tests
 # ---------------------------------------------------------------------------
 
+
 class TestViewModel:
     def test_view_table_registered(self):
         from app.database.base import Base
@@ -103,6 +104,7 @@ class TestViewModel:
 # ---------------------------------------------------------------------------
 # get_all_paginated
 # ---------------------------------------------------------------------------
+
 
 class TestGetAllPaginated:
     async def test_scopes_to_user_teams(
@@ -150,6 +152,7 @@ class TestGetAllPaginated:
 # get_by_id
 # ---------------------------------------------------------------------------
 
+
 class TestGetById:
     async def test_returns_view_for_member(
         self,
@@ -191,6 +194,7 @@ class TestGetById:
 # ---------------------------------------------------------------------------
 # create
 # ---------------------------------------------------------------------------
+
 
 class TestCreate:
     async def test_requires_member_role(
@@ -298,6 +302,7 @@ class TestCreate:
 # update
 # ---------------------------------------------------------------------------
 
+
 class TestUpdate:
     async def test_update_member_enforced(
         self,
@@ -356,6 +361,7 @@ class TestUpdate:
 # ---------------------------------------------------------------------------
 # delete
 # ---------------------------------------------------------------------------
+
 
 class TestDelete:
     async def test_delete_member_enforced(
