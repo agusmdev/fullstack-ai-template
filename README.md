@@ -2,6 +2,36 @@
 
 A CLI generator for production-ready full-stack projects with FastAPI, TanStack Start, and PostgreSQL.
 
+## Showcase: Linear Clone
+
+To validate the template end-to-end, a **production-grade Linear clone** was built directly inside [`template/`](./template/) — replacing the starter `items` example with a fast, polished, complex product. This demonstrates that the template can produce real software, not just scaffolds.
+
+The showcase app covers the full Linear experience:
+
+- **Teams & roles** — multi-team workspace (admin/member/guest), every entity team-scoped
+- **Issues** — the core entity: auto-generated per-team identifiers (`TEAM-123`), statuses, priorities, assignees, labels, estimates, due dates, full server-side filter/search/sort/pagination
+- **Projects & cycles** — group issues and run time-boxed sprints with progress tracking
+- **Board** — native HTML5 drag-and-drop kanban with optimistic status changes + rollback
+- **Views** — save and reapply filter/group-by/sort configurations
+- **Sub-issues** — parent/child nesting with aggregate progress and circular-reference guards
+- **Dependencies** — "A blocks B" with reciprocal display and circular-dependency rejection
+- **Comments** — threaded, newest-first, author-scoped edit/delete
+- **Activity** — auto-generated read-only feed of every issue change
+- **Command palette** — Cmd+K / Ctrl+K fuzzy search over navigation + quick actions
+- **Keyboard shortcuts** — `c` create, `g i` go to issues, `[` / `]` navigate, `?` help
+- **Dark mode** — light/dark/system, applied before first paint, persisted across reloads
+
+### Validation
+
+The showcase was verified against real Postgres 18 + FastAPI via browser automation (no mocks):
+
+- **192/192 behavioral assertions passed** (driven live through the real SPA)
+- **884 backend tests** passing (pytest)
+- **579 frontend tests** passing (vitest)
+- All quality gates green: ruff clean, pytest green, tsc clean, eslint clean, vitest green
+
+See [`template/README.md`](./template/README.md) for full details on the showcase app's architecture, API, and development commands.
+
 ## Features
 
 - **Backend**: FastAPI with async SQLAlchemy, 3-layer architecture (repo/service/router)
