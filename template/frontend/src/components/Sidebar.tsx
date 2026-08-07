@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { Inbox, LayoutGrid, Folder, Repeat2, Eye, ChevronsUpDown, Check } from 'lucide-react'
 import { useTeams } from '@/hooks/useTeams'
 import { SavedViews } from '@/components/SavedViews'
+import { Kbd } from '@/components/Kbd'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu,
@@ -17,10 +18,12 @@ interface NavItem {
   label: string
   icon: React.ComponentType<{ className?: string }>
   to: '/$team/issues' | '/$team/board' | '/$team/projects' | '/$team/cycles' | '/$team/views'
+  /** Optional shortcut hint surfaced next to the entry (VAL-SHORTCUTS-006). */
+  shortcut?: string
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Issues', icon: Inbox, to: '/$team/issues' },
+  { label: 'Issues', icon: Inbox, to: '/$team/issues', shortcut: 'G I' },
   { label: 'Board', icon: LayoutGrid, to: '/$team/board' },
   { label: 'Projects', icon: Folder, to: '/$team/projects' },
   { label: 'Cycles', icon: Repeat2, to: '/$team/cycles' },
@@ -106,7 +109,7 @@ export function Sidebar({ teamKey }: { teamKey?: string }) {
 
       {/* Primary navigation */}
       <nav className="flex flex-col gap-0.5 px-2 py-3" aria-label="Workspace navigation">
-        {NAV_ITEMS.map(({ label, icon: Icon, to }) => (
+        {NAV_ITEMS.map(({ label, icon: Icon, to, shortcut }) => (
           <Link
             key={to}
             to={to}
@@ -118,7 +121,8 @@ export function Sidebar({ teamKey }: { teamKey?: string }) {
             activeOptions={{ exact: false }}
           >
             <Icon className="h-4 w-4" />
-            {label}
+            <span className="flex-1">{label}</span>
+            {shortcut && <Kbd className="h-4 text-[9px]">{shortcut}</Kbd>}
           </Link>
         ))}
       </nav>

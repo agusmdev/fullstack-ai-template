@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Inbox,
@@ -7,6 +7,7 @@ import {
   Repeat2,
   Eye,
   Plus,
+  Keyboard,
 } from 'lucide-react'
 import {
   CommandDialog,
@@ -22,6 +23,7 @@ import { CreateIssueDialog } from '@/components/CreateIssueDialog'
 import { ProjectFormDialog } from '@/components/ProjectFormDialog'
 import { CycleFormDialog } from '@/components/CycleFormDialog'
 import { useCommandPalette } from '@/contexts/CommandPaletteContext'
+import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext'
 import { useTeams } from '@/hooks/useTeams'
 import { useUser } from '@/hooks/useUser'
 import { useTeamRole } from '@/hooks/useTeamRole'
@@ -42,10 +44,12 @@ interface NavEntry {
   to: NavTarget
   /** Keywords used to improve fuzzy-match relevance. */
   keywords: string[]
+  /** Optional shortcut hint surfaced in the palette (VAL-SHORTCUTS-006). */
+  shortcut?: string
 }
 
 const NAV_ENTRIES: NavEntry[] = [
-  { label: 'Issues', icon: Inbox, to: '/$team/issues', keywords: ['inbox', 'all', 'list'] },
+  { label: 'Issues', icon: Inbox, to: '/$team/issues', keywords: ['inbox', 'all', 'list'], shortcut: 'G I' },
   { label: 'Board', icon: LayoutGrid, to: '/$team/board', keywords: ['kanban', 'columns'] },
   { label: 'Projects', icon: Folder, to: '/$team/projects', keywords: ['initiatives'] },
   { label: 'Cycles', icon: Repeat2, to: '/$team/cycles', keywords: ['sprint', 'iterations'] },
@@ -83,7 +87,15 @@ export function CommandPalette({ teamKey }: { teamKey?: string }) {
     setCreateCycleOpen,
     openCreateCycle,
   } = useCommandPalette()
+  const { registerOverlay, openShortcutsHelp } = useKeyboardShortcuts()
   const navigate = useNavigate()
+
+  // While the palette is open it owns the keyboard — block single-key global
+  // shortcuts (c / g i / [ ]) so typing/search isn't shadowed by them.
+  useEffect(() => {
+    if (!paletteOpen) return
+    return registerOverlay()
+  }, [paletteOpen, registerOverlay])
 
   // Resolve team data for the create dialogs. These are the same React Query
   // keys used by the route pages, so the data is shared (no duplicate requests).
@@ -128,7 +140,7 @@ export function CommandPalette({ teamKey }: { teamKey?: string }) {
           <CommandEmpty>No results found.</CommandEmpty>
 
           <CommandGroup heading="Navigation">
-            {NAV_ENTRIES.map(({ label, icon: Icon, to, keywords }) => (
+            {NAV_ENTRIES.map(({ label, icon: Icon, to, keywords, shortcut }) => (
               <CommandItem
                 key={to}
                 value={`${label} ${keywords.join(' ')}`}
@@ -136,6 +148,7 @@ export function CommandPalette({ teamKey }: { teamKey?: string }) {
               >
                 <Icon className="h-4 w-4 text-muted-foreground" />
                 <span>{label}</span>
+                {shortcut && <CommandShortcut>{shortcut}</CommandShortcut>}
               </CommandItem>
             ))}
           </CommandGroup>
@@ -167,6 +180,14 @@ export function CommandPalette({ teamKey }: { teamKey?: string }) {
             >
               <Repeat2 className="h-4 w-4 text-muted-foreground" />
               <span>Create cycle</span>
+            </CommandItem>
+            <CommandItem
+              value="keyboard shortcuts help cheatsheet"
+              onSelect={() => runCommand(openShortcutsHelp)}
+            >
+              <Keyboard className="h-4 w-4 text-muted-foreground" />
+              <span>Keyboard shortcuts</span>
+              <CommandShortcut>?</CommandShortcut>
             </CommandItem>
           </CommandGroup>
         </CommandList>

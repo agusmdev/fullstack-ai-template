@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import { CommandPalette } from './CommandPalette'
 import { CommandPaletteProvider, useCommandPalette } from '@/contexts/CommandPaletteContext'
+import { KeyboardShortcutsProvider } from '@/contexts/KeyboardShortcutsContext'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -49,8 +50,10 @@ vi.mock('@/components/CycleFormDialog', () => ({
 function PaletteHarness({ teamKey = 'ENG' }: { teamKey?: string }) {
   return (
     <CommandPaletteProvider>
-      <OpenButton />
-      <CommandPalette teamKey={teamKey} />
+      <KeyboardShortcutsProvider teamKey={teamKey}>
+        <OpenButton />
+        <CommandPalette teamKey={teamKey} />
+      </KeyboardShortcutsProvider>
     </CommandPaletteProvider>
   )
 }

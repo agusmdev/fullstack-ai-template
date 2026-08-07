@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, useParams } from '@tanstack/react-router'
 import { Plus, Inbox, SearchX, Loader2, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { ViewToggle } from '@/components/ViewToggle'
 import { CreateIssueDialog } from '@/components/CreateIssueDialog'
 import { SaveViewDialog } from '@/components/SaveViewDialog'
 import { IssueDetailDrawer } from '@/components/IssueDetailDrawer'
+import { Kbd } from '@/components/Kbd'
 import { useTeams } from '@/hooks/useTeams'
 import { useUser } from '@/hooks/useUser'
 import { useTeamRole } from '@/hooks/useTeamRole'
@@ -20,6 +21,7 @@ import { useWorkflowStates } from '@/hooks/useWorkflowStates'
 import { useLabels } from '@/hooks/useLabels'
 import { useProjects } from '@/hooks/useProjects'
 import { useCycles } from '@/hooks/useCycles'
+import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext'
 import { validateIssueSearch } from '@/lib/issue-search'
 import type { Issue } from '@/types/issue'
 
@@ -95,6 +97,23 @@ function IssuesView() {
   const initialLoading =
     teamsLoading || (teamId ? issuesQuery.isLoading || statesQuery.isLoading : true)
 
+  // Publish the current issue order so the `[` / `]` shortcuts can move the
+  // open detail drawer to the previous / next issue (VAL-SHORTCUTS-003). Only
+  // active while the drawer is open; unregistered on close / unmount.
+  const { registerIssueNav } = useKeyboardShortcuts()
+  useEffect(() => {
+    if (!selectedIssue || issues.length === 0) return
+    const ids = issues.map((i) => i.id)
+    return registerIssueNav({
+      ids,
+      currentId: selectedIssue.id,
+      select: (id: string) => {
+        const issue = issues.find((i) => i.id === id)
+        if (issue) setSelectedIssue(issue)
+      },
+    })
+  }, [selectedIssue, issues, registerIssueNav])
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -122,10 +141,11 @@ function IssuesView() {
             size="sm"
             onClick={() => setCreateOpen(true)}
             disabled={!canWrite}
-            title={canWrite ? undefined : 'Guests have read-only access to this team'}
+            title={canWrite ? 'Create issue (C)' : 'Guests have read-only access to this team'}
           >
             <Plus className="h-4 w-4" />
             New issue
+            {canWrite && <Kbd className="ml-1">C</Kbd>}
           </Button>
         </div>
       </div>

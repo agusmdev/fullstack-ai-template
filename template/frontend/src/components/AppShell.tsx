@@ -2,7 +2,9 @@ import { Outlet, useParams } from '@tanstack/react-router'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { CommandPalette } from './CommandPalette'
+import { ShortcutsHelpDialog } from './ShortcutsHelpDialog'
 import { CommandPaletteProvider } from '@/contexts/CommandPaletteContext'
+import { KeyboardShortcutsProvider } from '@/contexts/KeyboardShortcutsContext'
 import { useTeamAccessGuard } from '@/hooks/useTeamAccessGuard'
 
 /**
@@ -18,7 +20,9 @@ import { useTeamAccessGuard } from '@/hooks/useTeamAccessGuard'
  *
  * Wraps the shell in `CommandPaletteProvider` so the Cmd+K command palette and
  * the Topbar trigger share palette state, and renders a single `CommandPalette`
- * (palette UI + hosted create dialogs) for the whole workspace.
+ * (palette UI + hosted create dialogs) for the whole workspace. A nested
+ * `KeyboardShortcutsProvider` adds the global shortcut set (c / g i / [ ] / ?)
+ * and owns the shortcuts help reference (M4).
  */
 export function AppShell() {
   const params = useParams({ strict: false })
@@ -27,16 +31,19 @@ export function AppShell() {
 
   return (
     <CommandPaletteProvider>
-      <div className="flex h-screen overflow-hidden bg-background text-foreground">
-        <Sidebar teamKey={teamKey} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar teamKey={teamKey} />
-          <main className="flex-1 overflow-auto">
-            <Outlet />
-          </main>
+      <KeyboardShortcutsProvider teamKey={teamKey}>
+        <div className="flex h-screen overflow-hidden bg-background text-foreground">
+          <Sidebar teamKey={teamKey} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Topbar teamKey={teamKey} />
+            <main className="flex-1 overflow-auto">
+              <Outlet />
+            </main>
+          </div>
         </div>
-      </div>
-      <CommandPalette teamKey={teamKey} />
+        <CommandPalette teamKey={teamKey} />
+        <ShortcutsHelpDialog />
+      </KeyboardShortcutsProvider>
     </CommandPaletteProvider>
   )
 }
