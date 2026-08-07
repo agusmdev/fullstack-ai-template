@@ -166,9 +166,9 @@ class TestSQLAlchemyRepositoryBaseQuery:
 
     def test_base_query_returns_select(self, mock_session):
         """Test that _base_query returns a select statement."""
-        from app.modules.items.repository import ItemRepository
+        from app.modules.teams.repository import TeamRepository
 
-        repo = ItemRepository(session=mock_session)
+        repo = TeamRepository(session=mock_session)
         result = repo._base_query()
 
         # Should be a select statement for the model

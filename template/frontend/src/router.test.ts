@@ -16,11 +16,25 @@ describe('getRouter', () => {
     expect(a).not.toBe(b)
   })
 
-  it('registers the root, index, login, and register routes', () => {
+  it('registers the root, index, login, register, authed, and team-scoped routes', () => {
     const router = getRouter()
     const ids = Object.keys(router.routesById)
     expect(ids).toEqual(
-      expect.arrayContaining(['__root__', '/', '/login', '/register']),
+      expect.arrayContaining([
+        '__root__',
+        '/',
+        '/login',
+        '/register',
+        '/_authed',
+        '/_authed/workspace',
+        '/_authed/$team/',
+        '/_authed/$team/issues',
+        '/_authed/$team/board',
+        '/_authed/$team/projects',
+        '/_authed/$team/cycles',
+        '/_authed/$team/views',
+        '/_authed/$team/settings',
+      ]),
     )
   })
 })
@@ -32,7 +46,18 @@ describe('routeTree (generated module)', () => {
     expect(routeTree).toBeDefined()
     const router = getRouter()
     expect(Object.keys(router.routesById)).toEqual(
-      expect.arrayContaining(['/', '/login', '/register']),
+      expect.arrayContaining([
+        '/',
+        '/login',
+        '/register',
+        '/_authed/workspace',
+        '/_authed/$team/issues',
+        '/_authed/$team/board',
+        '/_authed/$team/projects',
+        '/_authed/$team/cycles',
+        '/_authed/$team/views',
+        '/_authed/$team/settings',
+      ]),
     )
   })
 })

@@ -170,7 +170,7 @@ describe('executeAuthSubmit', () => {
 
   it('honors a custom redirect target separate from the default', async () => {
     mockFetch(200, mockSession)
-    const customRedirect = { to: '/items' as const }
+    const customRedirect = { to: '/workspace' as const }
 
     await executeAuthSubmit('/auth/login', {}, { ...baseDeps, redirect: customRedirect })
 

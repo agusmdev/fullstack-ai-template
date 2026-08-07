@@ -18,7 +18,7 @@ export const Route = createFileRoute('/login')({
 
 function Login() {
   const { redirect: redirectTo } = Route.useSearch()
-  const { submit, isLoading } = useAuthSubmit<LoginFormData>(API.AUTH.LOGIN, 'Signed in successfully', 'Login failed', { to: (redirectTo ?? '/') as '/' })
+  const { submit, isLoading } = useAuthSubmit<LoginFormData>(API.AUTH.LOGIN, 'Signed in successfully', 'Login failed', { to: (redirectTo ?? '/workspace') as '/workspace' })
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

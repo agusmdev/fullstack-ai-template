@@ -106,6 +106,15 @@ describe('ApiClient.request()', () => {
     expect(response.json).not.toHaveBeenCalled()
   })
 
+  it('returns parsed JSON on a 200 DELETE response (typed delete<T>)', async () => {
+    // The label sub-resource DELETE returns the updated entity as JSON.
+    mockFetch(200, { id: '1', labels: [] })
+
+    const result = await api.delete<{ id: string; labels: unknown[] }>('/test')
+
+    expect(result).toEqual({ id: '1', labels: [] })
+  })
+
   it('clears token and throws ApiError on 401', async () => {
     localStorage.setItem(AUTH_TOKEN_KEY, 'expired-token')
     const response = { ok: false, status: 401, json: vi.fn().mockResolvedValue({}) }

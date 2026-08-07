@@ -88,9 +88,19 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'PATCH', body: JSON.stringify(data) })
   }
 
-  delete(endpoint: string): Promise<void> {
-    // execute() validates auth/errors; we discard the body (204 No Content returns nothing).
-    return this.execute(endpoint, { method: 'DELETE' }).then(() => undefined)
+  /**
+   * DELETE request.
+   *
+   * Defaults to `void` (no body) for 204 No Content responses (e.g. deleting an
+   * entity). Pass a type argument (`api.delete<Issue>(...)`) when the endpoint
+   * returns the updated entity as JSON (e.g. the label sub-resource DELETE).
+   */
+  delete<T = void>(endpoint: string): Promise<T> {
+    return this.execute(endpoint, { method: 'DELETE' }).then(async (response) => {
+      // 204 No Content (and any empty body) has nothing to parse.
+      if (response.status === 204) return undefined as T
+      return (await response.json()) as T
+    })
   }
 }
 

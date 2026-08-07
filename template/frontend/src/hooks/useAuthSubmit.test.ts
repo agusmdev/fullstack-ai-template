@@ -117,7 +117,7 @@ describe('useAuthSubmit', () => {
   })
 
   it('passes a caller-provided redirect through untouched', async () => {
-    const customRedirect = { to: '/items' as const }
+    const customRedirect = { to: '/workspace' as const }
     const { result } = renderHook(
       () => useAuthSubmit('/auth/login', 'Signed in', 'Login failed', customRedirect),
       { wrapper },
@@ -129,7 +129,7 @@ describe('useAuthSubmit', () => {
 
     const { redirect } = executeMock.mock.calls[0][2]
     expect(redirect).toBe(customRedirect)
-    expect(redirect).toEqual({ to: '/items' })
+    expect(redirect).toEqual({ to: '/workspace' })
   })
 
   it('sets isLoading true before the orchestrator runs and false after it resolves', async () => {

@@ -2,6 +2,7 @@ import asyncio
 import secrets
 import uuid
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 from requests_oauthlib import OAuth2Session
 
@@ -31,6 +32,9 @@ from app.user.auth.schemas import (
 from app.user.models import User
 from app.user.schemas import UserCreate, UserRegister
 from app.user.service import UserService
+
+if TYPE_CHECKING:
+    from app.modules.teams.service import TeamService
 
 # Token expiration times
 PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1
@@ -81,11 +85,13 @@ class AuthService:
         repo: SessionRepository,
         password_reset_repo: PasswordResetTokenRepository,
         email_verification_repo: EmailVerificationTokenRepository,
+        team_service: "TeamService | None" = None,
     ) -> None:
         self.user_service = user_service
         self.repo = repo
         self.password_reset_repo = password_reset_repo
         self.email_verification_repo = email_verification_repo
+        self.team_service = team_service
 
         self.providers = {name: cls() for name, cls in OAUTH_PROVIDERS.items()}
 
@@ -117,7 +123,12 @@ class AuthService:
         return await self._create_session_for_user(user.id)
 
     async def register(self, new_user: UserRegister) -> SessionResponse:
-        await self.user_service.register(user=new_user)
+        user = await self.user_service.register(user=new_user)
+        if self.team_service is not None:
+            await self.team_service.create_default_team_for_user(
+                user_id=user.id,
+                display_name=user.display_name or user.email,
+            )
         return await self.authenticate(
             email=new_user.email, password=new_user.raw_password
         )

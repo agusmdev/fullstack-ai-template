@@ -32,17 +32,3 @@ def sample_user_data():
         "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "updated_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
     }
-
-
-@pytest.fixture
-def sample_item_data():
-    """Sample item data for testing."""
-    return {
-        "id": uuid.UUID("87654321-4321-8765-4321-876543218765"),
-        "name": "Test Item",
-        "description": "A test item description",
-        "quantity": 10,
-        "sku": "TEST-SKU-001",
-        "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
-        "updated_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
-    }
