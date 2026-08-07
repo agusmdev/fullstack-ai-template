@@ -469,6 +469,9 @@ export function useUpdateIssue() {
       void qc.invalidateQueries({ queryKey: queryKeys.issues.list(input.team_id) })
       // Refresh any open sub-issues panel (attach/detach changes child sets).
       void qc.invalidateQueries({ queryKey: ['issues', 'subIssues'] })
+      // Refresh the activity feed so a generated entry appears immediately
+      // (VAL-ACTIVITY-008) — polling covers external changes as a backstop.
+      void qc.invalidateQueries({ queryKey: queryKeys.activity.forIssue(input.id) })
     },
   })
 }
@@ -576,6 +579,8 @@ export function useAddIssueLabel() {
     onSettled: (_data, _error, input) => {
       void qc.invalidateQueries({ queryKey: queryKeys.issues.detail(input.id) })
       void qc.invalidateQueries({ queryKey: queryKeys.issues.list(input.team_id) })
+      // Refresh the activity feed (label_added entry) — VAL-ACTIVITY-008.
+      void qc.invalidateQueries({ queryKey: queryKeys.activity.forIssue(input.id) })
     },
   })
 }
@@ -627,6 +632,8 @@ export function useRemoveIssueLabel() {
     onSettled: (_data, _error, input) => {
       void qc.invalidateQueries({ queryKey: queryKeys.issues.detail(input.id) })
       void qc.invalidateQueries({ queryKey: queryKeys.issues.list(input.team_id) })
+      // Refresh the activity feed (label_removed entry) — VAL-ACTIVITY-008.
+      void qc.invalidateQueries({ queryKey: queryKeys.activity.forIssue(input.id) })
     },
   })
 }

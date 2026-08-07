@@ -188,6 +188,30 @@ def mock_comment_repository():
 
 
 @pytest.fixture
+def mock_activity_repository():
+    """Create a mock activity repository."""
+    repo = MagicMock()
+    repo.get = AsyncMock()
+    repo.get_by_field = AsyncMock()
+    repo.get_all = AsyncMock()
+    repo.get_all_paginated = AsyncMock()
+    repo.create = AsyncMock()
+    repo.create_many = AsyncMock()
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.upsert = AsyncMock()
+    return repo
+
+
+@pytest.fixture
+def mock_activity_service():
+    """Create a mock ActivityService for IssueService activity generation."""
+    svc = MagicMock()
+    svc.record = AsyncMock()
+    return svc
+
+
+@pytest.fixture
 def mock_issue_repository():
     """Create a mock issue repository."""
     repo = MagicMock()

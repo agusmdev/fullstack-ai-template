@@ -11,6 +11,7 @@ import {
 import { useUser } from '@/hooks/useUser'
 import { useTeams } from '@/hooks/useTeams'
 import { hasRole } from '@/types/team'
+import { formatRelativeTime } from '@/lib/format-time'
 import { cn } from '@/lib/utils'
 import type { Comment } from '@/types/comment'
 
@@ -22,21 +23,13 @@ interface CommentsThreadProps {
 }
 
 /**
- * Format an ISO timestamp into a compact, human-readable relative time. Never
- * returns `Invalid Date` — falls back to an absolute date on parse failure
- * (VAL-COMMENTS-004).
+ * Format an ISO timestamp into a compact, human-readable relative time.
+ *
+ * Re-exported under the original name for backward compatibility — the
+ * implementation lives in the shared `lib/format-time` util so comments and
+ * activity share one formatter.
  */
-export function formatCommentTime(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  const diffSec = Math.round((Date.now() - d.getTime()) / 1000)
-  if (diffSec < 60) return 'just now'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
-  if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
+export const formatCommentTime = formatRelativeTime
 
 /**
  * Comments thread — shown in the issue detail drawer.

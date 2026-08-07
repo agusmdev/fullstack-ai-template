@@ -52,4 +52,10 @@ export const API = {
     /** Used for GET / PATCH / DELETE. */
     DETAIL: (id: string) => `/comments/${id}`,
   },
+  ACTIVITY: {
+    /** Read-only activity feed (list, optionally filtered by issue_id). */
+    LIST: '/activity',
+    /** Used for GET only — activity is read-only (VAL-ACTIVITY-009). */
+    DETAIL: (id: string) => `/activity/${id}`,
+  },
 } as const

@@ -51,6 +51,11 @@ vi.mock('@/components/CommentsThread', () => ({
   CommentsThread: () => <div data-testid="comments-stub" />,
 }))
 
+// Stub the activity feed likewise (dedicated tests in ActivityFeed.test.tsx).
+vi.mock('@/components/ActivityFeed', () => ({
+  ActivityFeed: () => <div data-testid="activity-stub" />,
+}))
+
 const noopMutation = {
   mutate: vi.fn(),
   mutateAsync: vi.fn(),

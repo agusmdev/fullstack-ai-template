@@ -65,6 +65,11 @@ export const queryKeys = {
     /** The comment thread on a specific issue. */
     forIssue: (issueId: string) => ['comments', 'issue', issueId] as const,
   },
+  activity: {
+    all: ['activity'] as const,
+    /** The activity feed on a specific issue. */
+    forIssue: (issueId: string) => ['activity', 'issue', issueId] as const,
+  },
   views: {
     all: ['views'] as const,
     list: (teamId?: string) => {

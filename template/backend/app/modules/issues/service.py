@@ -13,13 +13,17 @@ Enforces:
 """
 
 import uuid
+from typing import Any
 
 from fastapi_filter.base.filter import BaseFilterModel
 from fastapi_pagination import Page, Params
+from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.modules.activity import models as activity_models
+from app.modules.activity.service import ActivityService
 from app.modules.cycles.repository import CycleRepository
 from app.modules.issues.models import Issue
 from app.modules.issues.repository import IssueRepository
@@ -33,6 +37,7 @@ from app.modules.workflows.repository import WorkflowStateRepository
 from app.repositories.base_repository import QueryOptions
 from app.repositories.exceptions import NotFoundError, ReferencedError
 from app.services.base_crud_service import BaseService
+from app.user.repository import UserRepository
 
 
 class IssueService(BaseService[Issue]):
@@ -44,6 +49,8 @@ class IssueService(BaseService[Issue]):
     label_repo: LabelRepository
     project_repo: ProjectRepository
     cycle_repo: CycleRepository
+    activity_service: ActivityService | None
+    user_repo: UserRepository | None
 
     def __init__(
         self,
@@ -53,6 +60,8 @@ class IssueService(BaseService[Issue]):
         label_repo: LabelRepository,
         project_repo: ProjectRepository,
         cycle_repo: CycleRepository,
+        activity_service: ActivityService | None = None,
+        user_repo: UserRepository | None = None,
     ) -> None:
         self.repo = repo
         self.team_service = team_service
@@ -60,6 +69,13 @@ class IssueService(BaseService[Issue]):
         self.label_repo = label_repo
         self.project_repo = project_repo
         self.cycle_repo = cycle_repo
+        # Activity generation is an auto-generated, read-only side-effect of
+        # issue mutations. It is optional (default None) so the service remains
+        # unit-testable in isolation and robust to an activity outage — when not
+        # wired, mutations still succeed; the factory always injects both in the
+        # running app.
+        self.activity_service = activity_service
+        self.user_repo = user_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -175,6 +191,135 @@ class IssueService(BaseService[Issue]):
                 break
             current = ancestor.parent_id
             depth += 1
+
+    # ------------------------------------------------------------------
+    # Activity generation (auto-generated, read-only audit trail)
+    # ------------------------------------------------------------------
+    # Qualifying issue mutations append an Activity entry describing the change
+    # (status from→to, assignee, priority, title rename, label add/remove).
+    # Entries are read-only — there is no client-facing create endpoint
+    # (VAL-ACTIVITY-001..009). Recording is skipped when ``activity_service`` is
+    # not wired (e.g. isolated unit tests); the factory always injects it.
+
+    async def _record_activity(
+        self,
+        issue_id: uuid.UUID,
+        actor_id: uuid.UUID,
+        activity_type: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Append one activity entry (best-effort; never fails the mutation).
+
+        Activity is an auto-generated, read-only audit trail. The underlying
+        issue mutation has already committed by the time this runs, so an
+        activity-write failure must never surface to the caller as a failed
+        mutation — it is logged and swallowed.
+        """
+        if self.activity_service is None:
+            return
+        try:
+            await self.activity_service.record(
+                issue_id=issue_id,
+                actor_id=actor_id,
+                activity_type=activity_type,
+                payload=payload,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to record activity entry "
+                f"(issue={issue_id}, type={activity_type}); "
+                "issue mutation unaffected"
+            )
+
+    async def _status_brief(self, status_id: uuid.UUID | None) -> dict[str, str] | None:
+        """Resolve a status id to a {id, name} brief for an activity payload."""
+        if status_id is None:
+            return None
+        state = await self.workflow_state_repo.get(status_id, raise_error=False)
+        name = state.name if state is not None else "Unknown"
+        return {"id": str(status_id), "name": name}
+
+    async def _user_brief(self, user_id: uuid.UUID | None) -> dict[str, str] | None:
+        """Resolve a user id to a {id, name} brief for an activity payload."""
+        if user_id is None:
+            return None
+        if self.user_repo is None:
+            return {"id": str(user_id), "name": "Unknown"}
+        user = await self.user_repo.get(user_id, raise_error=False)
+        name = "Unknown"
+        if user is not None:
+            name = (user.display_name or "").strip() or user.email
+        return {"id": str(user_id), "name": name}
+
+    async def _record_update_activity(
+        self,
+        issue_id: uuid.UUID,
+        before: dict[str, Any],
+        entity: BaseModel,
+        user_id: uuid.UUID,
+    ) -> None:
+        """Detect tracked field changes in an update and record activity.
+
+        ``before`` is a snapshot of the issue's pre-update values captured
+        before the ``UPDATE ... RETURNING`` (the identity map may refresh the
+        ORM instance afterwards). Only explicitly-provided fields that actually
+        changed generate an entry, so an unchanged field or a no-op PATCH
+        records nothing. Each distinct change records its own entry.
+        """
+        if self.activity_service is None:
+            return
+        changed = entity.model_dump(exclude_unset=True)
+
+        if "title" in changed and changed["title"] != before["title"]:
+            await self._record_activity(
+                issue_id,
+                user_id,
+                activity_models.TITLE_RENAME,
+                {"from": before["title"], "to": changed["title"]},
+            )
+        if "status_id" in changed and changed["status_id"] != before["status_id"]:
+            await self._record_activity(
+                issue_id,
+                user_id,
+                activity_models.STATUS_CHANGE,
+                {
+                    "from": await self._status_brief(before["status_id"]),
+                    "to": await self._status_brief(changed["status_id"]),
+                },
+            )
+        if "assignee_id" in changed and changed["assignee_id"] != before["assignee_id"]:
+            await self._record_activity(
+                issue_id,
+                user_id,
+                activity_models.ASSIGNEE_CHANGE,
+                {
+                    "from": await self._user_brief(before["assignee_id"]),
+                    "to": await self._user_brief(changed["assignee_id"]),
+                },
+            )
+        if "priority" in changed and changed["priority"] != before["priority"]:
+            await self._record_activity(
+                issue_id,
+                user_id,
+                activity_models.PRIORITY_CHANGE,
+                {"from": before["priority"], "to": changed["priority"]},
+            )
+
+    async def _record_label_activity(
+        self,
+        issue_id: uuid.UUID,
+        label_id: uuid.UUID,
+        user_id: uuid.UUID,
+        activity_type: str,
+    ) -> None:
+        """Record a label added/removed activity entry (with label name)."""
+        if self.activity_service is None:
+            return
+        label = await self.label_repo.get(label_id, raise_error=False)
+        name = label.name if label is not None else "Unknown"
+        color = label.color if label is not None else None
+        payload = {"label": {"id": str(label_id), "name": name, "color": color}}
+        await self._record_activity(issue_id, user_id, activity_type, payload)
 
     # ------------------------------------------------------------------
     # Read (team-scoped)
@@ -349,7 +494,23 @@ class IssueService(BaseService[Issue]):
             await self._validate_parent_in_team(parent_id, issue.team_id)
             await self._check_no_cycle(entity_id, parent_id, issue.team_id)
 
+        # Snapshot pre-update values for activity generation. The identity map
+        # may refresh the ORM instance after the UPDATE ... RETURNING, so the
+        # "from" values are captured before the mutation runs. ``getattr`` with a
+        # default keeps this robust for issues that may not expose every tracked
+        # attribute (e.g. minimal mocks).
+        before = {
+            "title": getattr(issue, "title", None),
+            "status_id": getattr(issue, "status_id", None),
+            "assignee_id": getattr(issue, "assignee_id", None),
+            "priority": getattr(issue, "priority", None),
+        }
+
         updated = await self.repo.update(entity_id, entity)
+        # Auto-generate activity entries for tracked field changes
+        # (status/assignee/priority/title) — read-only audit trail
+        # (VAL-ACTIVITY-001..004).
+        await self._record_update_activity(issue.id, before, entity, user_id)
         # Reload to populate labels (update returns a fresh instance but
         # selectinload only fires on explicit select queries).
         return await self.repo.get(updated.id, raise_error=True)
@@ -390,6 +551,10 @@ class IssueService(BaseService[Issue]):
         )
         await self._validate_label_in_team(label_id, issue.team_id)
         await self.repo.add_label(issue.id, label_id)
+        # Auto-generate a 'label added' activity entry (VAL-ACTIVITY-005).
+        await self._record_label_activity(
+            issue.id, label_id, user_id, activity_models.LABEL_ADDED
+        )
         return await self.repo.get(issue.id, raise_error=True)
 
     async def remove_label(  # type: ignore[override]
@@ -409,4 +574,8 @@ class IssueService(BaseService[Issue]):
             user_id, issue.team_id, min_role=TeamRole.member
         )
         await self.repo.remove_label(issue.id, label_id)
+        # Auto-generate a 'label removed' activity entry (VAL-ACTIVITY-006).
+        await self._record_label_activity(
+            issue.id, label_id, user_id, activity_models.LABEL_REMOVED
+        )
         return await self.repo.get(issue.id, raise_error=True)

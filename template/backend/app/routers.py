@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.modules.activity.routers import activity_router
 from app.modules.comments.routers import comments_router
 from app.modules.cycles.routers import cycles_router
 from app.modules.issue_dependencies.routers import issue_dependencies_router
@@ -39,5 +40,6 @@ def get_app_router() -> APIRouter:
     router.include_router(views_router)
     router.include_router(issue_dependencies_router)
     router.include_router(comments_router)
+    router.include_router(activity_router)
 
     return router

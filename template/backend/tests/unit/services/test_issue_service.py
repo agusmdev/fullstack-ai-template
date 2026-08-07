@@ -18,6 +18,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi_pagination import Params
 
+from app.modules.activity import models as activity_models
 from app.modules.issues.models import Issue
 from app.modules.issues.schemas import IssueCreate, IssueUpdate
 from app.modules.issues.service import IssueService
@@ -1588,3 +1589,290 @@ class TestSubIssues:
         opts = args[2]
         assert opts is not None
         assert opts.base_query is not None
+
+
+# ---------------------------------------------------------------------------
+# Activity generation (auto-generated on issue mutations)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def service_with_activity(
+    mock_issue_repository,
+    mock_team_service,
+    mock_workflow_state_repository,
+    mock_label_repository,
+    mock_project_repository,
+    mock_cycle_repository,
+    mock_user_repository,
+    mock_activity_service,
+    workflow_state_obj,
+    label_obj,
+    membership_obj,
+    sample_user_id,
+):
+    """IssueService wired with an ActivityService + UserRepository so activity
+    generation runs (the default ``service`` fixture leaves them None)."""
+    mock_workflow_state_repository.get = AsyncMock(return_value=workflow_state_obj)
+    mock_label_repository.get = AsyncMock(return_value=label_obj)
+    mock_team_service.get_membership = AsyncMock(return_value=membership_obj)
+    mock_user_repository.get = AsyncMock(
+        return_value=SimpleNamespace(
+            id=sample_user_id, display_name="Ada", email="ada@x.com"
+        )
+    )
+    return IssueService(
+        repo=mock_issue_repository,
+        team_service=mock_team_service,
+        workflow_state_repo=mock_workflow_state_repository,
+        label_repo=mock_label_repository,
+        project_repo=mock_project_repository,
+        cycle_repo=mock_cycle_repository,
+        activity_service=mock_activity_service,
+        user_repo=mock_user_repository,
+    )
+
+
+class TestActivityGeneration:
+    """Issue mutations auto-generate read-only activity entries
+    (VAL-ACTIVITY-001..006)."""
+
+    async def test_status_change_records_activity(
+        self,
+        service_with_activity,
+        mock_team_service,
+        mock_issue_repository,
+        mock_activity_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+        status_id,
+    ):
+        """Changing status records a status_change entry (VAL-ACTIVITY-001)."""
+        new_status = uuid.UUID("99999999-4444-4444-4444-444444444444")
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service_with_activity.update(
+            issue_id, IssueUpdate(status_id=new_status), user_id=sample_user_id
+        )
+
+        mock_activity_service.record.assert_awaited_once()
+        _args, kwargs = mock_activity_service.record.await_args
+        assert kwargs["activity_type"] == activity_models.STATUS_CHANGE
+        assert kwargs["issue_id"] == issue_id
+        assert kwargs["actor_id"] == sample_user_id
+        # from/to briefs carry the resolved status ids.
+        assert kwargs["payload"]["from"]["id"] == str(status_id)
+        assert kwargs["payload"]["to"]["id"] == str(new_status)
+
+    async def test_assignee_change_records_activity(
+        self,
+        service_with_activity,
+        mock_team_service,
+        mock_issue_repository,
+        mock_activity_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Changing assignee records an assignee_change entry (VAL-ACTIVITY-002)."""
+        assignee = uuid.UUID("88888888-5555-5555-5555-555555555555")
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service_with_activity.update(
+            issue_id, IssueUpdate(assignee_id=assignee), user_id=sample_user_id
+        )
+
+        _args, kwargs = mock_activity_service.record.await_args
+        assert kwargs["activity_type"] == activity_models.ASSIGNEE_CHANGE
+        # old assignee was None → from is None; new assignee resolved to a brief.
+        assert kwargs["payload"]["from"] is None
+        assert kwargs["payload"]["to"]["name"] == "Ada"
+
+    async def test_priority_change_records_activity(
+        self,
+        service_with_activity,
+        mock_team_service,
+        mock_issue_repository,
+        mock_activity_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Changing priority records a priority_change entry (VAL-ACTIVITY-003)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service_with_activity.update(
+            issue_id, IssueUpdate(priority=0), user_id=sample_user_id
+        )
+
+        _args, kwargs = mock_activity_service.record.await_args
+        assert kwargs["activity_type"] == activity_models.PRIORITY_CHANGE
+        assert kwargs["payload"] == {"from": 4, "to": 0}
+
+    async def test_title_rename_records_activity(
+        self,
+        service_with_activity,
+        mock_team_service,
+        mock_issue_repository,
+        mock_activity_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """Editing the title records a title_rename entry (VAL-ACTIVITY-004)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service_with_activity.update(
+            issue_id, IssueUpdate(title="New title"), user_id=sample_user_id
+        )
+
+        _args, kwargs = mock_activity_service.record.await_args
+        assert kwargs["activity_type"] == activity_models.TITLE_RENAME
+        assert kwargs["payload"] == {"from": "Test issue", "to": "New title"}
+
+    async def test_no_activity_when_field_unchanged(
+        self,
+        service_with_activity,
+        mock_team_service,
+        mock_issue_repository,
+        mock_activity_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """A no-op PATCH (same value) records nothing."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        await service_with_activity.update(
+            issue_id, IssueUpdate(title="Test issue"), user_id=sample_user_id
+        )
+
+        mock_activity_service.record.assert_not_awaited()
+
+    async def test_no_activity_when_activity_service_none(
+        self,
+        service,
+        mock_team_service,
+        mock_issue_repository,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """When activity tracking is not wired, updates still succeed."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+
+        # Should not raise even though no activity_service is present.
+        await service.update(
+            issue_id, IssueUpdate(title="New"), user_id=sample_user_id
+        )
+        mock_issue_repository.update.assert_awaited_once()
+
+    async def test_activity_write_failure_does_not_break_mutation(
+        self,
+        service_with_activity,
+        mock_team_service,
+        mock_issue_repository,
+        mock_activity_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        issue_obj,
+    ):
+        """A failure recording activity is swallowed — the issue update still
+        succeeds (best-effort audit trail; the mutation already committed)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+        mock_issue_repository.update = AsyncMock(return_value=issue_obj)
+        mock_activity_service.record.side_effect = RuntimeError("db down")
+
+        # Must NOT raise — the activity outage must not surface as a failed
+        # issue update.
+        await service_with_activity.update(
+            issue_id, IssueUpdate(title="New title"), user_id=sample_user_id
+        )
+        mock_issue_repository.update.assert_awaited_once()
+
+    async def test_add_label_records_activity(
+        self,
+        service_with_activity,
+        mock_team_service,
+        mock_issue_repository,
+        mock_activity_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        label_id,
+        issue_obj,
+    ):
+        """Adding a label records a label_added entry (VAL-ACTIVITY-005)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+
+        await service_with_activity.add_label(
+            issue_id, label_id, user_id=sample_user_id
+        )
+
+        _args, kwargs = mock_activity_service.record.await_args
+        assert kwargs["activity_type"] == activity_models.LABEL_ADDED
+        assert kwargs["payload"]["label"]["name"] == "Bug"
+
+    async def test_remove_label_records_activity(
+        self,
+        service_with_activity,
+        mock_team_service,
+        mock_issue_repository,
+        mock_activity_service,
+        sample_user_id,
+        sample_team_id,
+        issue_id,
+        label_id,
+        issue_obj,
+    ):
+        """Removing a label records a label_removed entry (VAL-ACTIVITY-006)."""
+        mock_team_service.get_team_ids_for_user = AsyncMock(
+            return_value=[sample_team_id]
+        )
+        mock_issue_repository.get = AsyncMock(return_value=issue_obj)
+
+        await service_with_activity.remove_label(
+            issue_id, label_id, user_id=sample_user_id
+        )
+
+        _args, kwargs = mock_activity_service.record.await_args
+        assert kwargs["activity_type"] == activity_models.LABEL_REMOVED
+        assert kwargs["payload"]["label"]["name"] == "Bug"
