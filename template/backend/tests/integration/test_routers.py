@@ -269,3 +269,34 @@ class TestAppRouterAssembly:
             tags.update(getattr(route, "tags", []) or [])
         assert "auth" in tags
         assert "users" in tags
+
+
+class TestUnauthenticatedAccess:
+    """Protected routes must reject requests that carry no credentials.
+
+    No auth overrides here: the real HTTPBearer guard runs. It rejects the
+    request before any service or database dependency is touched, so a route
+    that loses its auth dependency fails these tests immediately.
+    """
+
+    @pytest.fixture
+    def bare_client(self):
+        app = FastAPI()
+        app.include_router(get_app_router())
+        return TestClient(app)
+
+    @pytest.mark.parametrize(
+        ("method", "path"),
+        [
+            ("get", "/users/me"),
+            ("patch", "/users/me"),
+            ("delete", "/users/me"),
+            ("get", "/items/"),
+            ("post", "/items/"),
+            ("post", "/auth/logout"),
+        ],
+    )
+    def test_missing_token_is_rejected(self, bare_client, method, path):
+        resp = getattr(bare_client, method)(path)
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "Not authenticated"

@@ -21,7 +21,10 @@ export function useAuthSubmit<TPayload extends Record<string, unknown>>(
     },
   })
 
-  const submit = (payload: TPayload) => mutation.mutateAsync(payload)
+  // Swallow the rejection: executeAuthSubmit has already surfaced the failure
+  // (toast), and callers hand this promise to react-hook-form's handleSubmit,
+  // which rethrows into the DOM event — an unhandled rejection otherwise.
+  const submit = (payload: TPayload) => mutation.mutateAsync(payload).catch(() => undefined)
   const isLoading = mutation.isPending
 
   return { submit, isLoading }

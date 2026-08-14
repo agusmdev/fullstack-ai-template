@@ -20,8 +20,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
   state: State = { hasError: false, error: null, errorId: null }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    const errorId = `error-${crypto.randomUUID()}`
-    return { hasError: true, error, errorId }
+    // crypto.randomUUID only exists in secure contexts (https/localhost); on
+    // plain http a throw here would crash the boundary itself mid-recovery.
+    const uuid =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+    return { hasError: true, error, errorId: `error-${uuid}` }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {

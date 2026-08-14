@@ -25,10 +25,13 @@ class ApiClient {
   // Executes the request with auth and error handling; returns the raw Response.
   private async execute(endpoint: string, options?: RequestInit): Promise<Response> {
     const token = getAuthToken()
+    // Resolve outside the try: baseUrl runs env validation, and a config error
+    // must not be re-labeled as a network failure by the catch below.
+    const url = `${this.baseUrl}${endpoint}`
 
     let response: Response
     try {
-      response = await fetch(`${this.baseUrl}${endpoint}`, {
+      response = await fetch(url, {
         ...options,
         headers: {
           'Content-Type': 'application/json',

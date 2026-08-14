@@ -160,7 +160,10 @@ describe('useAuthSubmit', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
   })
 
-  it('resets isLoading to false in the finally block when the orchestrator rejects, and rethrows the original error', async () => {
+  it('resets isLoading to false when the orchestrator rejects, and resolves without rethrowing', async () => {
+    // The orchestrator already surfaces the failure (toast); submit must not
+    // reject, or react-hook-form's handleSubmit turns every failed login into
+    // an unhandled promise rejection.
     const boom = new Error('boom')
     executeMock.mockRejectedValue(boom)
 
@@ -169,12 +172,10 @@ describe('useAuthSubmit', () => {
       { wrapper },
     )
 
-    let caught: unknown
     await act(async () => {
-      caught = await result.current.submit({}).catch((e) => e)
+      await expect(result.current.submit({})).resolves.toBeUndefined()
     })
 
-    expect(caught).toBe(boom)
     expect(result.current.isLoading).toBe(false)
     expect(executeMock).toHaveBeenCalledTimes(1)
   })

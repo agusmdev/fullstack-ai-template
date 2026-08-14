@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   Form,
@@ -53,7 +54,9 @@ describe('Form primitives', () => {
   it('shows a validation message when the field has an error', async () => {
     function ErrorHarness() {
       const form = useForm<Values>({ defaultValues: { name: '' } })
-      // Force an error into the field state without rendering the input.
+      useEffect(() => {
+        form.setError('name', { type: 'required', message: 'Name is required' })
+      }, [form])
       return (
         <Form {...form}>
           <FormField
@@ -61,14 +64,14 @@ describe('Form primitives', () => {
             name="name"
             render={() => (
               <FormItem>
-                <FormMessage>{form.formState.errors.name?.message as string}</FormMessage>
+                <FormMessage />
               </FormItem>
             )}
           />
         </Form>
       )
     }
-    const { container } = render(<ErrorHarness />)
-    expect(container).toBeInTheDocument()
+    render(<ErrorHarness />)
+    expect(await screen.findByText('Name is required')).toBeInTheDocument()
   })
 })

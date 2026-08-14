@@ -32,12 +32,11 @@ class YourEntity(TimestampMixin, Base):
 
 **Available mixins** (`app/database/mixins.py`):
 - `TimestampMixin` — adds `created_at` / `updated_at` with UTC timestamps and indexes
-- `JSONUpdatesMixing` — adds `updates_metadata` JSONB column
 
 **Conventions:**
 - UUID primary keys via `uuid.uuid4`
 - Use `Mapped[type]` + `mapped_column()` (SQLAlchemy 2 style)
-- Use `StrEnum` from `app/database/mixins.py` for enum fields
+- Use `enum.StrEnum` from the standard library for enum fields
 
 ## Step 2: Schemas (`schemas.py`)
 

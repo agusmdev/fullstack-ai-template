@@ -30,6 +30,7 @@ async def _http_exception_handler(
             detail=exc.detail,
             error_code=getattr(exc, "error_code", "http_error"),
         ).model_dump(mode="json"),
+        headers=exc.headers,
     )
 
 

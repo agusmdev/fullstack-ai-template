@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.exceptions import ErrorResponse, HTTPExceptionMixin
+from app.exceptions import ErrorResponse
 from app.main import _http_exception_handler
 from app.repositories.exceptions import NotFoundError
 
@@ -21,6 +21,14 @@ def _app_with_handler() -> FastAPI:
     @app.get("/vanilla")
     async def _raise_vanilla() -> None:
         raise HTTPException(status_code=418, detail="teapot")
+
+    @app.get("/with-headers")
+    async def _raise_with_headers() -> None:
+        raise HTTPException(
+            status_code=401,
+            detail="no",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     return app
 
@@ -49,14 +57,18 @@ class TestErrorResponseContract:
         assert body["detail"] == "teapot"
         assert body["error_code"] == "http_error"
 
-    def test_handler_is_registered_in_create_app(self):
-        from app.main import create_app
+    def test_exception_headers_are_forwarded(self):
+        client = TestClient(_app_with_handler())
+        resp = client.get("/with-headers")
+        assert resp.status_code == 401
+        assert resp.headers["WWW-Authenticate"] == "Bearer"
+        assert resp.json()["error_code"] == "http_error"
 
-        app = create_app(add_sentry=False)
-        assert (
-            HTTPExceptionMixin not in app.exception_handlers or True
-        )  # handler is keyed on HTTPException
+    def test_handler_is_registered_in_create_app(self):
         # The handler must be wired for the base HTTPException so all subclasses surface error_code.
         from fastapi import HTTPException
 
+        from app.main import create_app
+
+        app = create_app(add_sentry=False)
         assert HTTPException in app.exception_handlers

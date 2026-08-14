@@ -74,6 +74,16 @@ class TestCheckPassword:
         result = user_with_password.check_password("")
         assert result is False
 
+    def test_malformed_stored_hash_returns_false(self):
+        """A stored value that is not a valid argon2 hash reads as a failed login, not an error."""
+        user = User(
+            id=uuid.uuid4(),
+            email="legacy@example.com",
+            display_name="Legacy User",
+            password="not-an-argon2-hash",
+        )
+        assert user.check_password("any_password") is False
+
 
 class TestIsEmailVerified:
     """Tests for User.is_email_verified property."""
