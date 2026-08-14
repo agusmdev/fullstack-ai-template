@@ -100,7 +100,9 @@ class TestSQLAlchemyRepositoryParseIntegrityError:
     def test_parse_duplicate_key(self, repository_class):
         """Test parsing duplicate key error."""
         mock_orig = MagicMock()
-        mock_orig.__str__ = lambda self: "duplicate key value violates unique constraint"
+        mock_orig.__str__ = (
+            lambda self: "duplicate key value violates unique constraint"
+        )
         error = IntegrityError(statement="INSERT", params={}, orig=mock_orig)
 
         result = repository_class._parse_integrity_error(error)
@@ -146,14 +148,14 @@ class TestSQLAlchemyRepositoryParseIntegrityError:
         assert result is error
 
 
-class TestSQLAlchemyRepositoryGetInsertDialect:
-    """Tests for _get_insert_dialect method."""
+class TestSQLAlchemyRepositoryGetPostgresInsert:
+    """Tests for _get_postgres_insert method."""
 
     def test_returns_postgresql_insert(self):
         """Test that PostgreSQL insert is returned."""
         from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-        result = SQLAlchemyRepository._get_insert_dialect()
+        result = SQLAlchemyRepository._get_postgres_insert()
 
         # Should be the PostgreSQL insert function
         assert result is pg_insert

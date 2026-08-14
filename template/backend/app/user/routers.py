@@ -19,7 +19,7 @@ user_router = APIRouter(dependencies=[Depends(AuthenticatedUser.current_user_id)
     status_code=status.HTTP_200_OK,
 )
 async def get_authenticated_user(
-    user: User = Depends(AuthenticatedUser.load_user_context),
+    user: User = Depends(AuthenticatedUser.get_current_user),
 ) -> UserResponse:
     return UserResponse(
         id=user.id,
@@ -31,14 +31,15 @@ async def get_authenticated_user(
 @user_router.patch(
     "/me",
     response_description="Update user",
-    status_code=status.HTTP_202_ACCEPTED,
+    status_code=status.HTTP_200_OK,
 )
 async def update_logged_user(
     user_id: uuid.UUID = Depends(AuthenticatedUser.current_user_id),
     user: UserUpdate = Body(...),
     user_service: UserService = Depends(get_user_service),
-) -> None:
-    await user_service.update(user_id, user)
+) -> UserResponse:
+    updated_user = await user_service.update(user_id, user)
+    return UserResponse.model_validate(updated_user)
 
 
 @user_router.delete(

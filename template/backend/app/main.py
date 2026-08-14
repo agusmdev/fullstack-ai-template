@@ -2,16 +2,36 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import sentry_sdk
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from app.context import clear_request_context
 from app.core.config import settings
+from app.core.context import clear_request_context
 from app.core.logging import configure_logging
 from app.core.logging.middleware import WideEventMiddleware
+from app.exceptions import ErrorResponse
 from app.middlewares.context import RequestContextMiddleware
 
 from .routers import get_app_router
+
+
+async def _http_exception_handler(
+    _request: Request, exc: HTTPException
+) -> JSONResponse:
+    """Surface error_code alongside detail for all HTTP exceptions.
+
+    Built through the ``ErrorResponse`` contract so the response shape is
+    validated by the schema rather than hand-rolled per call site.
+    """
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            detail=exc.detail,
+            error_code=getattr(exc, "error_code", "http_error"),
+        ).model_dump(mode="json"),
+        headers=exc.headers,
+    )
 
 
 @asynccontextmanager
@@ -43,6 +63,7 @@ def create_app(
     configure_logging()
 
     app = FastAPI(lifespan=lifespan)
+    app.add_exception_handler(HTTPException, _http_exception_handler)
 
     # Middleware is applied LIFO: last-added = outermost (first to handle request).
     # Desired order: CORS → WideEvent → RequestContext
@@ -72,7 +93,7 @@ def create_app(
     app_router = get_app_router()
 
     @app_router.get("/health")
-    def sanity_check() -> str:
+    def health_check() -> str:
         return "FastAPI running!"
 
     if add_sentry:

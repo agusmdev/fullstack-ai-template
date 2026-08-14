@@ -1,8 +1,6 @@
 """Tests for request context module."""
 
-
-
-from app.context import (
+from app.core.context import (
     RequestContext,
     _request_id_ctx,
     clear_request_context,

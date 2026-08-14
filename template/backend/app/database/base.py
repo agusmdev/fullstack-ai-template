@@ -65,5 +65,3 @@ def create_async_sqlalchemy_engine(*, db_url: str, pool_size: int) -> AsyncEngin
         echo=settings.DEBUG_MODE,
         pool_size=pool_size,
     )
-
-

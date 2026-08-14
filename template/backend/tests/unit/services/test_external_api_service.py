@@ -32,7 +32,9 @@ def _patch_client(mock_response):
     mock_client_cls = MagicMock()
     mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
-    return patch("app.integrations.http_client.httpx.AsyncClient", mock_client_cls), mock_client
+    return patch(
+        "app.integrations.http_client.httpx.AsyncClient", mock_client_cls
+    ), mock_client
 
 
 class TestExternalApiServiceInit:
@@ -46,11 +48,15 @@ class TestExternalApiServiceInit:
 
     def test_init_with_headers(self):
         headers = {"Authorization": "Bearer token123"}
-        service = ExternalApiService(base_url="https://api.example.com", headers=headers)
+        service = ExternalApiService(
+            base_url="https://api.example.com", headers=headers
+        )
         assert service.headers == headers
 
     def test_init_with_return_json_false(self):
-        service = ExternalApiService(base_url="https://api.example.com", return_json=False)
+        service = ExternalApiService(
+            base_url="https://api.example.com", return_json=False
+        )
         assert service.return_json is False
 
 
@@ -174,7 +180,9 @@ class TestExternalApiServiceReturnJson:
     async def test_return_json_true(self):
         mock_response = _make_response(json_data={"key": "value"})
         patcher, _ = _patch_client(mock_response)
-        service = ExternalApiService(base_url="https://api.example.com", return_json=True)
+        service = ExternalApiService(
+            base_url="https://api.example.com", return_json=True
+        )
         with patcher:
             result = await service.get("/endpoint")
 
@@ -185,7 +193,9 @@ class TestExternalApiServiceReturnJson:
     async def test_return_json_false(self):
         mock_response = _make_response(json_data={"key": "value"})
         patcher, _ = _patch_client(mock_response)
-        service = ExternalApiService(base_url="https://api.example.com", return_json=False)
+        service = ExternalApiService(
+            base_url="https://api.example.com", return_json=False
+        )
         with patcher:
             result = await service.get("/endpoint")
 

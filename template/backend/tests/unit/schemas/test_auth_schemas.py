@@ -90,7 +90,9 @@ class TestUserSessionResponse:
 
     def test_includes_user(self):
         """Test that response includes user object."""
-        user = UserResponse(id=uuid.uuid4(), email="test@example.com", display_name="Test")
+        user = UserResponse(
+            id=uuid.uuid4(), email="test@example.com", display_name="Test"
+        )
         session = UserSessionResponse(
             id="session_123",
             expires_at=datetime.now(tz=UTC) + timedelta(days=1),
@@ -189,7 +191,9 @@ class TestPasswordResetSchemas:
 
     def test_password_reset_confirm(self):
         """Test password reset confirm."""
-        confirm = PasswordResetConfirm(token="reset_token_123", new_password="newpassword123")
+        confirm = PasswordResetConfirm(
+            token="reset_token_123", new_password="newpassword123"
+        )
         assert confirm.token == "reset_token_123"
         assert confirm.new_password == "newpassword123"
 

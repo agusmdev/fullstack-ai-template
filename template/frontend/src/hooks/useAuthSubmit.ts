@@ -1,35 +1,7 @@
-import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, type NavigateOptions } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import { api } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
-import { toastApiError } from '@/lib/error-handler'
-import type { AuthSessionResponse } from '@/types/auth'
-
-/**
- * Core auth submit logic — extracted for unit testing without React mounting.
- * Handles the api.post → login → toast → navigate orchestration.
- */
-export async function executeAuthSubmit(
-  endpoint: string,
-  payload: Record<string, unknown>,
-  deps: {
-    login: (token: string) => void
-    navigate: (opts: NavigateOptions) => void
-    successMessage: string
-    errorMessage: string
-    redirect: NavigateOptions
-  },
-): Promise<void> {
-  try {
-    const result = await api.post<AuthSessionResponse>(endpoint, payload)
-    deps.login(result.id)
-    toast.success(deps.successMessage)
-    deps.navigate(deps.redirect)
-  } catch (err) {
-    toastApiError(err, deps.errorMessage)
-  }
-}
+import { executeAuthSubmit } from '@/features/auth/auth-actions'
 
 export function useAuthSubmit<TPayload extends Record<string, unknown>>(
   endpoint: string,
@@ -38,17 +10,22 @@ export function useAuthSubmit<TPayload extends Record<string, unknown>>(
   redirect: NavigateOptions = { to: '/' },
 ) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { login } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
 
-  const submit = async (payload: TPayload) => {
-    setIsLoading(true)
-    try {
-      await executeAuthSubmit(endpoint, payload, { login, navigate, successMessage, errorMessage, redirect })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const mutation = useMutation<void, Error, TPayload>({
+    mutationFn: (payload: TPayload) =>
+      executeAuthSubmit(endpoint, payload, { login, navigate, successMessage, errorMessage, redirect }),
+    onSuccess: () => {
+      queryClient.invalidateQueries()
+    },
+  })
+
+  // Swallow the rejection: executeAuthSubmit has already surfaced the failure
+  // (toast), and callers hand this promise to react-hook-form's handleSubmit,
+  // which rethrows into the DOM event — an unhandled rejection otherwise.
+  const submit = (payload: TPayload) => mutation.mutateAsync(payload).catch(() => undefined)
+  const isLoading = mutation.isPending
 
   return { submit, isLoading }
 }

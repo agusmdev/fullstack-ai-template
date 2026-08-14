@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Item } from '@/types/item'
 import { toastApiError } from '@/lib/error-handler'
-import { itemSchema, type ItemFormData } from '@/lib/item-schemas'
+import { itemSchema, type ItemFormData } from '@/features/items/item-schemas'
 
 type ItemFormDialogProps =
   | { mode: 'create'; trigger: React.ReactNode; onSubmit: (data: ItemFormData) => Promise<void>; isPending: boolean; item?: never }

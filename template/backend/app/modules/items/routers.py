@@ -1,7 +1,6 @@
 """Items router - CRUD endpoints for Item entity."""
 
 import uuid
-from typing import cast
 
 from fastapi import APIRouter, Body, Depends, status
 from fastapi_pagination import Page, Params
@@ -47,7 +46,13 @@ async def list_items(
         entity_filter=item_filter,
         user_id=user_id,
     )
-    return cast("Page[ItemResponse]", result)
+    return Page[ItemResponse](
+        items=[ItemResponse.model_validate(i) for i in result.items],
+        total=result.total,
+        page=result.page,
+        size=result.size,
+        pages=result.pages,
+    )
 
 
 @items_router.get(
@@ -63,7 +68,7 @@ async def get_item(
     """Get an item by ID, enforcing ownership."""
     log_action("get")
     result = await item_service.get_by_id(item_id, user_id=user_id)
-    return cast("ItemResponse", result)
+    return ItemResponse.model_validate(result)
 
 
 @items_router.get(
@@ -80,7 +85,7 @@ async def get_item_by_sku(
     log_action("get_by_sku")
     result = await item_service.get_by_sku(sku, user_id=user_id)
     log_entity("item", result.id)
-    return cast("ItemResponse", result)
+    return ItemResponse.model_validate(result)
 
 
 @items_router.post(
@@ -97,7 +102,7 @@ async def create_item(
     log_action("create")
     result = await item_service.create(item, user_id=user_id)
     log_entity("item", result.id)
-    return cast("ItemResponse", result)
+    return ItemResponse.model_validate(result)
 
 
 @items_router.patch(
@@ -114,7 +119,8 @@ async def update_item(
     """Update an existing item."""
     log_action("update")
     log_entity("item", item_id)
-    return cast("ItemResponse", await item_service.update(item_id, item, user_id=user_id))
+    result = await item_service.update(item_id, item, user_id=user_id)
+    return ItemResponse.model_validate(result)
 
 
 @items_router.delete(

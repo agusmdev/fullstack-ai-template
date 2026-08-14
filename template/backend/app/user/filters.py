@@ -12,8 +12,6 @@ class UserFilter(Filter):
         model = User
         search_model_fields = [
             "email",
-            "first_name",
-            "last_name",
-            "full_name",
+            "display_name",
         ]
         search_field_name = "search"

@@ -1,3 +1,10 @@
+"""Request-scoped state (request_id ContextVar + RequestContext user/email).
+
+Distinct from app.core.logging.context, which holds the wide-event logging
+context (WideEventContext). This module is the source of truth for
+identity-bearing request state read by the auth layer.
+"""
+
 import threading
 from contextvars import ContextVar
 
