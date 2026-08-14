@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.user.models import User
+
 
 @pytest.fixture
 def mock_user_repository():
@@ -82,26 +84,25 @@ def sample_user_id():
 
 @pytest.fixture
 def sample_user_model(sample_user_id):
-    """Create a mock User model instance."""
+    """Create a real User instance with an argon2-hashed password.
+
+    Uses the production ``User.check_password`` (argon2 verification) rather than a
+    stubbed string comparison, so any code path that verifies credentials exercises
+    the real hashing logic and would catch a regression in that method.
+    """
     from argon2 import PasswordHasher
 
     ph = PasswordHasher()
-    user = MagicMock()
-    user.id = sample_user_id
-    user.email = "test@example.com"
-    user.display_name = "Test User"
-    user.is_active = True
-    user.password = ph.hash("correct_password")
-    user.email_verified_at = None
-    user.created_at = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
-    user.updated_at = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
-
-    # Mock check_password method - always returns bool (never raises)
-    def check_password(password):
-        return password == "correct_password"
-
-    user.check_password = check_password
-    return user
+    return User(
+        id=sample_user_id,
+        email="test@example.com",
+        display_name="Test User",
+        is_active=True,
+        password=ph.hash("correct_password"),
+        email_verified_at=None,
+        created_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+        updated_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+    )
 
 
 @pytest.fixture

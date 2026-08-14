@@ -1,13 +1,9 @@
 """Tests for optional_model decorator and utilities."""
 
 import pytest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
-from app.core.optional_model import (
-    _extract_nested_basemodels,
-    partial_model,
-    recursive_partial_model,
-)
+from app.core.optional_model import partial_model
 
 
 class SimpleModel(BaseModel):
@@ -16,21 +12,6 @@ class SimpleModel(BaseModel):
     name: str
     value: int
     description: str | None = None
-
-
-class NestedModel(BaseModel):
-    """Model with nested BaseModel."""
-
-    title: str
-    simple: SimpleModel
-
-
-class DeeplyNestedModel(BaseModel):
-    """Model with deeply nested BaseModels."""
-
-    id: int
-    nested: NestedModel
-    items: list[SimpleModel]
 
 
 class TestPartialModel:
@@ -78,96 +59,8 @@ class TestPartialModel:
         _ = partial_model(SimpleModel)
 
         # Original should still require name and value
-        with pytest.raises(Exception):  # ValidationError
+        with pytest.raises(ValidationError):
             SimpleModel()
-
-
-class TestRecursivePartialModel:
-    """Tests for recursive_partial_model function."""
-
-    def test_simple_model(self):
-        """Test recursive partial on simple model."""
-        PartialSimple = recursive_partial_model(SimpleModel)
-
-        instance = PartialSimple()
-        assert instance.name is None
-        assert instance.value is None
-
-    def test_nested_model_becomes_partial(self):
-        """Test that nested models also become partial."""
-        PartialNested = recursive_partial_model(NestedModel)
-
-        instance = PartialNested()
-        assert instance.title is None
-        assert instance.simple is None
-
-    def test_can_set_partial_nested(self):
-        """Test setting partial nested model."""
-        PartialNested = recursive_partial_model(NestedModel)
-
-        # Should accept partially filled nested model
-        instance = PartialNested(title="test")
-        assert instance.title == "test"
-
-    def test_deeply_nested(self):
-        """Test deeply nested models."""
-        PartialDeep = recursive_partial_model(DeeplyNestedModel)
-
-        instance = PartialDeep()
-        assert instance.id is None
-        assert instance.nested is None
-        assert instance.items is None
-
-    def test_caching_prevents_infinite_recursion(self):
-        """Test that caching works for recursive models."""
-
-        class SelfReferencing(BaseModel):
-            name: str
-            parent: "SelfReferencing | None" = None
-
-        # Should not cause infinite recursion
-        PartialSelfRef = recursive_partial_model(SelfReferencing)
-        instance = PartialSelfRef()
-        assert instance.name is None
-
-
-class TestExtractNestedBasemodels:
-    """Tests for _extract_nested_basemodels helper."""
-
-    def test_direct_basemodel(self):
-        """Test extracting direct BaseModel type."""
-        result = _extract_nested_basemodels(SimpleModel)
-        assert SimpleModel in result
-
-    def test_optional_basemodel(self):
-        """Test extracting from Optional[BaseModel]."""
-        from typing import Optional
-
-        result = _extract_nested_basemodels(Optional[SimpleModel])
-        assert SimpleModel in result
-
-    def test_list_of_basemodel(self):
-        """Test extracting from list[BaseModel]."""
-        result = _extract_nested_basemodels(list[SimpleModel])
-        assert SimpleModel in result
-
-    def test_primitive_type(self):
-        """Test that primitive types return empty list."""
-        result = _extract_nested_basemodels(str)
-        assert result == []
-
-        result = _extract_nested_basemodels(int)
-        assert result == []
-
-    def test_string_annotation(self):
-        """Test that string annotations return empty list."""
-        result = _extract_nested_basemodels("SomeForwardRef")
-        assert result == []
-
-    def test_none_type(self):
-        """Test with None type."""
-        result = _extract_nested_basemodels(type(None))
-        assert result == []
 
 
 class TestPartialModelWithFieldConstraints:

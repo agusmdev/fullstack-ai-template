@@ -39,6 +39,7 @@ class TestSessionRepository:
         result = await repo.get("session-abc", raise_error=False)
 
         mock_session.execute.assert_called_once()
+        assert result.id == "session-abc"
 
     async def test_delete_by_id(self, repo, mock_session):
         """Test deleting a session by string ID."""

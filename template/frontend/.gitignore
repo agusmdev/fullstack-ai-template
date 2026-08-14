@@ -11,6 +11,7 @@ count.txt
 .output
 .vinxi
 todos.json
+package-lock.json
 
 # Never ignore the frontend source lib (guards against a parent `lib/` rule)
 !src/lib/

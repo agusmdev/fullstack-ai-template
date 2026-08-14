@@ -4,16 +4,16 @@ from typing import TYPE_CHECKING, Protocol, cast
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.context import ensure_request_context
+from app.core.context import ensure_request_context
 from app.core.logging import log_user
 from app.repositories.exceptions import NotFoundError
+from app.user.auth.dependencies import get_auth_service
 from app.user.auth.exceptions import SessionExpiredError
 from app.user.auth.service import AuthService
-from app.user.dependencies import get_auth_service
 from app.user.models import User
 
 if TYPE_CHECKING:
-    from app.context import RequestContext
+    from app.core.context import RequestContext
 
 
 class _RequestState(Protocol):
@@ -66,7 +66,7 @@ class AuthenticatedUser:
         return http_auth.credentials
 
     @classmethod
-    async def load_user_context(
+    async def get_current_user(
         cls,
         user: User = Depends(_get_authenticated_user),
     ) -> User:
@@ -77,6 +77,15 @@ class AuthenticatedUser:
         cls,
         user: User = Depends(_get_authenticated_user),
     ) -> uuid.UUID:
+        """Return the authenticated user's id.
+
+        Convention: use this classmethod form within the user/ and auth/
+        modules' own endpoints. Domain/feature modules (e.g. items) should
+        use :func:`require_current_user_id` instead. Both resolve to the same
+        underlying dependency; the two entry points exist as an intentional
+        convention to keep auth-internal guards visually grouped on
+        ``AuthenticatedUser``.
+        """
         return user.id
 
     @classmethod
@@ -90,9 +99,12 @@ class AuthenticatedUser:
 async def require_current_user_id(
     user: User = Depends(_get_authenticated_user),
 ) -> uuid.UUID:
-    """Standalone dependency for domain modules that need the current user's ID.
+    """Return the authenticated user's id.
 
-    Domain modules should import this from app.user.auth rather than reaching
-    into app.user.auth.permissions directly, to avoid coupling to auth internals.
+    Convention: this is the canonical guard for domain/feature modules (e.g.
+    items) and should be imported from ``app.user.auth``. The user/ and auth/
+    modules use ``AuthenticatedUser.current_user_id`` for their own endpoints.
+    The two forms share the exact same implementation; the duplication is an
+    intentional convention rather than a behavioral difference.
     """
     return user.id

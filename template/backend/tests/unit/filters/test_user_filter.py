@@ -1,6 +1,5 @@
 """Tests for UserFilter."""
 
-
 from app.user.filters import UserFilter
 from app.user.models import User
 
@@ -14,7 +13,7 @@ class TestUserFilterConstants:
 
     def test_search_model_fields(self):
         """Test that search fields are configured correctly."""
-        expected_fields = ["email", "first_name", "last_name", "full_name"]
+        expected_fields = ["email", "display_name"]
         assert UserFilter.Constants.search_model_fields == expected_fields
 
     def test_search_field_name(self):

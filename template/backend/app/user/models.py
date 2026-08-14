@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from argon2 import PasswordHasher
+from argon2.exceptions import Argon2Error, InvalidHashError
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -29,7 +30,10 @@ class User(TimestampMixin, Base):
             return False
         try:
             return _ph.verify(self.password, password)
-        except Exception:
+        except (Argon2Error, InvalidHashError):
+            # InvalidHashError subclasses ValueError, not Argon2Error: a stored
+            # value that is not a valid argon2 encoding must read as a failed
+            # login, not a 500.
             return False
 
     @property

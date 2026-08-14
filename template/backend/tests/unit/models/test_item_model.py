@@ -54,7 +54,6 @@ class TestItemDefaults:
 
     def test_quantity_default(self):
         """Test that quantity defaults to 0."""
-        item = Item(id=uuid.uuid4(), name="Test")
         # Check default from column definition
         assert Item.quantity.default.arg == 0
 

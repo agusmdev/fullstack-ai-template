@@ -15,7 +15,6 @@ class DatabaseSettings(BaseSettings):
     DB_URL: str = Field(default="sqlite:///sql.db")
     DB_POOL_SIZE: int = Field(default=100)
     DB_POOL_PRE_PING: bool = Field(default=False)
-    REPOSITORY_NAME: str = Field(default="SQL")  ## For the new entities
 
 
 class CORSSettings(BaseSettings):
@@ -32,28 +31,9 @@ class OAuthSettings(BaseSettings):
 class CredentialsSettings(BaseSettings):
     """Credentials to use in the app for various services"""
 
-    AUTH_JWT_SECRET: str = ""
-
-    AXIOM_API_KEY: str = ""
-    AXIOM_ORG_ID: str = ""
-    AXIOM_DATASET_NAME: str = "backend"
-
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.0
     SENTRY_PROFILES_SAMPLE_RATE: float = 0.0
-
-
-class AWSSettings(BaseSettings):
-    ASSETS_BUCKET: str = ""
-    S3_ACCESS_KEY_ID: str | None = None
-    S3_SECRET_ACCESS_KEY: str | None = None
-    REGION_NAME: str = "us-east-1"
-    ENDPOINT_URL: str | None = None
-
-
-class LimiterSettings(BaseSettings):
-    RATE_LIMIT_REDIS_URL: str | None = None
-    RATE_LIMIT_PREFIX: str = "fastapi-limiter"
 
 
 class LoggingSettings(BaseSettings):
@@ -69,11 +49,9 @@ class LoggingSettings(BaseSettings):
 class Settings(
     CommonSettings,
     CredentialsSettings,
-    AWSSettings,
     DatabaseSettings,
     CORSSettings,
     OAuthSettings,
-    LimiterSettings,
     LoggingSettings,
 ):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

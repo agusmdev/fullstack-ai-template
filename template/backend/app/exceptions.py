@@ -3,6 +3,14 @@
 from typing import Any
 
 from fastapi import HTTPException
+from pydantic import BaseModel
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response contract surfaced to clients."""
+
+    detail: Any = "Internal Server Error"
+    error_code: str = "internal_server_error"
 
 
 class HTTPExceptionMixin(HTTPException):

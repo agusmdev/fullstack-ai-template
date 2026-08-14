@@ -1,7 +1,7 @@
 import React from 'react'
 import { useCreateItem } from '@/hooks/useItems'
 import { ItemFormDialog } from './ItemFormDialog'
-import { itemFormToPayload, type ItemFormData } from '@/lib/item-schemas'
+import { itemFormToPayload, type ItemFormData } from '@/features/items/item-schemas'
 
 interface CreateItemDialogProps {
   trigger: React.ReactNode

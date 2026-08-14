@@ -30,7 +30,9 @@ class TestItemServiceGetBySku:
         )
         assert result == sample_item_model
 
-    async def test_get_by_sku_not_found(self, service, mock_item_repository, sample_item_owner_id):
+    async def test_get_by_sku_not_found(
+        self, service, mock_item_repository, sample_item_owner_id
+    ):
         """Test get_by_sku when SKU doesn't exist."""
         mock_item_repository.get_by_field.return_value = None
 
@@ -87,7 +89,12 @@ class TestItemServiceUpdate:
         return ItemService(repo=mock_item_repository)
 
     async def test_update_success(
-        self, service, mock_item_repository, sample_item_model, sample_item_id, sample_item_owner_id
+        self,
+        service,
+        mock_item_repository,
+        sample_item_model,
+        sample_item_id,
+        sample_item_owner_id,
     ):
         """Test successful item update by owner."""
         mock_item_repository.get.return_value = sample_item_model
@@ -97,7 +104,9 @@ class TestItemServiceUpdate:
         mock_item_repository.update.return_value = updated_item
         update_data = ItemUpdate(name="Updated Name")
 
-        result = await service.update(sample_item_id, update_data, user_id=sample_item_owner_id)
+        result = await service.update(
+            sample_item_id, update_data, user_id=sample_item_owner_id
+        )
 
         mock_item_repository.update.assert_called_once_with(sample_item_id, update_data)
         assert result == updated_item
@@ -110,18 +119,27 @@ class TestItemServiceUpdate:
         other_user_id = uuid.uuid4()
 
         with pytest.raises(NotFoundError):
-            await service.update(sample_item_id, ItemUpdate(name="x"), user_id=other_user_id)
+            await service.update(
+                sample_item_id, ItemUpdate(name="x"), user_id=other_user_id
+            )
 
         mock_item_repository.update.assert_not_called()
 
     async def test_update_partial(
-        self, service, mock_item_repository, sample_item_model, sample_item_id, sample_item_owner_id
+        self,
+        service,
+        mock_item_repository,
+        sample_item_model,
+        sample_item_id,
+        sample_item_owner_id,
     ):
         """Test partial item update."""
         mock_item_repository.get.return_value = sample_item_model
         mock_item_repository.update.return_value = sample_item_model
 
-        result = await service.update(sample_item_id, ItemUpdate(name="x"), user_id=sample_item_owner_id)
+        result = await service.update(
+            sample_item_id, ItemUpdate(name="x"), user_id=sample_item_owner_id
+        )
 
         mock_item_repository.update.assert_called_once()
         assert result == sample_item_model
@@ -135,7 +153,12 @@ class TestItemServiceDelete:
         return ItemService(repo=mock_item_repository)
 
     async def test_delete_success(
-        self, service, mock_item_repository, sample_item_model, sample_item_id, sample_item_owner_id
+        self,
+        service,
+        mock_item_repository,
+        sample_item_model,
+        sample_item_id,
+        sample_item_owner_id,
     ):
         """Test successful item deletion by owner."""
         mock_item_repository.get.return_value = sample_item_model
@@ -171,7 +194,9 @@ class TestItemServiceInheritedMethods:
         """Test overridden get_by_id method (enforces ownership)."""
         mock_item_repository.get.return_value = sample_item_model
 
-        result = await service.get_by_id(sample_item_model.id, user_id=sample_item_owner_id)
+        result = await service.get_by_id(
+            sample_item_model.id, user_id=sample_item_owner_id
+        )
 
         mock_item_repository.get.assert_called_once_with(
             sample_item_model.id, raise_error=True

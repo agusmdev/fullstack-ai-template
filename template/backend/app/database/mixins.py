@@ -1,9 +1,7 @@
 from datetime import UTC, datetime
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import DateTime
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -19,18 +17,5 @@ class TimestampMixin:
     )
 
 
-class JSONUpdatesMixing:
-    updates_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
-
-
 class OrmBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
-
-class TimestampOrmBaseModel(OrmBaseModel):
-    created_at: datetime
-    updated_at: datetime
-
-
-class JsonOrmBaseModel(OrmBaseModel):
-    updates_metadata: dict[str, datetime] = {}

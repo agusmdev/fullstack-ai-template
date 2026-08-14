@@ -1,88 +1,99 @@
-"""Tests for User router endpoint functions."""
+"""Route-level tests for the User router.
+
+These hit the mounted user_router through FastAPI's TestClient (real HTTP,
+dependency injection, response serialization) instead of importing the handler
+functions and invoking them directly.
+"""
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-from app.user.routers import delete_user, get_authenticated_user, update_logged_user
-from app.user.schemas import UserUpdate
-
-
-@pytest.fixture
-def mock_user_service():
-    svc = MagicMock()
-    svc.update = AsyncMock()
-    svc.delete = AsyncMock()
-    return svc
+from app.user.auth.permissions import AuthenticatedUser
+from app.user.dependencies import get_user_service
+from app.user.routers import user_router
 
 
 @pytest.fixture
-def sample_user_id():
+def user_id():
     return uuid.UUID("12345678-1234-5678-1234-567812345678")
 
 
 @pytest.fixture
-def mock_user(sample_user_id):
-    user = MagicMock()
-    user.id = sample_user_id
-    user.email = "test@example.com"
-    user.display_name = "Test User"
-    user.email_verified_at = None
-    return user
+def user_obj(user_id):
+    return SimpleNamespace(
+        id=user_id,
+        email="test@example.com",
+        display_name="Test User",
+        email_verified_at=None,
+    )
+
+
+@pytest.fixture
+def user_service(user_obj):
+    svc = MagicMock()
+    svc.update = AsyncMock(return_value=user_obj)
+    svc.delete = AsyncMock(return_value=None)
+    return svc
+
+
+@pytest.fixture
+def client(user_id, user_obj, user_service):
+    app = FastAPI()
+    app.include_router(user_router)
+    app.dependency_overrides[AuthenticatedUser.current_user_id] = lambda: user_id
+    app.dependency_overrides[AuthenticatedUser.current_user_email] = (
+        lambda: "test@example.com"
+    )
+    app.dependency_overrides[AuthenticatedUser.get_current_user] = lambda: user_obj
+    app.dependency_overrides[get_user_service] = lambda: user_service
+    with TestClient(app, base_url="http://test") as c:
+        yield c
 
 
 class TestGetAuthenticatedUser:
-    async def test_returns_user_response(self, mock_user):
-        result = await get_authenticated_user(user=mock_user)
+    def test_returns_user_response(self, client, user_obj):
+        response = client.get("/me")
 
-        assert result.id == mock_user.id
-        assert result.email == mock_user.email
-        assert result.display_name == mock_user.display_name
+        assert response.status_code == 200
+        body = response.json()
+        assert body["id"] == str(user_obj.id)
+        assert body["email"] == user_obj.email
+        assert body["display_name"] == user_obj.display_name
 
-    async def test_is_email_verified_false_when_no_verified_at(self, mock_user):
-        mock_user.email_verified_at = None
-        result = await get_authenticated_user(user=mock_user)
-        assert result.is_email_verified is False
+    def test_is_email_verified_false_when_unverified(self, client):
+        response = client.get("/me")
+
+        assert response.json()["is_email_verified"] is False
 
 
 class TestUpdateLoggedUser:
-    async def test_calls_service_update(self, mock_user_service, sample_user_id):
-        user_update = UserUpdate(display_name="New Name")
+    def test_calls_service_update(self, client, user_service, user_id):
+        response = client.patch("/me", json={"display_name": "New Name"})
 
-        await update_logged_user(
-            user_id=sample_user_id,
-            user=user_update,
-            user_service=mock_user_service,
-        )
+        assert response.status_code == 200
+        user_service.update.assert_awaited_once()
+        args, _ = user_service.update.await_args
+        assert args[0] == user_id
+        assert args[1].display_name == "New Name"
 
-        mock_user_service.update.assert_called_once_with(sample_user_id, user_update)
+    def test_returns_updated_user(self, client, user_obj):
+        response = client.patch("/me", json={"display_name": "X"})
 
-    async def test_returns_none(self, mock_user_service, sample_user_id):
-        user_update = UserUpdate(display_name="New Name")
-
-        result = await update_logged_user(
-            user_id=sample_user_id,
-            user=user_update,
-            user_service=mock_user_service,
-        )
-
-        assert result is None
+        # update_logged_user echoes the updated resource (mirrors items PATCH).
+        assert response.status_code == 200
+        body = response.json()
+        assert body["id"] == str(user_obj.id)
+        assert body["email"] == user_obj.email
 
 
 class TestDeleteUser:
-    async def test_calls_service_delete(self, mock_user_service, sample_user_id):
-        await delete_user(
-            user_id=sample_user_id,
-            user_service=mock_user_service,
-        )
+    def test_calls_service_delete(self, client, user_service, user_id):
+        response = client.delete("/me")
 
-        mock_user_service.delete.assert_called_once_with(sample_user_id)
-
-    async def test_returns_none(self, mock_user_service, sample_user_id):
-        result = await delete_user(
-            user_id=sample_user_id,
-            user_service=mock_user_service,
-        )
-
-        assert result is None
+        assert response.status_code == 204
+        user_service.delete.assert_awaited_once_with(user_id)
