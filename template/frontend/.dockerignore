@@ -1,11 +1,27 @@
+# Keep the build context small: node_modules and build output are recreated
+# inside the image, everything else here only busts the build cache.
 node_modules
 .output
+.nitro
 .tanstack
+.vite
+.git
+.github
+.claude
 .vscode
 .husky
+dist
+coverage
 playwright-report
+test-results
 e2e
 *.log
 .env
-.env.local
+.env.*
+!.env.example
 .DS_Store
+*.png
+Dockerfile
+.dockerignore
+*.md
+!README.md

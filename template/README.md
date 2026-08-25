@@ -19,7 +19,7 @@ make dev-fresh
 
 # Access the application
 # Backend API: http://localhost:9095
-# Frontend: http://localhost:3150
+# Frontend: http://localhost:3000
 # API Docs: http://localhost:9095/docs
 ```
 
@@ -30,11 +30,11 @@ make dev-fresh
 cp .env.example .env
 
 # 2. Start all services
-docker-compose up
+docker compose up
 
 # 3. Access the application
 # Backend API: http://localhost:9095
-# Frontend: http://localhost:3150
+# Frontend: http://localhost:3000
 # API Docs: http://localhost:9095/docs
 ```
 
@@ -45,12 +45,12 @@ That's it! The template uses sensible defaults that work without any configurati
 ```
 ┌─────────────┐     ┌──────────────┐     ┌────────────┐
 │  Frontend   │────▶│   Backend    │────▶│ PostgreSQL │
-│ (Port 3150) │     │ (Port 9095)  │     │ (Port 5432)│
+│ (Port 3000) │     │ (Port 9095)  │     │ (Port 5432)│
 └─────────────┘     └──────────────┘     └────────────┘
 ```
 
 - **Backend**: FastAPI with async SQLAlchemy, Pydantic v2, structured 3-layer architecture
-- **Frontend**: (To be scaffolded)
+- **Frontend**: TanStack Start (React 19) on Nitro, built and served with Bun
 - **Database**: PostgreSQL 18.1 with automated migrations
 - **Infrastructure**: Docker Compose with health checks
 
@@ -82,7 +82,7 @@ See [ENV_STRATEGY.md](./ENV_STRATEGY.md) for detailed documentation.
 
 The template works out of the box with these defaults:
 - **Backend**: `http://localhost:9095`
-- **Frontend**: `http://localhost:3150`
+- **Frontend**: `http://localhost:3000`
 - **Database**: `postgresql://app:app@localhost:5432/app`
 
 ### Customizing Ports
@@ -100,15 +100,22 @@ Create a `.env` file in the template root directory to override default ports:
 
 ```bash
 # .env
-BACKEND_PORT=9096    # Default: 9095
-FRONTEND_PORT=3151   # Default: 3150
-DB_PORT=5433         # Default: 5432
+BACKEND_PORT=9096
+FRONTEND_PORT=3001
+DB_PORT=5433
+
+# The frontend bakes this URL in at build time, so keep it in sync
+# with BACKEND_PORT and rebuild the frontend image afterwards.
+VITE_API_BASE_URL=http://localhost:9096
 ```
 
-Then restart your services:
+> Do not put inline `# comments` after a value in `.env` — Compose reads the
+> whole line as the value.
+
+Then rebuild and restart your services:
 ```bash
-docker-compose down
-docker-compose up
+docker compose down
+docker compose up --build
 ```
 
 #### Checking for Port Conflicts
@@ -118,11 +125,11 @@ Before starting services, check if ports are available:
 ```bash
 # Check if default ports are in use
 lsof -i :9095  # Backend
-lsof -i :3150  # Frontend
+lsof -i :3000  # Frontend
 lsof -i :5432  # Database
 
 # Or use netstat
-netstat -an | grep -E ':(9095|3150|5432)'
+netstat -an | grep -E ':(9095|3000|5432)'
 ```
 
 #### Complete Override Example
@@ -144,10 +151,13 @@ DB_PORT=5433
 POSTGRES_USER=app
 POSTGRES_PASSWORD=app
 POSTGRES_DB=app
+
+# Frontend build-time API URL (must match BACKEND_PORT)
+VITE_API_BASE_URL=http://localhost:8080
 EOF
 
-# Start services with custom ports
-docker-compose up
+# Start services with custom ports (--build re-bakes VITE_API_BASE_URL)
+docker compose up --build
 ```
 
 Access your application at the new ports:
@@ -293,25 +303,25 @@ uv run alembic history
 
 ```bash
 # Start all services
-docker-compose up
+docker compose up
 
 # Start in detached mode
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Restart a service
-docker-compose restart backend
+docker compose restart backend
 
 # Stop all services
-docker-compose down
+docker compose down
 
 # Stop and remove volumes (resets database)
-docker-compose down -v
+docker compose down -v
 
 # Rebuild containers after code changes
-docker-compose up --build
+docker compose up --build
 ```
 
 ## Testing
@@ -708,7 +718,7 @@ See the [Customizing Ports](#customizing-ports) section for detailed port overri
 # Create .env file with different ports
 cp .env.example .env
 # Edit BACKEND_PORT, FRONTEND_PORT, or DB_PORT
-docker-compose down && docker-compose up
+docker compose down && docker compose up
 ```
 
 2. **Kill conflicting process**:
@@ -724,36 +734,36 @@ kill -9 <PID>
 ```bash
 # On macOS/Linux
 lsof -i :9095
-lsof -i :3150
+lsof -i :3000
 lsof -i :5432
 
 # Or use netstat
-netstat -an | grep -E ':(9095|3150|5432)'
+netstat -an | grep -E ':(9095|3000|5432)'
 ```
 
 ### Database Connection Issues
 ```bash
 # Check database health
-docker-compose ps
+docker compose ps
 
 # View database logs
-docker-compose logs db
+docker compose logs db
 
 # Reset database
-docker-compose down -v
-docker-compose up -d db
+docker compose down -v
+docker compose up -d db
 ```
 
 ### Backend Won't Start
 ```bash
 # Check backend logs
-docker-compose logs backend
+docker compose logs backend
 
 # Rebuild backend
-docker-compose up --build backend
+docker compose up --build backend
 
 # Check if migrations are applied
-docker-compose exec backend uv run alembic current
+docker compose exec backend uv run alembic current
 ```
 
 ## Production Deployment
