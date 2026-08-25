@@ -1,34 +1,49 @@
-# Build stage
-FROM node:22-slim AS builder
+# syntax=docker/dockerfile:1.7
+
+# ---------------------------------------------------------------------------
+# Stage 1 — install node_modules from the committed bun.lock.
+# The project is a bun project (see .cta.json); `npm install` cannot resolve
+# this dependency tree and has no lockfile to work from.
+# ---------------------------------------------------------------------------
+FROM oven/bun:1.3.14-slim AS deps
 
 WORKDIR /app
 
-# Copy package manifest (fresh resolve for correct platform binaries)
-COPY package.json ./
+# Dependency layer: only invalidated when the manifests change.
+COPY package.json bun.lock ./
+RUN --mount=type=cache,target=/root/.bun/install/cache,sharing=locked \
+    bun install --frozen-lockfile --ignore-scripts
 
-# Install dependencies
-RUN npm install --no-audit --no-fund
+# ---------------------------------------------------------------------------
+# Stage 2 — build the Nitro server bundle.
+# ---------------------------------------------------------------------------
+FROM oven/bun:1.3.14-slim AS builder
 
-# Copy source files
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Accept build arguments
 ARG VITE_API_BASE_URL=http://localhost:9095
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
+    NODE_ENV=production
 
-# Build the application
-RUN npm run build
+RUN bun run build
 
-# Production stage - just copy the build output
-FROM node:22-slim
+# ---------------------------------------------------------------------------
+# Stage 3 — runtime. Only the self-contained .output bundle ships.
+# Nitro emits a Bun server entry when it builds under Bun, so the runtime is
+# Bun too — which also means no second base image to pull.
+# ---------------------------------------------------------------------------
+FROM oven/bun:1.3.14-slim AS runtime
+
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=3000
 
 WORKDIR /app
+COPY --from=builder --chown=bun:bun /app/.output ./.output
 
-# Copy built assets from builder (includes everything needed)
-COPY --from=builder /app/.output ./.output
-
-# Expose port
+USER bun
 EXPOSE 3000
 
-# Start the application
-CMD ["node", ".output/server/index.mjs"]
+CMD ["bun", "run", ".output/server/index.mjs"]
