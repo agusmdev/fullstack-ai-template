@@ -1,1 +1,29 @@
+# Keep the build context small: only pyproject/uv.lock/README/alembic.ini/app
+# are ever copied, everything else is noise that busts the build cache.
 .venv
+.git
+.github
+.claude
+.pytest_cache
+.ruff_cache
+.ty_cache
+__pycache__
+**/__pycache__
+*.py[cod]
+tests
+notebooks
+htmlcov
+.coverage
+coverage.xml
+.env
+.env.*
+*.db
+*.sqlite3
+*.log
+*.png
+Makefile
+Dockerfile
+.dockerignore
+.pre-commit-config.yaml
+*.md
+!README.md

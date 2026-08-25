@@ -1,4 +1,4 @@
-.PHONY: help up down logs restart clean rebuild test lint format migrate migrate-create migrate-rollback db-reset backend-dev backend-shell frontend-dev check-ports
+.PHONY: help up down logs restart clean rebuild build test lint format migrate migrate-create migrate-rollback db-reset backend-dev backend-shell frontend-dev frontend-install frontend-build frontend-test frontend-lint check-ports
 
 # Default target
 help: ## Show this help message
@@ -11,44 +11,47 @@ help: ## Show this help message
 # Docker Compose Commands
 # ============================================================================
 
-up: ## Start all services (docker-compose up)
-	docker-compose up
+up: ## Start all services (docker compose up)
+	docker compose up
 
 up-d: ## Start all services in detached mode
-	docker-compose up -d
+	docker compose up -d
 
 down: ## Stop all services
-	docker-compose down
+	docker compose down
 
 down-v: ## Stop all services and remove volumes (resets database)
-	docker-compose down -v
+	docker compose down -v
 
 logs: ## View logs from all services
-	docker-compose logs -f
+	docker compose logs -f
 
 logs-backend: ## View backend logs only
-	docker-compose logs -f backend
+	docker compose logs -f backend
 
 logs-db: ## View database logs only
-	docker-compose logs -f db
+	docker compose logs -f db
 
 restart: ## Restart all services
-	docker-compose restart
+	docker compose restart
 
 restart-backend: ## Restart backend service only
-	docker-compose restart backend
+	docker compose restart backend
+
+build: ## Build all images without starting them
+	docker compose build
 
 rebuild: ## Rebuild and start all services
-	docker-compose up --build
+	docker compose up --build
 
 rebuild-backend: ## Rebuild and start backend service only
-	docker-compose up --build backend
+	docker compose up --build backend
 
 ps: ## Show running services
-	docker-compose ps
+	docker compose ps
 
 clean: ## Stop services and clean up containers, networks, and volumes
-	docker-compose down -v
+	docker compose down -v
 	docker system prune -f
 
 # ============================================================================
@@ -56,10 +59,10 @@ clean: ## Stop services and clean up containers, networks, and volumes
 # ============================================================================
 
 backend-shell: ## Open a shell in the backend container
-	docker-compose exec backend /bin/sh
+	docker compose exec backend /bin/sh
 
 backend-dev: ## Start backend development server locally (requires uv)
-	cd backend && uv sync && uv run uvicorn src.app:app --reload --host 0.0.0.0 --port 9095
+	cd backend && uv sync && uv run uvicorn --factory app.main:create_app --reload --host 0.0.0.0 --port 9095
 
 backend-install: ## Install backend dependencies locally (requires uv)
 	cd backend && uv sync
@@ -68,7 +71,7 @@ backend-test: ## Run backend tests locally
 	cd backend && uv run pytest
 
 backend-test-cov: ## Run backend tests with coverage report
-	cd backend && uv run pytest --cov=src --cov-report=html
+	cd backend && uv run pytest --cov=app --cov-report=html
 
 backend-format: ## Format backend code with ruff
 	cd backend && uv run ruff format .
@@ -81,6 +84,28 @@ backend-lint-fix: ## Lint and auto-fix backend code
 
 backend-typecheck: ## Run type checking on backend code
 	cd backend && uv run ty check
+
+# ============================================================================
+# Frontend Development Commands
+# ============================================================================
+
+frontend-shell: ## Open a shell in the frontend container
+	docker compose exec frontend /bin/sh
+
+frontend-dev: ## Start frontend development server locally (requires bun)
+	cd frontend && bun install && bun run dev
+
+frontend-install: ## Install frontend dependencies locally (requires bun)
+	cd frontend && bun install --frozen-lockfile
+
+frontend-build: ## Build the frontend bundle locally
+	cd frontend && bun run build
+
+frontend-test: ## Run frontend unit tests
+	cd frontend && bun run test
+
+frontend-lint: ## Lint frontend code
+	cd frontend && bun run lint
 
 # ============================================================================
 # Database & Migration Commands
@@ -107,11 +132,11 @@ migrate-current: ## Show current migration version
 	cd backend && uv run alembic current
 
 db-shell: ## Open PostgreSQL shell in database container
-	docker-compose exec db psql -U app -d app
+	docker compose exec db psql -U app -d app
 
 db-reset: ## Reset database (stop, remove volumes, restart, migrate)
-	docker-compose down -v
-	docker-compose up -d db
+	docker compose down -v
+	docker compose up -d db
 	sleep 3
 	$(MAKE) migrate
 
@@ -119,14 +144,16 @@ db-reset: ## Reset database (stop, remove volumes, restart, migrate)
 # Testing & Quality Commands
 # ============================================================================
 
-test: ## Run all backend tests
+test: ## Run all tests
 	$(MAKE) backend-test
+	$(MAKE) frontend-test
 
 test-cov: ## Run tests with coverage report
 	$(MAKE) backend-test-cov
 
 lint: ## Run all linters
 	$(MAKE) backend-lint
+	$(MAKE) frontend-lint
 
 lint-fix: ## Run linters with auto-fix
 	$(MAKE) backend-lint-fix
@@ -165,8 +192,8 @@ check-ports: ## Check if default ports are available
 	@echo "Checking default ports..."
 	@echo "Backend (9095):"
 	@lsof -i :9095 || echo "  ✓ Available"
-	@echo "Frontend (3150):"
-	@lsof -i :3150 || echo "  ✓ Available"
+	@echo "Frontend (3000):"
+	@lsof -i :3000 || echo "  ✓ Available"
 	@echo "Database (5432):"
 	@lsof -i :5432 || echo "  ✓ Available"
 
@@ -181,7 +208,7 @@ start: ## Quick start all services (up-d + logs)
 	@echo "Access the application:"
 	@echo "  Backend API: http://localhost:9095"
 	@echo "  API Docs:    http://localhost:9095/docs"
-	@echo "  Frontend:    http://localhost:3150"
+	@echo "  Frontend:    http://localhost:3000"
 
 stop: ## Quick stop all services
 	$(MAKE) down
@@ -198,13 +225,12 @@ dev: ## Start development environment (all services + logs)
 	$(MAKE) up
 
 dev-backend: ## Start only backend and database
-	docker-compose up backend db
+	docker compose up backend db
 
-dev-fresh: ## Fresh start (clean, setup, start)
+dev-fresh: ## Fresh start (clean, setup, start; the backend container migrates on boot)
 	$(MAKE) clean
 	$(MAKE) setup
 	$(MAKE) start
-	$(MAKE) migrate
 
 # ============================================================================
 # API Testing Commands
