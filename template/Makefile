@@ -1,11 +1,20 @@
-.PHONY: help up down logs restart clean rebuild build test lint format migrate migrate-create migrate-rollback db-reset backend-dev backend-shell frontend-dev frontend-install frontend-build frontend-test frontend-lint check-ports
+.PHONY: help up up-d down down-v logs logs-backend logs-db restart restart-backend build rebuild rebuild-backend ps clean \
+	backend-shell backend-dev backend-install backend-format backend-lint backend-lint-fix backend-check backend-typecheck \
+	frontend-shell frontend-dev frontend-install frontend-build frontend-lint frontend-lint-fix frontend-format frontend-format-check frontend-typecheck \
+	migrate migrate-create migrate-rollback migrate-history migrate-current db-shell db-reset \
+	test test-backend test-backend-cov test-e2e lint lint-fix format typecheck check ci quality \
+	pre-commit-install pre-commit-run setup check-ports start stop restart-all dev dev-backend dev-fresh api-docs api-health
+
+# ty is not a project dependency: run a pinned release with uvx.
+# Supply-chain policy: a release at least 7 days old (0.0.84 = 2026-09-24).
+TY_VERSION := 0.0.84
 
 # Default target
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Available targets:'
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 # ============================================================================
 # Docker Compose Commands
@@ -50,9 +59,8 @@ rebuild-backend: ## Rebuild and start backend service only
 ps: ## Show running services
 	docker compose ps
 
-clean: ## Stop services and clean up containers, networks, and volumes
-	docker compose down -v
-	docker system prune -f
+clean: ## Stop services and remove this project's containers, networks and volumes
+	docker compose down -v --remove-orphans
 
 # ============================================================================
 # Backend Development Commands
@@ -67,12 +75,6 @@ backend-dev: ## Start backend development server locally (requires uv)
 backend-install: ## Install backend dependencies locally (requires uv)
 	cd backend && uv sync
 
-backend-test: ## Run backend tests locally
-	cd backend && uv run pytest
-
-backend-test-cov: ## Run backend tests with coverage report
-	cd backend && uv run pytest --cov=app --cov-report=html
-
 backend-format: ## Format backend code with ruff
 	cd backend && uv run ruff format .
 
@@ -82,8 +84,11 @@ backend-lint: ## Lint backend code with ruff
 backend-lint-fix: ## Lint and auto-fix backend code
 	cd backend && uv run ruff check . --fix
 
-backend-typecheck: ## Run type checking on backend code
-	cd backend && uv run ty check
+backend-check: ## Check backend lint + format without changing files (what CI runs)
+	cd backend && uv run ruff check . && uv run ruff format --check .
+
+backend-typecheck: ## Type-check the backend with ty (advisory: known diagnostics, not run in CI)
+	cd backend && uvx ty@$(TY_VERSION) check app
 
 # ============================================================================
 # Frontend Development Commands
@@ -101,11 +106,20 @@ frontend-install: ## Install frontend dependencies locally (requires bun)
 frontend-build: ## Build the frontend bundle locally
 	cd frontend && bun run build
 
-frontend-test: ## Run frontend end-to-end tests (Playwright)
-	cd frontend && bun run test
-
-frontend-lint: ## Lint frontend code
+frontend-lint: ## Lint frontend code (ESLint, includes the e2e/ no-mock rules)
 	cd frontend && bun run lint
+
+frontend-lint-fix: ## Lint and auto-fix frontend code
+	cd frontend && bun run lint:fix
+
+frontend-format: ## Format frontend code with prettier
+	cd frontend && bun run format
+
+frontend-format-check: ## Check frontend formatting without changing files
+	cd frontend && bun run format:check
+
+frontend-typecheck: ## Type-check the frontend (tsc --noEmit)
+	cd frontend && bun run typecheck
 
 # ============================================================================
 # Database & Migration Commands
@@ -136,20 +150,28 @@ db-shell: ## Open PostgreSQL shell in database container
 
 db-reset: ## Reset database (stop, remove volumes, restart, migrate)
 	docker compose down -v
-	docker compose up -d db
-	sleep 3
+	docker compose up -d --wait db
 	$(MAKE) migrate
 
 # ============================================================================
 # Testing & Quality Commands
 # ============================================================================
 
-test: ## Run all tests
-	$(MAKE) backend-test
-	$(MAKE) frontend-test
+# All tests are end-to-end against the real stack (no mocks, no unit tests).
+# Both suites start their own Postgres in Docker and never touch the dev stack.
 
-test-cov: ## Run tests with coverage report
-	$(MAKE) backend-test-cov
+test: ## Run both end-to-end suites (backend API, then full-stack browser)
+	$(MAKE) test-backend
+	$(MAKE) test-e2e
+
+test-backend: ## Backend e2e suite: Postgres container + migrations + live API (needs Docker)
+	cd backend && uv run pytest
+
+test-backend-cov: ## Backend e2e suite with an app/ coverage report (htmlcov/)
+	cd backend && uv run pytest --cov=app --cov-report=html --cov-report=term
+
+test-e2e: ## Full-stack e2e: Postgres + backend + Vite + Playwright (needs Docker, uv, bun, chromium)
+	cd frontend && bun run test:e2e
 
 lint: ## Run all linters
 	$(MAKE) backend-lint
@@ -157,23 +179,42 @@ lint: ## Run all linters
 
 lint-fix: ## Run linters with auto-fix
 	$(MAKE) backend-lint-fix
+	$(MAKE) frontend-lint-fix
 
 format: ## Format all code
 	$(MAKE) backend-format
+	$(MAKE) frontend-format
 
-typecheck: ## Run type checking
-	$(MAKE) backend-typecheck
+typecheck: ## Run blocking type checks (frontend tsc; backend ty is advisory: make backend-typecheck)
+	$(MAKE) frontend-typecheck
 
-quality: ## Run all quality checks (format, lint, typecheck)
+check: ## Run every static check CI runs, without changing files
+	$(MAKE) backend-check
+	$(MAKE) frontend-lint
+	$(MAKE) frontend-format-check
+	$(MAKE) frontend-typecheck
+	$(MAKE) frontend-build
+
+ci: ## Run what CI runs: static checks, then both e2e suites
+	$(MAKE) check
+	$(MAKE) test
+
+quality: ## Format, lint and type-check (changes files)
 	$(MAKE) format
 	$(MAKE) lint
 	$(MAKE) typecheck
+
+pre-commit-install: ## Install the git pre-commit hooks (.pre-commit-config.yaml; needs a git repo)
+	cd backend && uv run pre-commit install --config ../.pre-commit-config.yaml
+
+pre-commit-run: ## Run the pre-commit hooks on all files
+	cd backend && uv run pre-commit run --all-files --config ../.pre-commit-config.yaml
 
 # ============================================================================
 # Environment & Setup Commands
 # ============================================================================
 
-setup: ## Initial setup (copy .env.example, install deps)
+setup: ## Initial setup (copy .env.example files, install deps)
 	@if [ ! -f .env ]; then \
 		echo "Creating .env from .env.example..."; \
 		cp .env.example .env; \
@@ -187,6 +228,7 @@ setup: ## Initial setup (copy .env.example, install deps)
 		echo "backend/.env already exists, skipping..."; \
 	fi
 	$(MAKE) backend-install
+	$(MAKE) frontend-install
 
 check-ports: ## Check if default ports are available
 	@echo "Checking default ports..."

@@ -15,9 +15,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.10.8'
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -43,3 +43,8 @@ jobs:
       - name: Check generated Docker Compose file
         working-directory: ${{ runner.temp }}/ci-smoke
         run: docker compose config -q
+
+      # Same pre-commit version as the backend dev dependency (pyproject.toml).
+      - name: Check generated pre-commit config
+        working-directory: ${{ runner.temp }}/ci-smoke
+        run: uvx pre-commit@4.3.0 validate-config .pre-commit-config.yaml
