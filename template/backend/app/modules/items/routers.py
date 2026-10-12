@@ -3,6 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Body, Depends, status
+from fastapi_filter import FilterDepends
 from fastapi_pagination import Page, Params
 
 from app.core.logging import log_action, log_entity
@@ -26,7 +27,9 @@ items_router = APIRouter(
 )
 async def list_items(
     pagination: Params = Depends(),
-    item_filter: ItemFilter = Depends(),
+    # FilterDepends, not Depends(): plain Depends() reads the list-typed
+    # `order_by` field from the request body, so `?order_by=` was ignored.
+    item_filter: ItemFilter = FilterDepends(ItemFilter),
     user_id: uuid.UUID = Depends(require_current_user_id),
     item_service: ItemService = Depends(get_item_service),
 ) -> Page[ItemResponse]:

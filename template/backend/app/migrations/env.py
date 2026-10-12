@@ -61,18 +61,14 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    # PostgreSQL-specific connect args for migration safety
-    extra_kwargs = {}
-    if alembic_url.startswith("postgresql"):
-        extra_kwargs["connect_args"] = {
-            "options": "-c lock_timeout=10000 -c statement_timeout=15000",
-        }
-
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        **extra_kwargs,
+        # Fail fast instead of waiting forever on a lock held by the live app.
+        connect_args={"options": "-c lock_timeout=10000 -c statement_timeout=15000"},
+        # Keep bound values out of error messages (see create_async_sqlalchemy_engine).
+        hide_parameters=True,
     )
 
     with connectable.connect() as connection:

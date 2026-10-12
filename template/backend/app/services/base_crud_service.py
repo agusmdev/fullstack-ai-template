@@ -33,11 +33,15 @@ class BaseService(Generic[T]):  # noqa: UP046
         self.repo = repo
 
     def _entity_type(self) -> str:
-        """Return the display name for the entity managed by this service."""
+        """Return the entity type for wide-event logs: the model's table name.
+
+        Lowercase, like the ``log_entity("item", ...)`` calls in routers, so
+        one request never logs the same entity under two spellings.
+        """
         model = getattr(self.repo, "model", None)
-        if model is not None and hasattr(model, "_display_name"):
-            return model._display_name()
-        return type(self).__name__.removesuffix("Service")
+        if model is not None and hasattr(model, "__tablename__"):
+            return str(model.__tablename__)
+        return type(self).__name__.removesuffix("Service").lower()
 
     def _log_entity(self, entity_id: Any) -> None:
         """Record entity type and ID in the wide-event context."""

@@ -5,6 +5,7 @@ from datetime import datetime
 
 from argon2 import PasswordHasher
 from argon2.exceptions import Argon2Error, InvalidHashError
+from sqlalchemy import DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -16,14 +17,19 @@ _ph = PasswordHasher()
 
 class User(TimestampMixin, Base):
     __tablename__ = "user"
+    # Same schema as the migrations: a UNIQUE constraint plus a plain index.
+    # (`unique=True, index=True` would mean one unique index instead.)
+    __table_args__ = (Index("user_email_idx", "email"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    email: Mapped[str] = mapped_column(index=True, unique=True)
+    email: Mapped[str] = mapped_column(unique=True)
     display_name: Mapped[str] = mapped_column(index=True, server_default="")
     is_active: Mapped[bool] = mapped_column(default=True)
 
     password: Mapped[str | None] = mapped_column()
-    email_verified_at: Mapped[datetime | None] = mapped_column(default=None)
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     def check_password(self, password: str) -> bool:
         if self.password is None:

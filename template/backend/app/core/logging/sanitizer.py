@@ -1,6 +1,7 @@
 """Sensitive data sanitization for logging."""
 
 from typing import Any
+from urllib.parse import unquote_plus
 
 # Keys that should be redacted (case-insensitive partial match)
 SENSITIVE_KEYS = frozenset(
@@ -31,6 +32,11 @@ SENSITIVE_KEYS = frozenset(
     }
 )
 
+# Query parameter names that are credentials only as a whole word: the OAuth
+# authorization ``code`` and the ``session`` id. Partial matching would also
+# redact harmless keys such as ``error_code`` or ``zipcode``.
+SENSITIVE_QUERY_PARAMS = frozenset({"code", "session"})
+
 REDACTED = "[REDACTED]"
 
 
@@ -58,3 +64,21 @@ def sanitize_dict(data: dict[str, Any]) -> dict[str, Any]:
         else:
             result[key] = sanitize_value(value)
     return result
+
+
+def sanitize_query_string(query: str) -> str:
+    """Redact the values of sensitive query parameters; keep everything else raw.
+
+    ``state=abc&access_token=xyz`` becomes ``state=abc&access_token=[REDACTED]``.
+    """
+    parts = []
+    for part in query.split("&"):
+        key, separator, _value = part.partition("=")
+        name = unquote_plus(key)
+        if separator and (
+            _is_sensitive_key(name) or name.lower() in SENSITIVE_QUERY_PARAMS
+        ):
+            parts.append(f"{key}={REDACTED}")
+        else:
+            parts.append(part)
+    return "&".join(parts)

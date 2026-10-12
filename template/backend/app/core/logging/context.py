@@ -149,13 +149,16 @@ def add_entity_to_context(entity_type: str, entity_id: str | UUID) -> None:
     entity_id_str = str(entity_id)
     ctx.entity_type = entity_type
 
+    if entity_id_str == ctx.entity_id or entity_id_str in ctx.entity_ids:
+        # Already recorded (e.g. by both the service and the router)
+        return
+
     if ctx.entity_id is None and not ctx.entity_ids:
         # First entity — use the scalar slot
         ctx.entity_id = entity_id_str
     else:
         # Multiple entities — promote scalar to list, then append
-        if ctx.entity_id and ctx.entity_id not in ctx.entity_ids:
+        if ctx.entity_id:
             ctx.entity_ids.append(ctx.entity_id)
             ctx.entity_id = None
-        if entity_id_str not in ctx.entity_ids:
-            ctx.entity_ids.append(entity_id_str)
+        ctx.entity_ids.append(entity_id_str)

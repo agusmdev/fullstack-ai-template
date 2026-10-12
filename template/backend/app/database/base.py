@@ -26,42 +26,45 @@ class Base(DeclarativeBase):
         return cls.__tablename__.capitalize()
 
 
-def _convert_url_to_async(db_url: str) -> str:
-    """Convert sync database URL to async.
+def _require_postgres_url(db_url: str) -> str:
+    """Return the scheme-less rest of a Postgres URL; reject any other database.
 
-    - postgres:// → postgresql+asyncpg://
-    - postgresql:// → postgresql+asyncpg://
-    - sqlite:// → sqlite+aiosqlite://
+    The template is Postgres-only (asyncpg for the app, psycopg for Alembic).
     """
-    if db_url.startswith("postgres://"):
-        return db_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    if db_url.startswith("postgresql://"):
-        return db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if db_url.startswith("sqlite://"):
-        return db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
-    return db_url
+    for scheme in ("postgres://", "postgresql://"):
+        if db_url.startswith(scheme):
+            return db_url.removeprefix(scheme)
+    raise ValueError(
+        "DB_URL must be a Postgres URL (postgresql://user:password@host:port/db)"
+    )
+
+
+def _convert_url_to_async(db_url: str) -> str:
+    """Convert a plain Postgres URL to the asyncpg driver (postgresql+asyncpg://)."""
+    if db_url.startswith("postgresql+asyncpg://"):
+        return db_url
+    return f"postgresql+asyncpg://{_require_postgres_url(db_url)}"
 
 
 def _convert_url_to_sync(db_url: str) -> str:
-    """Convert plain database URL to sync driver.
-
-    - postgres:// → postgresql+psycopg://
-    - postgresql:// → postgresql+psycopg://
-    - sqlite:// stays as-is (stdlib driver)
-    """
-    if db_url.startswith("postgres://"):
-        return db_url.replace("postgres://", "postgresql+psycopg://", 1)
-    if db_url.startswith("postgresql://"):
-        return db_url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return db_url
+    """Convert a plain Postgres URL to the psycopg driver (postgresql+psycopg://)."""
+    if db_url.startswith("postgresql+psycopg://"):
+        return db_url
+    return f"postgresql+psycopg://{_require_postgres_url(db_url)}"
 
 
 def create_async_sqlalchemy_engine(*, db_url: str, pool_size: int) -> AsyncEngine:
-    """Create async SQLAlchemy engine (for application use)."""
+    """Create async SQLAlchemy engine (for application use).
+
+    ``hide_parameters``: SQLAlchemy puts the bound values of a failed statement
+    in the exception message (``[parameters: ...]``), and error logs include
+    that message. The values are password hashes, tokens and user data.
+    """
     async_url = _convert_url_to_async(db_url)
     return create_async_engine(
         async_url,
         pool_pre_ping=settings.DB_POOL_PRE_PING,
         echo=settings.DEBUG_MODE,
         pool_size=pool_size,
+        hide_parameters=True,
     )

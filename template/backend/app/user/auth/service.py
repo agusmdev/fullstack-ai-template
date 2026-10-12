@@ -1,8 +1,10 @@
 import asyncio
 import secrets
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
+import requests
+from oauthlib.oauth2 import OAuth2Error
 from requests_oauthlib import OAuth2Session
 
 from app.core.config import settings
@@ -10,6 +12,7 @@ from app.user.auth.exceptions import (
     EmailAlreadyVerifiedError,
     InactiveUserError,
     InvalidTokenError,
+    OAuthProviderError,
     OAuthUserPasswordResetError,
     SessionExpiredError,
     UnsupportedOAuthProviderError,
@@ -42,6 +45,15 @@ class GoogleOAuth:
         return await asyncio.to_thread(self._fetch_user, callback)
 
     def _fetch_user(self, callback: OAuthCallback) -> OAuthUser:
+        try:
+            return self._exchange_code(callback)
+        except (OAuth2Error, requests.RequestException, ValueError) as err:
+            # Google rejected the code (expired, already used, wrong client
+            # secret), was unreachable, or sent a user without an email
+            # (ValueError covers bad JSON and pydantic's ValidationError).
+            raise OAuthProviderError() from err
+
+    def _exchange_code(self, callback: OAuthCallback) -> OAuthUser:
         google = OAuth2Session(
             client_id=settings.GOOGLE_CLIENT_ID,
             redirect_uri=settings.GOOGLE_REDIRECT_URI,
@@ -50,12 +62,15 @@ class GoogleOAuth:
         )
 
         token = google.fetch_token(
-            "https://oauth2.googleapis.com/token",
+            settings.GOOGLE_TOKEN_URL,
             client_secret=settings.GOOGLE_CLIENT_SECRET,
             code=callback.code,
+            timeout=10,
         )
 
-        user_info = google.get(settings.GOOGLE_USER_INFO_URL).json()
+        response = google.get(settings.GOOGLE_USER_INFO_URL, timeout=10)
+        response.raise_for_status()
+        user_info = response.json()
 
         return OAuthUser(
             token=token["access_token"],
@@ -103,7 +118,7 @@ class AuthService:
             TokenCreate(
                 id=self.generate_session_id(),
                 user_id=user_id,
-                expires_at=datetime.now() + timedelta(days=365),
+                expires_at=datetime.now(UTC) + timedelta(days=365),
             )
         )
         return SessionResponse(
@@ -144,7 +159,7 @@ class AuthService:
         session = await self.repo.get_by_field(
             "id", session_id, response_model=UserSessionResponse, raise_error=True
         )
-        if session.expires_at < datetime.now():
+        if session.expires_at < datetime.now(UTC):
             raise SessionExpiredError()
         user = session.user
         if not user.is_active:
@@ -184,7 +199,7 @@ class AuthService:
             TokenCreate(
                 id=token,
                 user_id=user.id,
-                expires_at=datetime.now()
+                expires_at=datetime.now(UTC)
                 + timedelta(hours=PASSWORD_RESET_TOKEN_EXPIRY_HOURS),
             )
         )
@@ -229,7 +244,7 @@ class AuthService:
             TokenCreate(
                 id=token,
                 user_id=user_id,
-                expires_at=datetime.now()
+                expires_at=datetime.now(UTC)
                 + timedelta(hours=EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS),
             )
         )

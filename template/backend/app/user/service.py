@@ -1,7 +1,7 @@
 """Module with the User service to serve"""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from pydantic import BaseModel
 
@@ -13,6 +13,7 @@ from app.user.schemas import (
     UserCreate,
     UserRegister,
     UserResponse,
+    normalize_email,
 )
 
 
@@ -42,15 +43,17 @@ class UserService(BaseService[User]):
     async def find_or_create_by_email(
         self, email: str, create_fields: UserCreate
     ) -> User:
-        """Find a user by email or create one with the given fields."""
-        return await self.find_or_create("email", email, create_fields)
+        """Find a user by email (any case) or create one with the given fields."""
+        return await self.find_or_create("email", normalize_email(email), create_fields)
 
     async def register(self, user: UserRegister) -> UserResponse:
         created_user = await self.create(user)
         return UserResponse.model_validate(created_user)
 
     async def authenticate(self, email: str, password: str) -> User:
-        user = await self.repo.get_by_field("email", email, raise_error=False)
+        user = await self.repo.get_by_field(
+            "email", normalize_email(email), raise_error=False
+        )
         if not user or not user.is_active:
             raise AuthenticationError(
                 detail="User does not exist or is not allowed to login"
@@ -68,4 +71,4 @@ class UserService(BaseService[User]):
 
     async def mark_email_verified(self, user_id: uuid.UUID) -> None:
         """Mark a user's email as verified."""
-        await self.repo.update(user_id, {"email_verified_at": datetime.now()})
+        await self.repo.update(user_id, {"email_verified_at": datetime.now(tz=UTC)})

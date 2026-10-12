@@ -10,7 +10,6 @@ dependencies = [
     "pydantic[email]==2.11.10",
     "sqlalchemy==2.0.43",
     "asyncpg==0.31.0",
-    "aiosqlite==0.22.1",
     "uvicorn==0.37.0",
     "pydantic-settings==2.11.0",
     "httpx==0.28.1",
@@ -29,7 +28,6 @@ dev = [
     "greenlet==3.2.4",
     "pre-commit==4.3.0",
     "pytest==8.4.2",
-    "pytest-asyncio==1.3.0",
     "pytest-cov==7.0.0",
     "testcontainers[postgres]==4.14.0",
     "ruff==0.13.3",
@@ -51,6 +49,7 @@ select = [
     "UP",  # pyupgrade
     "TCH",  # type-checking
     "PYI",  # pyi
+    "TID251",  # banned-api: no mocks (see [tool.ruff.lint.flake8-tidy-imports.banned-api])
 ]
 ignore = [
     "E501",  # line too long, handled by ruff format
@@ -64,14 +63,62 @@ ignore = [
 [tool.ruff.lint.flake8-type-checking]
 strict = true
 
+# The tests are end-to-end only: they drive the live server over HTTP against a
+# real Postgres. tests/e2e/guards.py enforces the same rule at collection time.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"unittest.mock".msg = "No mocks: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"mock".msg = "No mocks: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"pytest_mock".msg = "No mocks: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"respx".msg = "No fake HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"responses".msg = "No fake HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"requests_mock".msg = "No fake HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"pytest_httpx".msg = "No fake HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"aioresponses".msg = "No fake HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"freezegun".msg = "No fake clocks: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"time_machine".msg = "No fake clocks: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"fastapi.testclient".msg = "No in-process app: use the live-server fixtures in tests/e2e/conftest.py."
+"starlette.testclient".msg = "No in-process app: use the live-server fixtures in tests/e2e/conftest.py."
+"httpx.ASGITransport".msg = "No in-process app: use the live-server fixtures in tests/e2e/conftest.py."
+"httpx.WSGITransport".msg = "No in-process app: use the live-server fixtures in tests/e2e/conftest.py."
+"httpx.MockTransport".msg = "No fake HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"httpx.BaseTransport".msg = "No custom transports: tests send real HTTP. See tests/e2e/conftest.py."
+"httpx.AsyncBaseTransport".msg = "No custom transports: tests send real HTTP. See tests/e2e/conftest.py."
+"pytest.MonkeyPatch".msg = "No patching: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"_pytest.monkeypatch".msg = "No patching: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"flexmock".msg = "No mocks: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"mockito".msg = "No mocks: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"vcr".msg = "No recorded HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"pytest_recording".msg = "No recorded HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"httpretty".msg = "No fake HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"pook".msg = "No fake HTTP: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"pytest_httpserver".msg = "No fake servers: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"pytest_localserver".msg = "No fake servers: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"http.server".msg = "No fake servers: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"moto".msg = "No fake cloud services: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"fakeredis".msg = "No fake services: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"mongomock".msg = "No fake services: the backend tests are end-to-end. See tests/e2e/conftest.py."
+"pyfakefs".msg = "No fake file systems: the backend tests are end-to-end. See tests/e2e/conftest.py."
+
 [tool.pytest.ini_options]
-testpaths = [
-    "tests",
+# `uv run pytest` runs the end-to-end suite in tests/e2e (needs Docker).
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = [
+    # testcontainers' own internals use its deprecated decorator.
+    "ignore:The @wait_container_is_ready decorator is deprecated:DeprecationWarning",
 ]
-asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["."]
+# The e2e suite runs the app in a child process (uvicorn); measure it too.
+# uvicorn re-raises SIGTERM after shutdown, so save the data on SIGTERM.
+patch = ["subprocess"]
+sigterm = true
+# SQLAlchemy's async engine runs on greenlets; trace them, or lines after an
+# `await` look unexecuted.
+concurrency = ["greenlet", "thread"]
 omit = [
     "*__init__*",
     ".venv/*",
