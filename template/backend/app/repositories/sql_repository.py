@@ -13,13 +13,13 @@ from sqlalchemy import update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
-from app.repositories.base_repository import BaseRepository, T
+from app.database.db.statement_generator import select_from_pydantic
+from app.repositories.base_repository import BaseRepository, QueryOptions, T
 from app.repositories.clauses import (
     OnConflictClause,
     conflict_passthrough,
 )
 from app.repositories.exceptions import DuplicateError, NotFoundError, ReferencedError
-from app.repositories.query_builder import QueryBuilder
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -35,12 +35,14 @@ class SQLAlchemyRepository(BaseRepository[T]):
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
-        self._query_builder = QueryBuilder(self.model)
 
     def _generate_select_from_pydantic(
-        self, pydantic_model: type[BaseModel], query: Selectable | None = None
+        self, pydantic_model: type[BaseModel], query: Select[Any] | None = None
     ) -> Select[Any]:
-        return self._query_builder.build_select_from_pydantic(pydantic_model, query)
+        """Add load_only/joinedload options so only the schema's fields are fetched."""
+        options = select_from_pydantic(self.model, pydantic_model)
+        base = query if query is not None else select(self.model)
+        return base.options(*options)
 
     def _base_query(self, **kwargs: Any) -> Select[Any]:
         return select(self.model)
@@ -168,11 +170,9 @@ class SQLAlchemyRepository(BaseRepository[T]):
     def _build_filtered_query(
         self,
         entity_filter: BaseFilterModel | None,
-        options: "QueryOptions | None",
+        options: QueryOptions | None,
     ) -> Any:
-        from app.repositories.base_repository import QueryOptions as _QueryOptions
-
-        opts = options or _QueryOptions()
+        opts = options or QueryOptions()
         query = opts.base_query if opts.base_query is not None else self._base_query()
         if opts.response_model:
             query = self._generate_select_from_pydantic(opts.response_model, query)
@@ -185,7 +185,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
     async def get_all(
         self,
         entity_filter: BaseFilterModel | None = None,
-        options: "QueryOptions | None" = None,
+        options: QueryOptions | None = None,
     ) -> list[T]:
         query, opts = self._build_filtered_query(entity_filter, options)
         result = await self._session.execute(query)  # type: ignore[call-overload]  # execute() overloads don't include generic Select[Any]; runtime is correct
@@ -195,7 +195,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
         self,
         pagination_params: Params,
         entity_filter: BaseFilterModel | None = None,
-        options: "QueryOptions | None" = None,
+        options: QueryOptions | None = None,
     ) -> Page[T]:
         query, opts = self._build_filtered_query(entity_filter, options)
         # paginate returns Any due to dynamic params typing - explicit cast needed
@@ -260,7 +260,7 @@ class SQLAlchemyRepository(BaseRepository[T]):
     @translate_commit_errors
     async def delete(self, entity_id: uuid.UUID) -> None:
         await self._session.execute(
-            delete(self.model).where(self.model.id == entity_id)  # type: ignore[attr-defined]  # model TypeVar bound to Base; .id exists via mapped_column at runtime  # model is TypeVar bound to Base; .id attr exists at runtime via mapped_column
+            delete(self.model).where(self.model.id == entity_id)  # type: ignore[attr-defined]  # model is TypeVar bound to Base; .id attr exists at runtime via mapped_column
         )
         await self._session.commit()
 

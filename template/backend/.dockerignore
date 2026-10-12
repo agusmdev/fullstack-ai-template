@@ -11,7 +11,6 @@ __pycache__
 **/__pycache__
 *.py[cod]
 tests
-notebooks
 htmlcov
 .coverage
 coverage.xml

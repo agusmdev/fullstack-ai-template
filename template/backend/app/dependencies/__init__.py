@@ -6,24 +6,19 @@ designed for use with FastAPI's Depends() system.
 
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from functools import lru_cache
-from typing import Protocol, TypeVar
+from typing import Protocol
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.core.config import settings
-from app.database.base import Base, create_async_sqlalchemy_engine
-
-T = TypeVar("T", bound=Base)
+from app.database.base import create_async_sqlalchemy_engine
 
 
 class RepositoryProtocol(Protocol):
     """Protocol for repository types that can be created with AsyncSession."""
 
     def __init__(self, session: AsyncSession) -> None: ...
-
-
-R = TypeVar("R", bound=RepositoryProtocol)
 
 
 @lru_cache

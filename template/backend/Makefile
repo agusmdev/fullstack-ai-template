@@ -1,4 +1,4 @@
-.PHONY: help install clean lint format run test test-unit test-integration migrate migrate-new venv
+.PHONY: help install clean lint format lint-all run test test-integration test-cov migrate migrate-new migrate-history migrate-down pre-commit pre-commit-all venv
 
 # Default target
 help:
@@ -7,15 +7,18 @@ help:
 	@echo "  make clean            - Remove temporary files and caches"
 	@echo "  make lint             - Run ruff linter with auto-fix"
 	@echo "  make format           - Run ruff formatter"
-	@echo "  make run              - Run the FastAPI application"
+	@echo "  make lint-all         - Run lint and format"
+	@echo "  make run              - Run the FastAPI application on port 9095"
 	@echo "  make test             - Run all tests"
-	@echo "  make test-unit        - Run unit tests only"
 	@echo "  make test-integration - Run integration tests only"
 	@echo "  make test-cov         - Run tests with coverage report"
 	@echo "  make migrate          - Apply database migrations"
 	@echo "  make migrate-new      - Create a new migration (usage: make migrate-new msg='description')"
+	@echo "  make migrate-history  - Show migration history"
+	@echo "  make migrate-down     - Downgrade migration by one"
 	@echo "  make venv             - Activate virtual environment (source this)"
 	@echo "  make pre-commit       - Install pre-commit hooks"
+	@echo "  make pre-commit-all   - Run pre-commit on all files"
 
 # Install dependencies and set up environment
 install:
@@ -51,20 +54,16 @@ lint-all: lint format
 
 # Run the FastAPI application
 run:
-	uv run uvicorn app.main:app --port 8000 --reload
+	uv run uvicorn --factory app.main:create_app --reload --port 9095
 
 # Run all tests
 test:
 	uv run pytest tests/ -v
 
-# Run unit tests only
-test-unit:
-	uv run pytest tests/unit -v
-
 # Run integration tests only
 test-integration:
 	@echo "Running integration tests..."
-	uv run pytest tests/integration -m integration -v
+	uv run pytest tests/integration -v
 
 # Run tests with coverage
 test-cov:

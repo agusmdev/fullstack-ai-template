@@ -2,12 +2,8 @@
 
 import logging
 import sys
-from typing import TYPE_CHECKING
 
 from loguru import logger
-
-if TYPE_CHECKING:
-    import loguru
 
 from app.core.config import settings
 
@@ -35,14 +31,14 @@ class InterceptHandler(logging.Handler):
 
 def _get_log_level() -> str:
     """Get log level from settings, defaulting to INFO."""
-    level = getattr(settings, "LOG_LEVEL", "INFO").upper()
+    level = settings.LOG_LEVEL.upper()
     valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
     return level if level in valid_levels else "INFO"
 
 
 def _get_log_format() -> str:
     """Get log format from settings."""
-    return getattr(settings, "LOG_FORMAT", "console")
+    return settings.LOG_FORMAT
 
 
 def configure_logging() -> None:
@@ -92,11 +88,11 @@ def configure_logging() -> None:
     }
 
     # Add optional deployment context
-    if hasattr(settings, "VERSION") and settings.VERSION:
+    if settings.VERSION:
         env_context["version"] = settings.VERSION
-    if hasattr(settings, "COMMIT_HASH") and settings.COMMIT_HASH:
+    if settings.COMMIT_HASH:
         env_context["commit_hash"] = settings.COMMIT_HASH
-    if hasattr(settings, "INSTANCE_ID") and settings.INSTANCE_ID:
+    if settings.INSTANCE_ID:
         env_context["instance_id"] = settings.INSTANCE_ID
 
     logger.configure(extra=env_context)
@@ -120,8 +116,3 @@ def configure_logging() -> None:
             logging.getLogger(logger_name).setLevel(logging.INFO)
         else:
             logging.getLogger(logger_name).setLevel(logging.WARNING)
-
-
-def get_logger() -> "loguru.Logger":
-    """Get the configured loguru logger instance."""
-    return logger

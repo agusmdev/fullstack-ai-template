@@ -34,11 +34,10 @@ async def list_items(
 
     Query parameters:
         - page: Page number (default: 1)
-        - size: Page size (default: 50)
-        - search: Search in name, description, sku
-        - name__like: Filter by name pattern
-        - sku__eq: Filter by exact SKU
-        - quantity__gte: Filter by minimum quantity
+        - size: Page size (default: 50, max: 100)
+        - search: Search in name and description
+        - name__ilike: Filter by name pattern (case-insensitive)
+        - order_by: Sort fields, comma-separated (default: created_at)
     """
     log_action("list")
     result = await item_service.get_all_paginated(

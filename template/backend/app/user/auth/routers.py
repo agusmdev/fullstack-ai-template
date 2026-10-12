@@ -9,6 +9,7 @@ from fastapi.responses import RedirectResponse
 from app.core.config import settings
 from app.user.auth.dependencies import get_auth_service
 from app.user.auth.exceptions import (
+    InactiveUserError,
     OAuthUserPasswordResetError,
 )
 from app.user.auth.permissions import AuthenticatedUser
@@ -97,7 +98,15 @@ async def oauth_callback(
             url=f"{settings.FRONTEND_URL}/oauth/error?error=unsupported_provider",
             status_code=status.HTTP_302_FOUND,
         )
-    session = await auth_service.oauth_login(provider_name=provider, payload=callback)
+    try:
+        session = await auth_service.oauth_login(
+            provider_name=provider, payload=callback
+        )
+    except InactiveUserError:
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}/oauth/error?error=inactive_user",
+            status_code=status.HTTP_302_FOUND,
+        )
     return RedirectResponse(
         url=f"{settings.FRONTEND_URL}/oauth/callback?session={session.id}",
         status_code=status.HTTP_302_FOUND,

@@ -3,7 +3,7 @@
 import time
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import Request, Response
 from loguru import logger
@@ -25,22 +25,7 @@ class WideEventMiddleware(BaseHTTPMiddleware):
     - High cardinality fields (user_id, request_id, etc.)
     - High dimensionality (many fields per event)
     - Business context from handlers
-
-    Args:
-        app: The ASGI application.
-        on_request_cleanup: Optional callback invoked after each request to clean up
-            request-scoped state (e.g., clearing a request context cache). Injected
-            at registration time so core does not depend on app-level modules.
     """
-
-    def __init__(
-        self,
-        app: Any,
-        on_request_cleanup: Callable[[], None] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(app, **kwargs)
-        self._on_request_cleanup = on_request_cleanup or (lambda: None)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -80,7 +65,6 @@ class WideEventMiddleware(BaseHTTPMiddleware):
         finally:
             self._emit_wide_event(ctx)
             clear_wide_event_context()
-            self._on_request_cleanup()
 
     def _get_client_ip(self, request: Request) -> str:
         """Extract client IP, considering common proxy headers."""

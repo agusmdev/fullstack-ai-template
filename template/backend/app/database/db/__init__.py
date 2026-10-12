@@ -7,10 +7,10 @@ relationships the schema needs (no N+1, no over-fetching).
 Entry points
 ------------
 * ``select_from_pydantic(model, schema)`` -> list of ``Load`` options.
-* Reached in production via ``app.repositories.query_builder.QueryBuilder`` and
-  ``app.repositories.sql_repository.SQLAlchemyRepository`` whenever a
-  ``response_model`` is supplied to ``get()`` / ``get_by_field()`` (e.g. session
-  validation in ``app.user.auth``), and optionally via
+* Reached in production via
+  ``app.repositories.sql_repository.SQLAlchemyRepository._generate_select_from_pydantic``
+  whenever a ``response_model`` is supplied to ``get()`` / ``get_by_field()`` (e.g.
+  session validation in ``app.user.auth``), and optionally via
   ``QueryOptions.response_model`` on list/paginated queries.
 
 Scope note

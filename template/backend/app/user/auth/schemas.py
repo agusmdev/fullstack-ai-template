@@ -7,23 +7,31 @@ from app.database.mixins import OrmBaseModel
 from app.user.schemas import UserResponse
 
 
-class SessionBase(OrmBaseModel):
+class TokenBase(OrmBaseModel):
+    """Shared shape of sessions, password reset and email verification tokens."""
+
     id: str
     expires_at: datetime
 
 
-class SessionResponse(SessionBase):
+class TokenCreate(TokenBase):
+    user_id: uuid.UUID
+
+
+class SessionResponse(TokenBase):
     @computed_field
     def expires_in(self) -> int:
         return int((self.expires_at - datetime.now()).total_seconds())
 
 
-class SessionCreate(SessionBase):
-    user_id: uuid.UUID
+class SessionUser(UserResponse):
+    """User fields loaded with a session; ``is_active`` stays out of UserResponse."""
+
+    is_active: bool
 
 
 class UserSessionResponse(SessionResponse):
-    user: UserResponse
+    user: SessionUser
 
 
 class OAuthCallback(BaseModel):
@@ -56,15 +64,6 @@ class LogoutResponse(BaseModel):
 
 
 # Password Reset Schemas
-class PasswordResetTokenBase(OrmBaseModel):
-    id: str
-    expires_at: datetime
-
-
-class PasswordResetTokenCreate(PasswordResetTokenBase):
-    user_id: uuid.UUID
-
-
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 
@@ -85,19 +84,6 @@ class PasswordResetConfirmResponse(BaseModel):
 
 
 # Email Verification Schemas
-class EmailVerificationTokenBase(OrmBaseModel):
-    id: str
-    expires_at: datetime
-
-
-class EmailVerificationTokenCreate(EmailVerificationTokenBase):
-    user_id: uuid.UUID
-
-
-class EmailVerificationRequest(BaseModel):
-    pass
-
-
 class EmailVerificationConfirm(BaseModel):
     token: str
 

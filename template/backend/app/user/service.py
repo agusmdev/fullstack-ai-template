@@ -47,15 +47,11 @@ class UserService(BaseService[User]):
 
     async def register(self, user: UserRegister) -> UserResponse:
         created_user = await self.create(user)
-        return UserResponse(
-            id=created_user.id,
-            email=created_user.email,
-            display_name=created_user.display_name,
-        )
+        return UserResponse.model_validate(created_user)
 
     async def authenticate(self, email: str, password: str) -> User:
         user = await self.repo.get_by_field("email", email, raise_error=False)
-        if not user:
+        if not user or not user.is_active:
             raise AuthenticationError(
                 detail="User does not exist or is not allowed to login"
             )

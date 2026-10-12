@@ -9,13 +9,13 @@ class ItemFilter(Filter):
     """Filter for Item queries.
 
     Usage in requests:
-        ?search=keyword
-        ?name__like=pattern
-        ?sku__eq=ABC123
-        ?quantity__gte=10
+        ?search=keyword          (name or description, case-insensitive)
+        ?name__ilike=%pattern%   (name only, case-insensitive)
+        ?order_by=-created_at    (comma-separated; prefix "-" for descending)
     """
 
     order_by: list[str] = ["created_at"]
+    name__ilike: str | None = None
     search: str | None = None
 
     class Constants(Filter.Constants):

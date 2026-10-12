@@ -8,6 +8,7 @@ from requests_oauthlib import OAuth2Session
 from app.core.config import settings
 from app.user.auth.exceptions import (
     EmailAlreadyVerifiedError,
+    InactiveUserError,
     InvalidTokenError,
     OAuthUserPasswordResetError,
     SessionExpiredError,
@@ -20,12 +21,10 @@ from app.user.auth.repository import (
     SessionRepository,
 )
 from app.user.auth.schemas import (
-    EmailVerificationTokenCreate,
     OAuthCallback,
     OAuthUser,
-    PasswordResetTokenCreate,
-    SessionCreate,
     SessionResponse,
+    TokenCreate,
     UserSessionResponse,
 )
 from app.user.models import User
@@ -101,7 +100,7 @@ class AuthService:
     async def _create_session_for_user(self, user_id: uuid.UUID) -> SessionResponse:
         """Create a new session for the given user and return the session response."""
         created_session = await self.repo.create(
-            SessionCreate(
+            TokenCreate(
                 id=self.generate_session_id(),
                 user_id=user_id,
                 expires_at=datetime.now() + timedelta(days=365),
@@ -137,6 +136,8 @@ class AuthService:
                 display_name=oauth_user.display_name or "",
             ),
         )
+        if not user.is_active:
+            raise InactiveUserError()
         return await self._create_session_for_user(user.id)
 
     async def validate_session(self, session_id: str) -> User:
@@ -145,7 +146,10 @@ class AuthService:
         )
         if session.expires_at < datetime.now():
             raise SessionExpiredError()
-        return session.user
+        user = session.user
+        if not user.is_active:
+            raise InactiveUserError()
+        return user
 
     async def logout(self, session_id: str) -> None:
         """Invalidate a session by deleting it."""
@@ -177,7 +181,7 @@ class AuthService:
 
         token = self.generate_token("pr")
         await self.password_reset_repo.create(
-            PasswordResetTokenCreate(
+            TokenCreate(
                 id=token,
                 user_id=user.id,
                 expires_at=datetime.now()
@@ -216,13 +220,13 @@ class AuthService:
         if not user:
             raise UserNotFoundError()
 
-        if user.email_verified_at is not None:
+        if user.is_email_verified:
             raise EmailAlreadyVerifiedError()
 
         await self.email_verification_repo.invalidate_user_tokens(user_id)
         token = self.generate_token("ev")
         await self.email_verification_repo.create(
-            EmailVerificationTokenCreate(
+            TokenCreate(
                 id=token,
                 user_id=user_id,
                 expires_at=datetime.now()

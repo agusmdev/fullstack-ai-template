@@ -7,11 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.context import clear_request_context
 from app.core.logging import configure_logging
 from app.core.logging.middleware import WideEventMiddleware
 from app.exceptions import ErrorResponse
-from app.middlewares.context import RequestContextMiddleware
 
 from .routers import get_app_router
 
@@ -66,23 +64,15 @@ def create_app(
     app.add_exception_handler(HTTPException, _http_exception_handler)
 
     # Middleware is applied LIFO: last-added = outermost (first to handle request).
-    # Desired order: CORS → WideEvent → RequestContext
-    #
-    # RequestContextMiddleware reads the request_id from WideEventContext, so it must
-    # run AFTER WideEventMiddleware (i.e., be added FIRST = innermost).
-    app.add_middleware(RequestContextMiddleware)  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
-
-    # WideEventMiddleware generates the canonical request_id and emits the wide log.
-    # Must wrap RequestContextMiddleware so the ID is set before context middleware runs.
-    # Inject clear_request_context so core middleware doesn't import app-level modules.
-    app.add_middleware(WideEventMiddleware, on_request_cleanup=clear_request_context)  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
+    # Order: CORS → WideEvent. WideEventMiddleware generates the canonical
+    # request_id and emits the wide log.
+    app.add_middleware(WideEventMiddleware)
 
     app.add_middleware(
-        CORSMiddleware,  # type: ignore[invalid-argument-type]  # FastAPI add_middleware expects Type[_MiddlewareClass] but our custom middleware inherits BaseHTTPMiddleware correctly
+        CORSMiddleware,
         allow_origins=[
             settings.FRONTEND_URL,
             "http://localhost:3000",
-            "http://localhost:3150",
         ],
         allow_credentials=True,
         allow_methods=["*"],

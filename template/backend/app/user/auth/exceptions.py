@@ -19,6 +19,12 @@ class SessionExpiredError(AuthenticationError):
     status_code = 401
 
 
+class InactiveUserError(AuthenticationError):
+    detail = "User is not allowed to login"
+    error_code = "inactive_user"
+    status_code = 401
+
+
 class InvalidTokenError(HTTPExceptionMixin):
     detail = "Invalid or expired token"
     error_code = "invalid_token"
