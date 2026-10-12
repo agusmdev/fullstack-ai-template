@@ -2,7 +2,7 @@
 
 # ---------------------------------------------------------------------------
 # Stage 1 — install node_modules from the committed bun.lock.
-# The project is a bun project (see .cta.json); `npm install` cannot resolve
+# The project is a bun project; `npm install` cannot resolve
 # this dependency tree and has no lockfile to work from.
 # ---------------------------------------------------------------------------
 FROM oven/bun:1.3.14-slim AS deps

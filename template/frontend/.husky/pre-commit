@@ -1,3 +1,0 @@
-#!/bin/sh
-cd template/frontend
-npx lint-staged

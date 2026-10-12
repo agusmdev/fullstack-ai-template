@@ -34,20 +34,18 @@ export function DeleteItemDialog({ item, trigger }: DeleteItemDialogProps) {
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        {trigger}
-      </AlertDialogTrigger>
+      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Item</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{item.name}"? This action cannot be undone.
+            Are you sure you want to delete &quot;{item.name}&quot;? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={deleteItem.isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={(e) => {
+            onClick={e => {
               e.preventDefault()
               handleDelete()
             }}

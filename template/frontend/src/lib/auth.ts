@@ -1,4 +1,4 @@
-export const AUTH_TOKEN_KEY = 'auth_token'
+const AUTH_TOKEN_KEY = 'auth_token'
 
 // Subscribers are notified whenever the auth token changes — allows api-client
 // to trigger AuthContext re-renders when it clears the token on 401.
@@ -8,11 +8,6 @@ const authChangeListeners = new Set<AuthChangeListener>()
 export function subscribeToAuthChanges(listener: AuthChangeListener): () => void {
   authChangeListeners.add(listener)
   return () => authChangeListeners.delete(listener)
-}
-
-/** Clear all auth change listeners. For test teardown to prevent state leakage between tests. */
-export function clearAllAuthListeners(): void {
-  authChangeListeners.clear()
 }
 
 function notifyAuthChange() {

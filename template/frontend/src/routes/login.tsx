@@ -18,15 +18,19 @@ export const Route = createFileRoute('/login')({
 
 function Login() {
   const { redirect: redirectTo } = Route.useSearch()
-  const { submit, isLoading } = useAuthSubmit<LoginFormData>(API.AUTH.LOGIN, 'Signed in successfully', 'Login failed', { to: (redirectTo ?? '/') as '/' })
+  const { submit, isLoading } = useAuthSubmit<LoginFormData>(
+    API.AUTH.LOGIN,
+    'Signed in successfully',
+    'Login failed',
+    { to: (redirectTo ?? '/') as '/' }
+  )
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   })
 
-  const onSubmit = (data: LoginFormData) =>
-    submit(data)
+  const onSubmit = (data: LoginFormData) => submit(data)
 
   return (
     <AuthFormShell
@@ -34,8 +38,11 @@ function Login() {
       description="Enter your email and password to access your account"
       footer={
         <div className="mt-4 text-center text-sm text-muted-foreground">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-primary hover:text-primary/80 underline-offset-4 hover:underline">
+          Don&apos;t have an account?{' '}
+          <Link
+            to="/register"
+            className="text-primary hover:text-primary/80 underline-offset-4 hover:underline"
+          >
             Create account
           </Link>
         </div>

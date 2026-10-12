@@ -4,6 +4,10 @@ import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
 
+// React rules apply to app code only: Playwright fixtures call `use()`, which
+// react-hooks would report as a hook call.
+const reactFiles = ['src/**/*.{ts,tsx}']
+
 export default [
   {
     ignores: [
@@ -13,37 +17,44 @@ export default [
       'dist/**',
       'build/**',
       'playwright-report/**',
-      'coverage/**',
+      'test-results/**',
+      'blob-report/**',
       '*.config.ts',
       '*.config.js',
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  ...[
+    react.configs.flat.recommended,
+    react.configs.flat['jsx-runtime'],
+    reactHooks.configs.flat.recommended,
+    jsxA11y.flatConfigs.recommended,
+  ].map(config => ({ ...config, files: reactFiles })),
   {
-    files: ['**/*.{ts,tsx,js,jsx}'],
-    plugins: {
-      react,
-      'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y,
-    },
-    languageOptions: {
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
-    },
+    files: reactFiles,
     rules: {
-      'react/react-in-jsx-scope': 'off',
+      // TypeScript types the props, so runtime prop-types are redundant.
       'react/prop-types': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'warn',
     },
     settings: {
       react: {
         version: 'detect',
       },
+    },
+  },
+  {
+    files: ['**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+  {
+    // Generic <label> wrapper: callers associate it with a control via htmlFor.
+    files: ['src/components/ui/label.tsx'],
+    rules: {
+      'jsx-a11y/label-has-associated-control': 'off',
     },
   },
 ]

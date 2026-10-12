@@ -9,11 +9,10 @@ node_modules
 .github
 .claude
 .vscode
-.husky
 dist
-coverage
 playwright-report
 test-results
+blob-report
 e2e
 *.log
 .env

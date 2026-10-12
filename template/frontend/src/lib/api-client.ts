@@ -1,10 +1,15 @@
 import { getConfig } from './config'
 import { getAuthToken, clearAuthToken } from './auth'
 
+interface ValidationIssue {
+  loc: (string | number)[]
+  msg: string
+}
+
+// Backend error body. FastAPI request validation (422) sends `detail` as a list of issues.
 interface ApiErrorResponse {
-  detail: string
-  code?: string
-  fields?: Record<string, string[]>
+  detail?: string | ValidationIssue[]
+  error_code?: string
 }
 
 export class ApiError extends Error {
@@ -19,8 +24,19 @@ export class ApiError extends Error {
   }
 }
 
+function toFieldErrors(issues: ValidationIssue[]): Record<string, string[]> {
+  const fields: Record<string, string[]> = {}
+  for (const { loc, msg } of issues) {
+    const field = String(loc.at(-1))
+    fields[field] = [...(fields[field] ?? []), msg]
+  }
+  return fields
+}
+
 class ApiClient {
-  private get baseUrl() { return getConfig().apiBaseUrl }
+  private get baseUrl() {
+    return getConfig().apiBaseUrl
+  }
 
   // Executes the request with auth and error handling; returns the raw Response.
   private async execute(endpoint: string, options?: RequestInit): Promise<Response> {
@@ -60,12 +76,16 @@ class ApiClient {
       } catch {
         throw new ApiError(response.status, `HTTP ${response.status}`, 'invalid_error_body')
       }
-      throw new ApiError(
-        response.status,
-        data.detail || `HTTP ${response.status}`,
-        data.code,
-        data.fields
-      )
+      const { detail, error_code } = data
+      if (Array.isArray(detail)) {
+        throw new ApiError(
+          response.status,
+          'Validation failed',
+          error_code ?? 'validation_error',
+          toFieldErrors(detail)
+        )
+      }
+      throw new ApiError(response.status, detail || `HTTP ${response.status}`, error_code)
     }
 
     return response

@@ -41,13 +41,15 @@ export function useDeleteItem(itemId: string) {
     mutationFn: () => api.delete(API.ITEMS.DETAIL(itemId)),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: queryKeys.items.all })
-      const previousData = queryClient.getQueriesData<ItemsResponse>({ queryKey: queryKeys.items.all })
+      const previousData = queryClient.getQueriesData<ItemsResponse>({
+        queryKey: queryKeys.items.all,
+      })
 
-      queryClient.setQueriesData<ItemsResponse>({ queryKey: queryKeys.items.all }, (old) => {
+      queryClient.setQueriesData<ItemsResponse>({ queryKey: queryKeys.items.all }, old => {
         if (!old) return old
         return {
           ...old,
-          items: old.items.filter((item) => item.id !== itemId),
+          items: old.items.filter(item => item.id !== itemId),
           total: old.total - 1,
         }
       })

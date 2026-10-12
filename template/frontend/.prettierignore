@@ -4,6 +4,8 @@ node_modules
 dist
 build
 playwright-report
-coverage
+test-results
+blob-report
 package-lock.json
 bun.lock
+src/routeTree.gen.ts

@@ -7,7 +7,12 @@ import { AuthFormShell } from '@/components/AuthFormShell'
 import { EmailField, PasswordField } from '@/components/AuthFormFields'
 import { API } from '@/lib/api-endpoints'
 import { useAuthSubmit } from '@/hooks/useAuthSubmit'
-import { registerSchema, registerFormToPayload, type RegisterFormData, type RegisterPayload } from '@/features/auth/auth-schemas'
+import {
+  registerSchema,
+  registerFormToPayload,
+  type RegisterFormData,
+  type RegisterPayload,
+} from '@/features/auth/auth-schemas'
 
 export const Route = createFileRoute('/register')({
   component: Register,
@@ -17,7 +22,7 @@ function Register() {
   const { submit, isLoading } = useAuthSubmit<RegisterPayload>(
     API.AUTH.REGISTER,
     'Account created successfully',
-    'Registration failed',
+    'Registration failed'
   )
 
   const form = useForm<RegisterFormData>({
@@ -25,8 +30,7 @@ function Register() {
     defaultValues: { email: '', password: '', confirmPassword: '' },
   })
 
-  const onSubmit = (data: RegisterFormData) =>
-    submit(registerFormToPayload(data))
+  const onSubmit = (data: RegisterFormData) => submit(registerFormToPayload(data))
 
   return (
     <AuthFormShell
@@ -35,7 +39,10 @@ function Register() {
       footer={
         <div className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link to="/login" className="text-primary hover:text-primary/80 underline-offset-4 hover:underline">
+          <Link
+            to="/login"
+            className="text-primary hover:text-primary/80 underline-offset-4 hover:underline"
+          >
             Sign in
           </Link>
         </div>

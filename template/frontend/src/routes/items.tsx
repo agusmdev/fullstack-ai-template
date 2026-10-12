@@ -31,9 +31,7 @@ export const Route = createFileRoute('/items')({
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background pt-20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</div>
     </div>
   )
 }
@@ -49,9 +47,7 @@ function ItemsPageHeader({
     <div className="flex justify-between items-center mb-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Items</h1>
-        {subtitle !== undefined && (
-          <p className="text-muted-foreground mt-1">{subtitle}</p>
-        )}
+        {subtitle !== undefined && <p className="text-muted-foreground mt-1">{subtitle}</p>}
       </div>
       {actions}
     </div>
@@ -104,127 +100,131 @@ function Items() {
 
   return (
     <PageShell>
-        <div role="status" aria-live="polite" className="sr-only">
-          {`Showing ${items.length} of ${total} items`}
-        </div>
+      <div role="status" aria-live="polite" className="sr-only">
+        {`Showing ${items.length} of ${total} items`}
+      </div>
 
-        <ItemsPageHeader
-          subtitle={total === 0 ? 'No items found' : `${total} ${total === 1 ? 'item' : 'items'} total`}
-          actions={<CreateItemDialog trigger={<Button>Create Item</Button>} />}
-        />
+      <ItemsPageHeader
+        subtitle={
+          total === 0 ? 'No items found' : `${total} ${total === 1 ? 'item' : 'items'} total`
+        }
+        actions={<CreateItemDialog trigger={<Button>Create Item</Button>} />}
+      />
 
-        <div className="flex gap-2 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search items by name..."
-              value={searchInput}
-              onChange={(e) => {
+      <div className="flex gap-2 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search items by name..."
+            value={searchInput}
+            onChange={e => {
               setSearchInput(e.target.value)
               setPage(1)
             }}
-              className="pl-9"
-            />
-          </div>
-          {searchInput && (
-            <Button onClick={handleClearSearch} variant="outline">
-              Clear
-            </Button>
-          )}
+            className="pl-9"
+          />
         </div>
-
-        {items.length === 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-foreground">No items yet</CardTitle>
-              <CardDescription>Get started by creating your first item.</CardDescription>
-            </CardHeader>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => (
-              <Card key={item.id} data-testid="item-card">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-foreground">{item.name}</CardTitle>
-                      {item.description && (
-                        <CardDescription>{item.description}</CardDescription>
-                      )}
-                    </div>
-                    <div className="flex gap-1">
-                      <EditItemDialog
-                        item={item}
-                        trigger={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            aria-label={`Edit ${item.name}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                      <DeleteItemDialog
-                        item={item}
-                        trigger={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            aria-label={`Delete ${item.name}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-muted-foreground">
-                    <p>Created: {formatDate(item.created_at)}</p>
-                    {item.updated_at !== item.created_at && (
-                      <p>Updated: {formatDate(item.updated_at)}</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        {searchInput && (
+          <Button onClick={handleClearSearch} variant="outline">
+            Clear
+          </Button>
         )}
+      </div>
 
-        {total > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6" role="navigation" aria-label="Pagination">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={!hasPrevPage}
-              aria-label="Go to previous page"
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-muted-foreground">
-                Page {page} of {totalPages}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!hasNextPage}
-              aria-label="Go to next page"
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+      {items.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-foreground">No items yet</CardTitle>
+            <CardDescription>Get started by creating your first item.</CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {items.map(item => (
+            <Card key={item.id} data-testid="item-card">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <CardTitle className="text-foreground">{item.name}</CardTitle>
+                    {item.description && <CardDescription>{item.description}</CardDescription>}
+                  </div>
+                  <div className="flex gap-1">
+                    <EditItemDialog
+                      item={item}
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`Edit ${item.name}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <DeleteItemDialog
+                      item={item}
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          aria-label={`Delete ${item.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  <p>Created: {formatDate(item.created_at)}</p>
+                  {item.updated_at !== item.created_at && (
+                    <p>Updated: {formatDate(item.updated_at)}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {total > 0 && totalPages > 1 && (
+        <div
+          className="flex items-center justify-center gap-2 mt-6"
+          role="navigation"
+          aria-label="Pagination"
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={!hasPrevPage}
+            aria-label="Go to previous page"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
           </div>
-        )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => p + 1)}
+            disabled={!hasNextPage}
+            aria-label="Go to next page"
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      )}
     </PageShell>
   )
 }

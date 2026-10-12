@@ -93,7 +93,12 @@ function HomePage() {
             <Link to="/register" className="cta-primary">
               <span>Get Started</span>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path
+                  d="M6 3L11 8L6 13"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               </svg>
             </Link>
             <Link to="/login" className="cta-secondary">
@@ -110,17 +115,17 @@ function HomePage() {
                 <span />
                 <span />
               </div>
-              <div className="terminal-title">docker-compose up</div>
+              <div className="terminal-title">docker compose up</div>
             </div>
             <div className="terminal-body">
               <div className="terminal-line" style={{ animationDelay: '1000ms' }}>
-                <span className="terminal-prompt">$</span> docker-compose up
+                <span className="terminal-prompt">$</span> docker compose up
               </div>
               <div className="terminal-line success" style={{ animationDelay: '1200ms' }}>
                 ✓ Frontend ready on http://localhost:3000
               </div>
               <div className="terminal-line success" style={{ animationDelay: '1400ms' }}>
-                ✓ Backend API on http://localhost:8000
+                ✓ Backend API on http://localhost:9095
               </div>
               <div className="terminal-line success" style={{ animationDelay: '1600ms' }}>
                 ✓ Database running on port 5432
@@ -163,9 +168,7 @@ function HomePage() {
         <div className="tech-container">
           <div className="tech-header">
             <h2 className="tech-title">Modern Stack</h2>
-            <p className="tech-subtitle">
-              Built with tools you actually want to use
-            </p>
+            <p className="tech-subtitle">Built with tools you actually want to use</p>
           </div>
 
           <div className="tech-columns">
@@ -173,7 +176,7 @@ function HomePage() {
               <div className="tech-column-label">Frontend</div>
               <div className="tech-list">
                 {techStack
-                  .filter((tech) => tech.category === 'Frontend')
+                  .filter(tech => tech.category === 'Frontend')
                   .map((tech, index) => (
                     <div
                       key={tech.name}
@@ -193,7 +196,7 @@ function HomePage() {
               <div className="tech-column-label">Backend</div>
               <div className="tech-list">
                 {techStack
-                  .filter((tech) => tech.category === 'Backend')
+                  .filter(tech => tech.category === 'Backend')
                   .map((tech, index) => (
                     <div
                       key={tech.name}
@@ -213,12 +216,8 @@ function HomePage() {
       {/* CTA Section */}
       <section className="cta-section">
         <div className="cta-content">
-          <h2 className="cta-title">
-            Ready to Ship?
-          </h2>
-          <p className="cta-description">
-            Clone, customize, deploy. No PhD required.
-          </p>
+          <h2 className="cta-title">Ready to Ship?</h2>
+          <p className="cta-description">Clone, customize, deploy. No PhD required.</p>
           <div className="cta-actions">
             <Link to="/register" className="cta-btn-primary">
               Start Building
