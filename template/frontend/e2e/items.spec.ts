@@ -176,6 +176,35 @@ test('paginates the list', async ({ authedPage: page, api, user }) => {
   await expect(itemCard(page, 'Item 01')).toBeVisible()
 })
 
+test('deleting the last item of a page goes back to the last page with items', async ({
+  authedPage: page,
+  api,
+  user,
+}) => {
+  const names = Array.from(
+    { length: PAGE_SIZE + 1 },
+    (_, i) => `Item ${String(i + 1).padStart(2, '0')}`
+  )
+  await createItems(api, user, names)
+  await openItemsPage(page)
+
+  const pagination = page.getByRole('navigation', { name: 'Pagination' })
+  await pagination.getByRole('button', { name: 'Go to next page' }).click()
+  await expect(pagination).toContainText('Page 2 of 2')
+  await expect(page.getByTestId('item-card')).toHaveCount(1)
+
+  await page.getByRole('button', { name: 'Delete Item 10', exact: true }).click()
+  await page
+    .getByRole('alertdialog', { name: 'Delete Item' })
+    .getByRole('button', { name: 'Delete' })
+    .click()
+
+  await expect(page.getByText(`${PAGE_SIZE} items total`)).toBeVisible()
+  await expect(page.getByTestId('item-card')).toHaveCount(PAGE_SIZE)
+  await expect(itemCard(page, 'Item 01')).toBeVisible()
+  await expect(page.getByText('No items yet')).toHaveCount(0)
+})
+
 test('a new search starts again at page 1', async ({ authedPage: page, api, user }) => {
   // 20 items: 3 pages. "Item 1" matches Item 10 to Item 19: 2 pages.
   const names = Array.from({ length: 20 }, (_, i) => `Item ${String(i + 1).padStart(2, '0')}`)

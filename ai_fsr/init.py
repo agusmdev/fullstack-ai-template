@@ -120,6 +120,30 @@ def get_template_dir() -> Path:
     raise RuntimeError(f"Template directory not found next to: {package_dir}")
 
 
+# The DB_URL default in backend/app/core/config.py. The project name goes
+# into it three times, so long names push it past the backend's ruff line
+# length. format_db_url_line() writes it the way `ruff format` would.
+CONFIG_DB_URL_LINE: Final = (
+    '    DB_URL: str = Field(default="postgresql://app:app@localhost:5432/app")'
+)
+RUFF_LINE_LENGTH: Final = 88
+
+
+def format_db_url_line(db_url: str) -> str:
+    """Return the config.py DB_URL line in `ruff format` style.
+
+    Args:
+        db_url: Database URL for the generated project
+
+    Returns:
+        One line when it fits in RUFF_LINE_LENGTH, else the wrapped form
+    """
+    line = f'    DB_URL: str = Field(default="{db_url}")'
+    if len(line) <= RUFF_LINE_LENGTH:
+        return line
+    return f'    DB_URL: str = Field(\n        default="{db_url}"\n    )'
+
+
 def get_substitutions(project_name: str) -> dict[str, dict[str, str]]:
     """Get the placeholder replacements for each templated file.
 
@@ -131,6 +155,7 @@ def get_substitutions(project_name: str) -> dict[str, dict[str, str]]:
         {placeholder: replacement}
     """
     backend_name = f'name = "{project_name}-backend"'
+    db_url = f"postgresql://{project_name}:{project_name}@localhost:5432/{project_name}"
     return {
         ".env.example": {
             "POSTGRES_USER=app": f"POSTGRES_USER={project_name}",
@@ -143,16 +168,10 @@ def get_substitutions(project_name: str) -> dict[str, dict[str, str]]:
             "${POSTGRES_DB:-app}": f"${{POSTGRES_DB:-{project_name}}}",
         },
         "backend/.env.example": {
-            "postgresql://app:app@localhost:5432/app": (
-                f"postgresql://{project_name}:{project_name}"
-                f"@localhost:5432/{project_name}"
-            ),
+            "postgresql://app:app@localhost:5432/app": db_url,
         },
         "backend/app/core/config.py": {
-            "postgresql://app:app@localhost:5432/app": (
-                f"postgresql://{project_name}:{project_name}"
-                f"@localhost:5432/{project_name}"
-            ),
+            CONFIG_DB_URL_LINE: format_db_url_line(db_url),
         },
         "backend/pyproject.toml": {
             'name = "backend-template"': backend_name,

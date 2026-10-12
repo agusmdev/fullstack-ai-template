@@ -155,6 +155,31 @@ test.describe('login', () => {
     await expect(loginLink(page)).toBeVisible()
   })
 
+  test('a wrong password does not sign out a signed-in user', async ({
+    authedPage: page,
+    user,
+  }) => {
+    await page.goto('/login')
+    const token = await storedToken(page)
+    expect(token).not.toBeNull()
+    await fillLoginForm(page, user.email, 'Wrong-Password-1')
+    const responsePromise = page.waitForResponse(r => r.url().endsWith('/auth/login'))
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    const response = await responsePromise
+    expect(response.status()).toBe(401)
+    expect(response.request().headers()['authorization']).toBeUndefined()
+    const { detail } = await response.json()
+    await expect(errorToast(page)).toContainText('Login failed')
+    await expect(errorToast(page)).toContainText(detail)
+    await expect(errorToast(page)).not.toContainText(SESSION_EXPIRED)
+    expect(await storedToken(page)).toBe(token)
+
+    await page.goto('/items')
+    await expect(page).toHaveURL('/items')
+    await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible()
+  })
+
   test('requires email and password', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('button', { name: 'Sign in' }).click()

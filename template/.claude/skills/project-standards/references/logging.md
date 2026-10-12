@@ -84,6 +84,10 @@ Level: `ERROR` for 5xx or an error, `WARNING` for 4xx, else `INFO`.
   plus the whole-word params `code` and `session`.
 - Tracebacks never show variable values (`diagnose=False`), and SQL errors
   never show bound parameters (`hide_parameters=True`).
+- Sentry (on when `ENVIRONMENT` is not `local`) never gets frame locals or
+  PII. Its scrubber matches EXACT key names only, so a new secret field name
+  (e.g. `new_api_key`) must be added to `SENSITIVE_KEYS` or to
+  `_SENTRY_DENYLIST` in `app/main.py`.
 - Never pass a secret as a value under a harmless key name.
 
 ## Settings (`app/core/config.py`, `LoggingSettings`)

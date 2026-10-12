@@ -1,5 +1,6 @@
 import { getConfig } from './config'
 import { getAuthToken, clearAuthToken } from './auth'
+import { API } from './api-endpoints'
 
 interface ValidationIssue {
   loc: (string | number)[]
@@ -28,6 +29,13 @@ export class ApiError extends Error {
 }
 
 const SESSION_EXPIRED_MESSAGE = 'Your session has expired. Please sign in again.'
+
+/**
+ * Credential endpoints never carry the stored token. Their 401 (wrong password,
+ * inactive user) is about the submitted credentials, not the current session,
+ * so it must not sign a signed-in user out.
+ */
+const CREDENTIAL_ENDPOINTS: ReadonlySet<string> = new Set([API.AUTH.LOGIN, API.AUTH.REGISTER])
 
 function toFieldErrors(issues: ValidationIssue[]): Record<string, string[]> {
   const fields: Record<string, string[]> = {}
@@ -72,6 +80,7 @@ function toApiError(status: number, body: ApiErrorBody | null): ApiError {
  * - 403 "Not authenticated" from FastAPI's HTTPBearer when no token was sent,
  *   e.g. the user signed out in another tab while this one stayed open.
  * A 401 without a token (wrong password on /auth/login) is a normal error.
+ * Credential endpoints never send a token (see CREDENTIAL_ENDPOINTS).
  */
 function isRejectedSession(status: number, body: ApiErrorBody | null, sentToken: boolean) {
   if (status === 401) return sentToken
@@ -85,7 +94,7 @@ class ApiClient {
 
   // Executes the request with auth and error handling; returns the raw Response.
   private async execute(endpoint: string, options?: RequestInit): Promise<Response> {
-    const token = getAuthToken()
+    const token = CREDENTIAL_ENDPOINTS.has(endpoint) ? null : getAuthToken()
     // Resolve outside the try: baseUrl runs env validation, and a config error
     // must not be re-labeled as a network failure by the catch below.
     const url = `${this.baseUrl}${endpoint}`

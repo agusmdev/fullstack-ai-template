@@ -40,6 +40,14 @@ jobs:
         working-directory: ${{ runner.temp }}/ci-smoke/backend
         run: uv lock --check
 
+      # The generator writes the project name into backend Python files, so
+      # check that the generated backend still passes its own ruff gate.
+      - name: Check generated backend formatting and lint
+        working-directory: ${{ runner.temp }}/ci-smoke/backend
+        run: |
+          uv run --locked ruff format --check .
+          uv run --locked ruff check .
+
       - name: Check generated Docker Compose file
         working-directory: ${{ runner.temp }}/ci-smoke
         run: docker compose config -q

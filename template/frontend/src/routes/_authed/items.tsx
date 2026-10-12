@@ -55,7 +55,7 @@ function Items() {
   const pageSize = 9
   const debouncedSearchTerm = useDebounce(searchInput, 300)
 
-  const { data, isLoading, isError, error } = useItems({
+  const { data, isLoading, isError, error, isPlaceholderData } = useItems({
     page,
     size: pageSize,
     name: debouncedSearchTerm || undefined,
@@ -92,6 +92,13 @@ function Items() {
   const totalPages = data?.pages ?? 1
   const hasNextPage = page < totalPages
   const hasPrevPage = page > 1
+
+  // The current page can empty out (e.g. its last item was deleted): go to the
+  // last page that still has items. Skip while showing the previous page's data.
+  const lastPage = data?.pages
+  if (!isPlaceholderData && lastPage && page > lastPage) {
+    setPage(lastPage)
+  }
 
   return (
     <PageShell>

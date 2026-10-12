@@ -61,9 +61,10 @@ With project name `N`, it copies `template/` and replaces:
 | `.env.example` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` = `N` |
 | `docker-compose.yml` | `${POSTGRES_*:-N}` defaults |
 | `backend/.env.example` | `DB_URL=postgresql://N:N@localhost:5432/N` |
+| `backend/app/core/config.py` | `DB_URL` default = `postgresql://N:N@localhost:5432/N` |
 | `backend/pyproject.toml`, `backend/uv.lock` | `name = "N-backend"` |
 
-Nothing else is renamed (Markdown and `frontend/package.json` stay as they are). Docker names the images `<folder>-backend` and `<folder>-frontend`.
+Only these 6 files change (Markdown and `frontend/package.json` stay as they are). Docker names the images `<folder>-backend` and `<folder>-frontend`.
 
 The copy skips local junk (`node_modules`, `.venv`, caches, build output, test reports, `*.db`, `*.log`) and every `.env*` file except `.env.example` — see `IGNORED_NAMES` in `ai_fsr/init.py`.
 

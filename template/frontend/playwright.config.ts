@@ -14,8 +14,9 @@ import {
  * End-to-end tests against the real stack: Postgres in Docker, the FastAPI
  * backend with real migrations, and the Vite dev server. No mocks.
  *
- * `bun run test:e2e` starts all three (webServer below), runs e2e/*.spec.ts,
- * and stops them again. Specs import { test, expect } from './fixtures'.
+ * `bun run test:e2e` starts all three (webServer below), runs every .spec.ts
+ * file in e2e/ and its subfolders, and stops them again. Specs import
+ * { test, expect } from './fixtures'.
  */
 const isCI = !!process.env.CI
 // Reuse a stack that is already running only when asked (E2E_REUSE=1, never in

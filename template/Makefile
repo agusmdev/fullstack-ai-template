@@ -148,7 +148,7 @@ migrate-current: ## Show current migration version
 db-shell: ## Open PostgreSQL shell in database container
 	docker compose exec db sh -c 'exec psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
-db-reset: ## Reset database (stop, remove volumes, restart, migrate)
+db-reset: ## Wipe the database (remove volumes, start db only, migrate)
 	docker compose down -v
 	docker compose up -d --wait db
 	$(MAKE) migrate

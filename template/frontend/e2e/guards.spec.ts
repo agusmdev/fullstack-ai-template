@@ -21,7 +21,9 @@ function codeOf(file: string): string {
   }).outputText
 }
 
-const specs = readdirSync(fromFrontend('e2e'))
+// Recursive: Playwright's testMatch ('**/*.spec.ts') also runs specs in subfolders.
+const specs = readdirSync(fromFrontend('e2e'), { recursive: true, encoding: 'utf8' })
+  .map(file => file.split('\\').join('/'))
   .filter(file => file.endsWith('.spec.ts') && file !== 'guards.spec.ts')
   .map(file => ({ file, source: codeOf(`e2e/${file}`) }))
 

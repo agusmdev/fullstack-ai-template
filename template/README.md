@@ -29,7 +29,7 @@ docker compose up -d --build  # `make start` = `docker compose up -d` (no rebuil
 - Backend API: http://localhost:9095 (no `/api` prefix; `GET /` is 404, check `/health`)
 - API docs: http://localhost:9095/docs
 
-The backend container runs the migrations (`alembic upgrade head`) before it starts. Logs: `make logs`. Stop: `make down`. Reset the database: `make db-reset`.
+The backend container runs the migrations (`alembic upgrade head`) before it starts. Logs: `make logs`. Stop: `make down`. Reset the database: `make db-reset`, then `docker compose up -d` (the reset leaves only `db` running).
 
 ## 3. Develop with hot reload (optional)
 
@@ -97,7 +97,7 @@ Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL
 
 ### Change the database credentials
 
-Change `POSTGRES_*` in `.env` and the matching `DB_URL` in `backend/.env`. An existing database volume keeps the old credentials: reset it with `make db-reset` (this deletes the data).
+Change `POSTGRES_*` in `.env` and the matching `DB_URL` in `backend/.env`. An existing database volume keeps the old credentials: reset it with `make db-reset` (this deletes the data), then run `docker compose up -d` (the reset starts only `db`).
 
 ## Tests
 
@@ -125,7 +125,7 @@ Run `make help` for the full list. The most used:
 | `make logs`, `make logs-backend` | Follow logs |
 | `make rebuild` | Rebuild images and start |
 | `make migrate`, `make migrate-create message="..."`, `make migrate-rollback` | Alembic |
-| `make db-shell`, `make db-reset` | psql in the `db` container / wipe and re-migrate |
+| `make db-shell`, `make db-reset` | psql in the `db` container / wipe and re-migrate (only `db` runs afterwards; then `docker compose up -d`) |
 | `make lint`, `make lint-fix`, `make format`, `make typecheck` | Code quality (both apps) |
 | `make backend-typecheck` | ty on the backend (advisory, not in CI) |
 | `make clean` | Remove this project's containers, networks and volumes |
@@ -135,6 +135,6 @@ Run `make help` for the full list. The most used:
 | Problem | Fix |
 |---|---|
 | Port already in use | `make check-ports`, then change the port in `.env` (see above) |
-| Backend cannot reach the database | `docker compose ps`, `make logs-db`; after a credential change run `make db-reset` |
+| Backend cannot reach the database | `docker compose ps`, `make logs-db`; after a credential change run `make db-reset`, then `docker compose up -d` |
 | Frontend calls the wrong backend URL | `VITE_API_BASE_URL` is baked in at build time: `docker compose up -d --build frontend` |
 | `make test-e2e` says a port is busy | Another e2e run uses it. Wait, or set `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` |

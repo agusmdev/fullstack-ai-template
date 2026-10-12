@@ -254,7 +254,10 @@ Every context also fails the test on an uncaught app error.
 ### Worked example: `e2e/notes.spec.ts`
 
 First add seed helpers to `e2e/fixtures.ts`, next to `createItem` (they call the
-real API; this is also how the endpoint guard sees `/notes`):
+real API; this is also how the endpoint guard sees `/notes`). The guard also
+needs every `DETAIL` entry: for ``(id) => `/notes/${id}` ``, a
+`` `/notes/${...}` `` string must appear in a spec or in `fixtures.ts`. The delete test
+below does this with a direct `api.get`, as `items.spec.ts` does:
 
 ```ts
 export async function createNote(
@@ -277,7 +280,7 @@ export async function listNotes(api: APIRequestContext, owner: TestUser): Promis
 Then the spec:
 
 ```ts
-import { test, expect, createNote, listNotes, registerUser } from './fixtures'
+import { test, expect, authHeaders, createNote, listNotes, registerUser } from './fixtures'
 
 test('creates a note through the dialog', async ({ authedPage: page, api, user }) => {
   await page.goto('/notes')
@@ -292,13 +295,15 @@ test('creates a note through the dialog', async ({ authedPage: page, api, user }
 })
 
 test('deletes a note', async ({ authedPage: page, api, user }) => {
-  await createNote(api, user, { name: 'Old' })
+  const note = await createNote(api, user, { name: 'Old' })
   await page.goto('/notes')
   await page.getByRole('button', { name: 'Delete Old' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
 
   await expect(page.getByText('Old')).toBeHidden()
   expect(await listNotes(api, user)).toEqual([])
+  const gone = await api.get(`/notes/${note.id}`, { headers: authHeaders(user) })
+  expect(gone.status()).toBe(404) // also covers API.NOTES.DETAIL for the guard
 })
 
 test('shows only my own notes', async ({ authedPage: page, api, user }) => {

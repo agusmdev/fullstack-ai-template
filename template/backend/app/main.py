@@ -7,15 +7,42 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
+from sentry_sdk.types import Event, Hint
 from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.logging.middleware import WideEventMiddleware
+from app.core.logging.sanitizer import (
+    SENSITIVE_KEYS,
+    SENSITIVE_QUERY_PARAMS,
+    sanitize_query_string,
+)
 from app.exceptions import ErrorResponse
 
 from .routers import get_app_router
+
+# Sentry's EventScrubber matches exact key names only ("new_password" is not
+# "password"), so add this app's secret names to its denylist.
+_SENTRY_DENYLIST = sorted(
+    {
+        *DEFAULT_DENYLIST,
+        *SENSITIVE_KEYS,
+        *SENSITIVE_QUERY_PARAMS,
+        "new_password",
+        "raw_password",
+    }
+)
+
+
+def _scrub_sentry_event(event: Event, _hint: Hint) -> Event:
+    """Redact credentials in the request query string (e.g. the OAuth ``code``)."""
+    request = event.get("request")
+    if request and isinstance(request.get("query_string"), str):
+        request["query_string"] = sanitize_query_string(request["query_string"])
+    return event
 
 
 async def _http_exception_handler(
@@ -138,7 +165,17 @@ def create_app(
         sentry_sdk.init(
             dsn=settings.SENTRY_DSN,
             environment=settings.ENVIRONMENT,
-            send_default_pii=True,
+            # Frame locals and request bodies hold plaintext passwords and
+            # tokens (reset_password(token, new_password), raw_password).
+            # Never send locals, cookies or user IPs, and scrub the extra
+            # secret names that Sentry's default denylist does not know.
+            include_local_variables=False,
+            send_default_pii=False,
+            event_scrubber=EventScrubber(
+                denylist=_SENTRY_DENYLIST,
+                recursive=True,
+            ),
+            before_send=_scrub_sentry_event,
             # Set traces_sample_rate to 1.0 to capture 100%
             # of transactions for performance monitoring.
             traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
