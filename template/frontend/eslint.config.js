@@ -40,9 +40,12 @@ const noMockImports = { group: mockAndUnitTestLibraries, message: NO_MOCKS }
 
 // Playwright APIs that fake or rewrite network traffic, or replace page code.
 const networkFakes = ['route', 'routeFromHAR', 'unroute', 'unrouteAll', 'routeWebSocket']
-// Browser network APIs a test could replace in the page.
-const networkApis = '/^(fetch|XMLHttpRequest|WebSocket|EventSource)$/'
-const networkNames = `/^(fetch|XMLHttpRequest|WebSocket|EventSource|${networkFakes.join('|')}|fulfill)$/`
+// Browser network APIs a test could replace or patch in the page.
+const networkApiNames = 'fetch|XMLHttpRequest|WebSocket|EventSource|Response|Request|Headers'
+const networkApis = `/^(${networkApiNames})$/`
+const networkNames = `/^(${networkApiNames}|${networkFakes.join('|')}|fulfill)$/`
+// Network classes whose prototype a test could patch: Response.prototype.json = …
+const networkClasses = '/^(XMLHttpRequest|WebSocket|EventSource|Response|Request|Headers)$/'
 
 // Files ESLint checks with the e2e rules: everything Playwright or Node could load.
 const e2eFiles = 'e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'
@@ -173,6 +176,12 @@ export default [
         {
           selector: `Property[key.name=${networkApis}]`,
           message: `${NO_MOCKS} Do not replace the browser's network APIs.`,
+        },
+        // Patching a network class: Response.prototype.json = …, XMLHttpRequest.prototype.open = …,
+        // window.Response.prototype, Object.defineProperty(Response.prototype, …).
+        {
+          selector: `MemberExpression[property.name='prototype']:matches([object.name=${networkClasses}], [object.property.name=${networkClasses}])`,
+          message: `${NO_MOCKS} Do not patch the browser's network classes.`,
         },
         // Any string naming a network API or a Playwright interception method:
         // catches window['fetch'], Reflect.set(…, 'fetch'), and

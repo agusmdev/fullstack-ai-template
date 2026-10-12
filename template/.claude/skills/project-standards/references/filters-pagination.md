@@ -9,7 +9,6 @@ List endpoints use `fastapi-filter` (2.0.1) for filtering and sorting and
 
 ```python
 from app.core.filters import ModelFilter
-
 from app.modules.items.models import Item
 
 

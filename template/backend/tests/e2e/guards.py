@@ -140,6 +140,28 @@ BANNED_SOURCE: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"\bvcr\b|\bcassette|\bhttpretty\b|\bpook\b|\bHTTPServer\b"),
         "fakes or replays HTTP",
     ),
+    # A fake third party built with the project's own libraries. The real app
+    # starts only in a child process (tests.e2e.run_server calls uvicorn.main()),
+    # so no file under tests/ builds an app or starts a server itself.
+    (
+        re.compile(r"\b(?:FastAPI|Starlette|APIRouter)\s*\("),
+        "builds an app in the tests: a fake server",
+    ),
+    (
+        re.compile(
+            r"\buvicorn\.(?:Server|Config|run)\b|\bfrom\s+uvicorn\b"
+            r"|\b(?:hypercorn|daphne|granian|werkzeug|flask|bottle)\b"
+        ),
+        "starts a server in the tests: a fake server",
+    ),
+    (
+        re.compile(
+            r"\baiohttp\.web\b|\bfrom\s+aiohttp\s+import\s+web\b"
+            r"|\bsocketserver\b|\bhttp\.server\b|\bwsgiref\b"
+            r"|\b(?:start_server|create_server|serve_forever)\s*\(|\.listen\s*\("
+        ),
+        "accepts connections in the tests: a fake server",
+    ),
     (re.compile(r"sqlite", re.IGNORECASE), "the template is Postgres-only"),
     (re.compile(r"\.create_all\("), "builds the schema without the migrations"),
 ]

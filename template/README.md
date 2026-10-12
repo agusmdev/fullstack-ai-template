@@ -56,8 +56,8 @@ bun install && bun run dev    # http://localhost:3000
 After `git init` (and `uv sync` in `backend/`, `bun install` in `frontend/`):
 
 ```bash
-make pre-commit-install       # ruff, frontend lint-staged, no-mock guards
-make pre-commit-run           # run them on every file
+make pre-commit-install       # ruff, frontend eslint + prettier, no-mock guards
+make pre-commit-run           # run them on every tracked file
 ```
 
 The hooks are in `.pre-commit-config.yaml`. They are fast early warnings; the real checks are `make check` and `make test`.

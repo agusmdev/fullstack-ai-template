@@ -71,12 +71,13 @@ export interface NotesResponse {
 
 export interface CreateNoteData {
   name: string
-  description?: string
+  description?: string | null
 }
 
 export interface UpdateNoteData {
   name?: string
-  description?: string
+  /** `null` clears the description; a missing key leaves it unchanged. */
+  description?: string | null
 }
 ```
 
@@ -137,9 +138,13 @@ export const noteSchema = z.object({
 
 export type NoteFormData = z.infer<typeof noteSchema>
 
-/** Maps form values to the mutation payload shape. */
+/**
+ * Maps form values to the mutation payload shape.
+ * An empty description is sent as `null`, not left out: the update endpoint
+ * keeps fields that are missing from the body, so `null` is how a user clears it.
+ */
 export function noteFormToPayload(data: NoteFormData) {
-  return { name: data.name, description: data.description || undefined }
+  return { name: data.name, description: data.description || null }
 }
 ```
 
@@ -279,8 +284,10 @@ Add a `Link` next to Items, inside `{isAuthenticated && (...)}` for protected pa
 2. Write `e2e/notes.spec.ts` that imports `{ test, expect } from './fixtures'`:
    open the page with `page.goto('/notes')`, drive the UI, check the result in
    the UI and through the `api` fixture.
-3. Cover: empty state, create, validation message, edit, delete, search and
-   pages (if any), and the anonymous redirect to `/login?redirect=...`.
+3. Cover: empty state, create, validation message, edit, clearing an optional
+   field (save an empty description, then check it is `null` through the API),
+   delete, search and pages (if any), and the anonymous redirect to
+   `/login?redirect=...`.
 
 The guards fail if `/notes` is never visited or an endpoint in `API.NOTES` is
 never used. See [e2e-testing.md](e2e-testing.md).

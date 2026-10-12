@@ -91,7 +91,7 @@ migrate-down:
 	uv run alembic downgrade -1
 
 # The project has one pre-commit config, at the project root (backend ruff,
-# frontend lint-staged, no-mock guards). pre-commit comes from this venv.
+# frontend eslint + prettier, no-mock guards). pre-commit comes from this venv.
 PRE_COMMIT_CONFIG := ../.pre-commit-config.yaml
 
 # Install pre-commit hooks (needs a git repository)

@@ -43,8 +43,9 @@ with `docker-compose.yml`).
   module in `app/migrations/env.py` (explicit registry), or autogenerate does
   not see the table.
 - **Migrations:** every model change needs an Alembic migration
-  (`cd backend && uv run alembic revision --autogenerate -m "..."`; needs
-  `backend/.env`). Run ruff on the new file, then review it.
+  (`cd backend && uv run alembic upgrade head && uv run alembic revision
+  --autogenerate -m "..."`; needs `backend/.env`; autogenerate fails if the
+  database is not up to date). Run ruff on the new file, then review it.
   The backend test suite runs `alembic check` and fails on drift.
 - **DI:** FastAPI `Depends()` with factory functions in `dependencies.py`
   (`get_<name>_service`, built on `get_repository(Repo)` from `app.dependencies`).

@@ -212,7 +212,6 @@ class NoteService(BaseService[Note]):
 """Note filters."""
 
 from app.core.filters import ModelFilter
-
 from app.modules.notes.models import Note
 
 
@@ -410,6 +409,7 @@ Alembic runs on your machine (not in the container), so it needs
 docker compose up -d db          # from the project root, if no db is running
 cd backend
 cp .env.example .env             # once; DB_URL must match POSTGRES_* in the root .env
+uv run alembic upgrade head      # first: autogenerate fails on a database that is not up to date
 uv run alembic revision --autogenerate -m "add note table"
 uv run ruff check --fix app/migrations && uv run ruff format app/migrations
 uv run alembic upgrade head

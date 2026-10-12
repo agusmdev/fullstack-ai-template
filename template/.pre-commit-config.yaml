@@ -1,7 +1,7 @@
 # Git hooks for the whole project (backend/ + frontend/).
 # Install once: `make pre-commit-install` (needs a git repo and `uv sync` in backend/).
-# Run on every file: `make pre-commit-run`.
-# The frontend hook needs `bun install` in frontend/ first.
+# Run on every tracked file: `make pre-commit-run`.
+# The frontend hooks need `bun install` in frontend/ first.
 repos:
   # --- Backend: ruff. Keep rev in sync with the ruff pin in backend/pyproject.toml.
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -15,18 +15,29 @@ repos:
 
   - repo: local
     hooks:
-      # --- Frontend: ESLint + prettier on the staged files (lint-staged config in
-      # frontend/package.json). Uses the project's pinned lint-staged.
-      - id: frontend-lint-staged
-        name: frontend lint-staged (eslint + prettier)
+      # --- Frontend: ESLint --fix, then prettier --write, on the files pre-commit
+      # passes in: the staged files on `git commit`, every file on
+      # `make pre-commit-run`. Uses the project's pinned eslint and prettier.
+      # A hook that changes a file fails; stage the change and commit again.
+      - id: frontend-eslint
+        name: frontend eslint
         language: system
-        files: ^frontend/
-        pass_filenames: false
+        files: ^frontend/.*\.(ts|tsx|js|jsx|mjs|cjs)$
         entry: >-
           bash -c 'cd frontend &&
-          if [ ! -x node_modules/.bin/lint-staged ]; then
+          if [ ! -x node_modules/.bin/eslint ]; then
           echo "frontend/node_modules is missing: run (cd frontend && bun install)"; exit 1; fi;
-          exec node_modules/.bin/lint-staged'
+          exec node_modules/.bin/eslint --fix --no-warn-ignored --max-warnings 0 "${@#frontend/}"' --
+
+      - id: frontend-prettier
+        name: frontend prettier
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx|mjs|cjs|css|json)$
+        entry: >-
+          bash -c 'cd frontend &&
+          if [ ! -x node_modules/.bin/prettier ]; then
+          echo "frontend/node_modules is missing: run (cd frontend && bun install)"; exit 1; fi;
+          exec node_modules/.bin/prettier --write --log-level warn "${@#frontend/}"' --
 
       # --- No mocks: all tests are end-to-end against the real stack.
       # A fast early warning; the real guards are ruff TID251 + the collection

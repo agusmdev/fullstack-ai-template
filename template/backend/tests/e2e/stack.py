@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 COMPOSE_FILE = BACKEND_DIR.parent / "docker-compose.yml"
 FALLBACK_POSTGRES_IMAGE = "postgres:18.1-alpine"
+E2E_DB_PASSWORD = "e2e-p@ss:w/rd#50%"
 
 # The frontend origin the server is configured with. It is only a string the
 # backend puts in redirects and CORS headers; no frontend runs in this suite.
@@ -74,8 +75,10 @@ def start_postgres() -> PostgresContainer:
     """Start a throwaway Postgres container (testcontainers removes it at exit)."""
     image = postgres_image()
     try:
+        # The password has characters that DB_URL must URL-encode ("@:/#%"), so
+        # every run proves the app and Alembic read an encoded password.
         container = PostgresContainer(
-            image, username="app", password="app", dbname="app", driver=None
+            image, username="app", password=E2E_DB_PASSWORD, dbname="app", driver=None
         )
         container.start()
     except Exception as exc:

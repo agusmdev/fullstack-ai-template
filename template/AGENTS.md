@@ -60,7 +60,7 @@ bun run dev                                   # http://localhost:3000
 
 ```bash
 (cd backend && uv sync) && (cd frontend && bun install)
-make pre-commit-install       # ruff, frontend lint-staged, no-mock guards
+make pre-commit-install       # ruff, frontend eslint + prettier, no-mock guards
 ```
 
 ## File map
@@ -118,7 +118,7 @@ A change is done only when all items are true:
 1. The code follows `.claude/skills/project-standards/SKILL.md`.
 2. Every new or changed backend endpoint has an e2e test in `backend/tests/e2e/` with at least one successful request.
 3. Every new or changed page, and every new entry in `frontend/src/lib/api-endpoints.ts`, is used by a spec in `frontend/e2e/`.
-4. A model change has an Alembic migration (`make migrate-create message="..."`; it needs `backend/.env`, and the new file needs `make format && make lint-fix`). See `.claude/skills/project-standards/references/backend-entity.md` step 11.
+4. A model change has an Alembic migration (run `make migrate` first, then `make migrate-create message="..."`; it needs `backend/.env` and an up-to-date database, and the new file needs `make format && make lint-fix`). See `.claude/skills/project-standards/references/backend-entity.md` step 11.
 5. `make check` passes.
 6. `make test` passes.
 7. New third-party packages follow the supply-chain rule below.

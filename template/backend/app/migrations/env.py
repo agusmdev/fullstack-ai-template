@@ -17,9 +17,11 @@ import app.modules.items.models  # noqa: F401, E402
 # access to the values within the .ini file in use.
 config = context.config
 
-# Derive sync URL from DB_URL for Alembic migrations
+# Derive sync URL from DB_URL for Alembic migrations.
+# The ini parser treats "%" as interpolation syntax, and a URL-encoded password
+# (p%40ss for p@ss) contains "%". Escape it so the parser gives back the URL.
 alembic_url = _convert_url_to_sync(settings.DB_URL)
-config.set_main_option("sqlalchemy.url", alembic_url)
+config.set_main_option("sqlalchemy.url", alembic_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

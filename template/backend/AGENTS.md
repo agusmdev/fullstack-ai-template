@@ -65,7 +65,7 @@ New cross-cutting HTTP middleware goes in `app/middlewares/` (create it when nee
 1. `app/modules/<name>/` with the files above (copy `items/`).
 2. Register the router in `app/routers.py`.
 3. Import the model module in `app/migrations/env.py` (explicit list). If you skip this, autogenerate does not see the table.
-4. `make migrate-new msg="add <name>"` (needs `backend/.env`: `cp .env.example .env` once), then `make lint-all` (alembic output is not ruff-formatted), review the file, `make migrate`.
+4. `make migrate` first (autogenerate fails if the database is not up to date), then `make migrate-new msg="add <name>"` (needs `backend/.env`: `cp .env.example .env` once), then `make lint-all` (alembic output is not ruff-formatted), review the file, `make migrate`.
 5. List endpoints: `item_filter: ItemFilter = FilterDepends(ItemFilter)` (from `fastapi_filter`) — not `Depends()`, which moves list fields such as `order_by` into the request body. Pagination: `Params = Depends()` (`page` default 1, `size` default 50, max 100).
 6. Write `tests/e2e/test_<name>.py` (see Testing). Put a `create_<name>()` helper in `tests/e2e/helpers.py`.
 
