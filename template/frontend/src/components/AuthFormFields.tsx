@@ -5,10 +5,10 @@ import { Input } from '@/components/ui/input'
 interface AuthFieldProps<T extends FieldValues> {
   control: Control<T>
   name: FieldPath<T>
-  isLoading: boolean
+  disabled: boolean
 }
 
-export function EmailField<T extends FieldValues>({ control, name, isLoading }: AuthFieldProps<T>) {
+export function EmailField<T extends FieldValues>({ control, name, disabled }: AuthFieldProps<T>) {
   return (
     <FormField
       control={control}
@@ -17,7 +17,7 @@ export function EmailField<T extends FieldValues>({ control, name, isLoading }: 
         <FormItem>
           <FormLabel className="text-muted-foreground">Email</FormLabel>
           <FormControl>
-            <Input type="email" placeholder="john@example.com" {...field} disabled={isLoading} />
+            <Input type="email" placeholder="john@example.com" {...field} disabled={disabled} />
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -33,7 +33,7 @@ interface PasswordFieldProps<T extends FieldValues> extends AuthFieldProps<T> {
 export function PasswordField<T extends FieldValues>({
   control,
   name,
-  isLoading,
+  disabled,
   label = 'Password',
 }: PasswordFieldProps<T>) {
   return (
@@ -44,7 +44,7 @@ export function PasswordField<T extends FieldValues>({
         <FormItem>
           <FormLabel className="text-muted-foreground">{label}</FormLabel>
           <FormControl>
-            <Input type="password" placeholder="••••••••" {...field} disabled={isLoading} />
+            <Input type="password" placeholder="••••••••" {...field} disabled={disabled} />
           </FormControl>
           <FormMessage />
         </FormItem>

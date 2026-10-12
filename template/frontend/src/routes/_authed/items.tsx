@@ -1,6 +1,5 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useItems } from '@/hooks/useItems'
-import { isAuthenticated } from '@/lib/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,12 +18,8 @@ function formatDate(dateString: string | null | undefined): string {
   return date.toLocaleDateString()
 }
 
-export const Route = createFileRoute('/items')({
-  beforeLoad: () => {
-    if (!isAuthenticated()) {
-      throw redirect({ to: '/login', search: { redirect: '/items' } })
-    }
-  },
+// Signed-in users only: the _authed layout guards every page in routes/_authed/.
+export const Route = createFileRoute('/_authed/items')({
   component: Items,
 })
 
@@ -135,8 +130,19 @@ function Items() {
       {items.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-foreground">No items yet</CardTitle>
-            <CardDescription>Get started by creating your first item.</CardDescription>
+            {debouncedSearchTerm ? (
+              <>
+                <CardTitle className="text-foreground">No matching items</CardTitle>
+                <CardDescription>
+                  No item name contains &quot;{debouncedSearchTerm}&quot;.
+                </CardDescription>
+              </>
+            ) : (
+              <>
+                <CardTitle className="text-foreground">No items yet</CardTitle>
+                <CardDescription>Get started by creating your first item.</CardDescription>
+              </>
+            )}
           </CardHeader>
         </Card>
       ) : (

@@ -1,164 +1,257 @@
-import { test, expect } from '@playwright/test'
+import {
+  type Page,
+  test,
+  expect,
+  PASSWORD,
+  authHeaders,
+  errorToast,
+  loginUser,
+  storedToken,
+  uniqueEmail,
+} from './fixtures'
 
-/**
- * E2E tests for authentication flow.
- *
- * These tests cover the complete user authentication journey:
- * - Registration with valid credentials
- * - Registration validation (email format, password length, password matching)
- * - Login with valid credentials
- * - Login validation (invalid credentials show error)
- * - Logout flow
- * - Protected route redirection
- *
- * NOTE: These tests require a running backend server at the API_BASE_URL.
- * For local testing, ensure the backend is running with the database initialized.
- */
+async function fillRegisterForm(page: Page, email: string, password: string, confirm = password) {
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password', { exact: true }).fill(password)
+  await page.getByLabel('Confirm Password').fill(confirm)
+}
 
-test.describe('Authentication Flow', () => {
-  // Use a unique email for each test run to avoid conflicts
-  const generateTestEmail = () => `e2e-test-${Date.now()}@example.com`
-  const testPassword = 'TestPassword123!'
+async function fillLoginForm(page: Page, email: string, password: string) {
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(password)
+}
 
-  test.beforeEach(async ({ page }) => {
-    // Clear any existing auth state before each test
-    await page.context().clearCookies()
-    await page.goto('/')
-  })
+const logoutButton = (page: Page) => page.getByRole('button', { name: 'Logout' })
+const loginLink = (page: Page) => page.getByRole('link', { name: 'Login', exact: true })
+const sessionExpiredToast = (page: Page) =>
+  page.locator('[data-sonner-toast]').filter({ hasText: SESSION_EXPIRED })
 
-  test('user can register with valid credentials', async ({ page }) => {
-    const testEmail = generateTestEmail()
+// Fixed text the app shows when the backend rejects the session (src/lib/api-client.ts).
+const SESSION_EXPIRED = 'Your session has expired. Please sign in again.'
 
-    // Navigate to register page
+test('the home page offers sign-in and registration to anonymous users', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    /Full-Stack\s*Template\s*That Works/
+  )
+  await expect(loginLink(page)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Sign Up', exact: true })).toBeVisible()
+  await expect(logoutButton(page)).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Items' })).toHaveCount(0)
+
+  // The hero's call to action (the page repeats it at the bottom).
+  await page.getByRole('link', { name: 'Sign In', exact: true }).first().click()
+  await expect(page).toHaveURL('/login')
+  await page.goBack()
+  await page.getByRole('link', { name: 'Get Started' }).click()
+  await expect(page).toHaveURL('/register')
+})
+
+test.describe('register', () => {
+  test('creates the account and signs the user in', async ({ page, api }) => {
+    const email = uniqueEmail('register')
     await page.goto('/register')
+    await fillRegisterForm(page, email, PASSWORD)
+    await page.getByRole('button', { name: 'Create account' }).click()
 
-    // Fill out the registration form
-    await page.fill('input[type="email"]', testEmail)
-    await page.fill('input[name="password"]', testPassword)
-    await page.fill('input[name="confirmPassword"]', testPassword)
-
-    // Submit the form
-    await page.click('button[type="submit"]')
-
-    // After successful registration, should redirect to home page (user is logged in)
     await expect(page).toHaveURL('/')
+    await expect(logoutButton(page)).toBeVisible()
+    // The account exists on the backend: the same credentials sign in.
+    expect(await loginUser(api, email, PASSWORD)).toMatch(/\S/)
   })
 
-  test('registration validates email format', async ({ page }) => {
+  test('shows the backend error when the email is already registered', async ({ page, user }) => {
     await page.goto('/register')
+    await fillRegisterForm(page, user.email, PASSWORD)
+    const responsePromise = page.waitForResponse(r => r.url().endsWith('/auth/register'))
+    await page.getByRole('button', { name: 'Create account' }).click()
 
-    // Fill with invalid email
-    await page.fill('input[type="email"]', 'not-an-email')
-    await page.fill('input[name="password"]', testPassword)
-    await page.fill('input[name="confirmPassword"]', testPassword)
-
-    // Trigger validation by clicking submit
-    await page.click('button[type="submit"]')
-
-    // Should show validation error
-    const emailInput = page.locator('input[type="email"]')
-    await expect(emailInput).toBeFocused()
-  })
-
-  test('registration validates password length', async ({ page }) => {
-    await page.goto('/register')
-
-    // Fill with short password
-    await page.fill('input[type="email"]', generateTestEmail())
-    await page.fill('input[name="password"]', 'short')
-    await page.fill('input[name="confirmPassword"]', 'short')
-
-    // Trigger validation
-    await page.click('button[type="submit"]')
-
-    // Should show validation error
-    const passwordInput = page.locator('input[name="password"]')
-    await expect(passwordInput).toBeFocused()
-  })
-
-  test('registration validates password confirmation match', async ({ page }) => {
-    await page.goto('/register')
-
-    // Fill with mismatched passwords
-    await page.fill('input[type="email"]', generateTestEmail())
-    await page.fill('input[name="password"]', testPassword)
-    await page.fill('input[name="confirmPassword"]', 'DifferentPassword123!')
-
-    // Trigger validation
-    await page.click('button[type="submit"]')
-
-    // Should show validation error for confirmation field
-    const confirmPasswordInput = page.locator('input[name="confirmPassword"]')
-    await expect(confirmPasswordInput).toBeFocused()
-  })
-
-  test('user can login with valid credentials', async ({ page }) => {
-    // First, register a user
-    const testEmail = generateTestEmail()
-
-    await page.goto('/register')
-    await page.fill('input[type="email"]', testEmail)
-    await page.fill('input[name="password"]', testPassword)
-    await page.fill('input[name="confirmPassword"]', testPassword)
-    await page.click('button[type="submit"]')
-
-    // Registration logs the user in and redirects to home
-    await expect(page).toHaveURL('/')
-
-    // Log out so we can test the login flow separately
-    await page.click('button:has-text("Sign out")')
-
-    // Now test login with the registered credentials
-    await page.goto('/login')
-    await page.fill('input[type="email"]', testEmail)
-    await page.fill('input[type="password"]', testPassword)
-    await page.click('button[type="submit"]')
-
-    // After successful login, should redirect to home page
-    await expect(page).toHaveURL('/')
-  })
-
-  test('login shows error with invalid credentials', async ({ page }) => {
-    await page.goto('/login')
-
-    // Try to login with non-existent credentials
-    await page.fill('input[type="email"]', 'nonexistent@example.com')
-    await page.fill('input[type="password"]', 'WrongPassword123!')
-    await page.click('button[type="submit"]')
-
-    // Should show an error toast notification
-    await expect(page.locator('[data-sonner-toast]')).toBeVisible()
-  })
-
-  test('login validates required fields', async ({ page }) => {
-    await page.goto('/login')
-
-    // Try to submit without filling fields
-    await page.click('button[type="submit"]')
-
-    // Should show validation errors
-    const emailInput = page.locator('input[type="email"]')
-    await expect(emailInput).toBeFocused()
-  })
-
-  test('protected route redirects to login when not authenticated', async ({ page }) => {
-    // Try to access the items page (which requires authentication)
-    await page.goto('/items')
-
-    // Should redirect to login with redirect parameter
-    await expect(page).toHaveURL(/\/login.*redirect.*/)
-  })
-
-  test('navigation links between login and register', async ({ page }) => {
-    // Start on login page
-    await page.goto('/login')
-
-    // Click link to register
-    await page.click('a[href="/register"]')
+    // Pins today's backend contract for a duplicate: 400 with error_code 'duplicate_item'.
+    const response = await responsePromise
+    expect(response.status()).toBe(400)
+    const { detail, error_code } = await response.json()
+    expect(error_code).toBe('duplicate_item')
+    await expect(errorToast(page)).toContainText('Registration failed')
+    await expect(errorToast(page)).toContainText(detail)
     await expect(page).toHaveURL('/register')
+    await expect(loginLink(page)).toBeVisible()
+  })
 
-    // Click link back to login
-    await page.click('a[href="/login"]')
+  test('validates the form in the browser before calling the backend', async ({ page }) => {
+    const registerCalls: string[] = []
+    page.on('request', request => {
+      if (request.url().endsWith('/auth/register')) registerCalls.push(request.url())
+    })
+    await page.goto('/register')
+    await fillRegisterForm(page, 'not-an-email', 'short', 'different')
+    await page.getByRole('button', { name: 'Create account' }).click()
+
+    await expect(page.getByText('Invalid email address')).toBeVisible()
+    await expect(page.getByText('Password must be at least 8 characters')).toBeVisible()
+    await expect(page.getByText("Passwords don't match")).toBeVisible()
+    await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
+    expect(registerCalls).toEqual([])
+  })
+
+  test('shows backend validation errors (422) as a readable message', async ({ page }) => {
+    // The form accepts this address; the backend rejects reserved TLDs such as .test.
+    await page.goto('/register')
+    await fillRegisterForm(page, `e2e-${Date.now()}@example.test`, PASSWORD)
+    const responsePromise = page.waitForResponse(r => r.url().endsWith('/auth/register'))
+    await page.getByRole('button', { name: 'Create account' }).click()
+
+    expect((await responsePromise).status()).toBe(422)
+    await expect(errorToast(page)).toContainText('Registration failed')
+    await expect(errorToast(page)).toContainText('email: value is not a valid email address')
+    await expect(page).toHaveURL('/register')
+  })
+})
+
+test.describe('login', () => {
+  test('signs in with the right password', async ({ page, user }) => {
+    await page.goto('/login')
+    await fillLoginForm(page, user.email, user.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    await expect(page).toHaveURL('/')
+    await expect(logoutButton(page)).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Items' })).toBeVisible()
+  })
+
+  test('accepts the email in any letter case', async ({ page, user }) => {
+    // The backend stores and compares emails in lowercase.
+    await page.goto('/login')
+    await fillLoginForm(page, user.email.toUpperCase(), user.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    await expect(page).toHaveURL('/')
+    await expect(logoutButton(page)).toBeVisible()
+  })
+
+  test('ignores a redirect target that is not a path in the app', async ({ page, user }) => {
+    for (const target of ['https://example.org/', '//example.org/', 'javascript:alert(1)']) {
+      await page.goto(`/login?redirect=${encodeURIComponent(target)}`)
+      await fillLoginForm(page, user.email, user.password)
+      await page.getByRole('button', { name: 'Sign in' }).click()
+      await expect(page).toHaveURL('/')
+      await expect(logoutButton(page)).toBeVisible()
+      await logoutButton(page).click()
+      await expect(page).toHaveURL('/login')
+    }
+  })
+
+  test('shows the backend error for a wrong password', async ({ page, user }) => {
+    await page.goto('/login')
+    await fillLoginForm(page, user.email, 'Wrong-Password-1')
+    const responsePromise = page.waitForResponse(r => r.url().endsWith('/auth/login'))
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    const response = await responsePromise
+    expect(response.status()).toBe(401)
+    const { detail } = await response.json()
+    await expect(errorToast(page)).toContainText('Login failed')
+    await expect(errorToast(page)).toContainText(detail)
     await expect(page).toHaveURL('/login')
+    await expect(loginLink(page)).toBeVisible()
+  })
+
+  test('requires email and password', async ({ page }) => {
+    await page.goto('/login')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    await expect(page.getByText('Invalid email address')).toBeVisible()
+    await expect(page.getByText('Password is required')).toBeVisible()
+  })
+
+  test('links to the register page and back', async ({ page }) => {
+    await page.goto('/login')
+    await page.getByRole('link', { name: 'Create account' }).click()
+    await expect(page).toHaveURL('/register')
+    await page.getByRole('main').getByRole('link', { name: 'Sign in' }).click()
+    await expect(page).toHaveURL('/login')
+  })
+})
+
+test.describe('session', () => {
+  test('a protected page sends anonymous users to login and back after sign-in', async ({
+    page,
+    user,
+  }) => {
+    await page.goto('/items')
+    await expect(page).toHaveURL('/login?redirect=%2Fitems')
+
+    await fillLoginForm(page, user.email, user.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page).toHaveURL('/items')
+    await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible()
+  })
+
+  test('survives a page reload', async ({ authedPage: page }) => {
+    await page.goto('/items')
+    await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible()
+
+    await page.reload()
+    await expect(page).toHaveURL('/items')
+    await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible()
+    await expect(logoutButton(page)).toBeVisible()
+  })
+
+  test('logout ends the session on the backend too', async ({ authedPage: page, user, api }) => {
+    await page.goto('/')
+    await logoutButton(page).click()
+
+    await expect(page).toHaveURL('/login')
+    await expect(loginLink(page)).toBeVisible()
+    expect(await storedToken(page)).toBeNull()
+    expect((await api.get('/items', { headers: authHeaders(user) })).status()).toBe(401)
+
+    await page.goto('/items')
+    await expect(page).toHaveURL('/login?redirect=%2Fitems')
+  })
+
+  test('a session revoked on the backend sends the user to login', async ({
+    authedPage: page,
+    user,
+    api,
+  }) => {
+    await page.goto('/items')
+    await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible()
+    // Revoke the session elsewhere (another device, an admin, expiry).
+    expect((await api.post('/auth/logout', { headers: authHeaders(user) })).ok()).toBe(true)
+
+    await page.getByRole('button', { name: 'Create Item' }).click()
+    await page.getByLabel('Name').fill('Never saved')
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
+
+    // Back to login, and back to this page after signing in again.
+    await expect(page).toHaveURL('/login?redirect=%2Fitems')
+    await expect(loginLink(page)).toBeVisible()
+    await expect(sessionExpiredToast(page)).toBeVisible()
+    expect(await storedToken(page)).toBeNull()
+  })
+
+  test('logout in one tab signs out the other tab on its next request', async ({
+    authedPage: page,
+  }) => {
+    const otherTab = await page.context().newPage()
+    await otherTab.goto('/items')
+    await expect(otherTab.getByRole('heading', { name: 'Items' })).toBeVisible()
+
+    await page.goto('/')
+    await logoutButton(page).click()
+    await expect(page).toHaveURL('/login')
+
+    // The other tab still shows the items page. Its next call goes out without a
+    // token: FastAPI's HTTPBearer answers 403 "Not authenticated" (401 in newer
+    // FastAPI versions). The app treats both as a dead session.
+    await otherTab.getByRole('button', { name: 'Create Item' }).click()
+    await otherTab.getByLabel('Name').fill('Never saved')
+    const responsePromise = otherTab.waitForResponse(r => r.url().endsWith('/items'))
+    await otherTab.getByRole('button', { name: 'Create', exact: true }).click()
+
+    expect([401, 403]).toContain((await responsePromise).status())
+    await expect(otherTab).toHaveURL('/login?redirect=%2Fitems')
+    await expect(loginLink(otherTab)).toBeVisible()
+    await expect(sessionExpiredToast(otherTab)).toBeVisible()
   })
 })

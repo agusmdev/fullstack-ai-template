@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useCallback,
+  useSyncExternalStore,
+} from 'react'
 import { useRouter } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { getAuthToken, setAuthToken, clearAuthToken, subscribeToAuthChanges } from '@/lib/auth'
@@ -21,23 +27,23 @@ interface AuthProviderProps {
   queryClient: QueryClient
 }
 
+// The token lives in localStorage, which the server cannot read. The server
+// renders "signed out"; after hydration the client switches to the stored
+// token without a hydration mismatch.
+const getServerToken = () => null
+
 export function AuthProvider({ children, queryClient }: AuthProviderProps) {
   const router = useRouter()
-  const [token, setTokenState] = useState<string | null>(() => {
-    return getAuthToken()
-  })
+  const token = useSyncExternalStore(subscribeToAuthChanges, getAuthToken, getServerToken)
 
-  // Subscribe to auth changes from external sources (like api-client clearing token on 401)
+  // When the token goes away (logout, or the API client dropped a rejected
+  // session), drop the signed-in user's cached data. Pages in routes/_authed/
+  // then send the user to /login by themselves.
   useEffect(() => {
     return subscribeToAuthChanges(() => {
-      const currentToken = getAuthToken()
-      setTokenState(currentToken)
-      if (currentToken === null) {
-        queryClient.clear()
-        router.navigate({ to: '/login' })
-      }
+      if (getAuthToken() === null) queryClient.clear()
     })
-  }, [queryClient, router])
+  }, [queryClient])
 
   const login = useCallback((token: string) => {
     setAuthToken(token)
@@ -52,12 +58,12 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
       }
     } catch {
       // Ignore errors - still clear local auth state even if backend call fails
-    } finally {
-      // clearAuthToken() triggers the auth-change subscriber, which is the sole
-      // owner of the post-clear side effects (setTokenState(null) + queryClient.clear()).
-      clearAuthToken()
     }
-  }, [])
+    // Leave the page first, so a protected page does not redirect to
+    // /login?redirect=<itself> when the token goes away.
+    await router.navigate({ to: '/login' })
+    clearAuthToken()
+  }, [router])
 
   const isAuthenticated = token !== null
 

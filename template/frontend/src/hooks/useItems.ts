@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { API, buildItemsListUrl } from '@/lib/api-endpoints'
 import { queryKeys } from '@/lib/query-keys'
@@ -9,6 +9,10 @@ export function useItems(params?: ItemsParams, enabled = true) {
     queryKey: queryKeys.items.list(params),
     queryFn: () => api.get<ItemsResponse>(buildItemsListUrl(params)),
     enabled,
+    // Keep showing the current page while the next page or search result loads,
+    // instead of swapping the page for a loading state (which also drops the
+    // focus from the search box while the user types).
+    placeholderData: keepPreviousData,
   })
 }
 

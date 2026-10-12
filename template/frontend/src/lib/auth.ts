@@ -1,4 +1,5 @@
-const AUTH_TOKEN_KEY = 'auth_token'
+/** localStorage key of the session token. The e2e fixtures use it to sign users in. */
+export const AUTH_TOKEN_KEY = 'auth_token'
 
 // Subscribers are notified whenever the auth token changes — allows api-client
 // to trigger AuthContext re-renders when it clears the token on 401.
@@ -27,10 +28,6 @@ export function setAuthToken(token: string): void {
   }
   localStorage.setItem(AUTH_TOKEN_KEY, token)
   notifyAuthChange()
-}
-
-export function isAuthenticated(): boolean {
-  return getAuthToken() !== null
 }
 
 export function clearAuthToken(): void {

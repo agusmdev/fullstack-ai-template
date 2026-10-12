@@ -6,8 +6,9 @@ interface ValidationIssue {
   msg: string
 }
 
-// Backend error body. FastAPI request validation (422) sends `detail` as a list of issues.
-interface ApiErrorResponse {
+// Backend error body: `{ detail, error_code }`. FastAPI request validation (422)
+// sends `detail` as a list of issues instead of a string.
+interface ApiErrorBody {
   detail?: string | ValidationIssue[]
   error_code?: string
 }
@@ -16,13 +17,17 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** The backend's `error_code` (e.g. `duplicate_item`), or a client code such as `network_error`. */
     public code?: string,
+    /** Field name → messages, for request validation errors (422). */
     public fields?: Record<string, string[]>
   ) {
     super(message)
     this.name = 'ApiError'
   }
 }
+
+const SESSION_EXPIRED_MESSAGE = 'Your session has expired. Please sign in again.'
 
 function toFieldErrors(issues: ValidationIssue[]): Record<string, string[]> {
   const fields: Record<string, string[]> = {}
@@ -31,6 +36,46 @@ function toFieldErrors(issues: ValidationIssue[]): Record<string, string[]> {
     fields[field] = [...(fields[field] ?? []), msg]
   }
   return fields
+}
+
+async function readErrorBody(response: Response): Promise<ApiErrorBody | null> {
+  try {
+    const body: unknown = await response.json()
+    return body && typeof body === 'object' ? (body as ApiErrorBody) : null
+  } catch {
+    return null
+  }
+}
+
+function toApiError(status: number, body: ApiErrorBody | null): ApiError {
+  if (!body) return new ApiError(status, `HTTP ${status}`, 'invalid_error_body')
+  const { detail, error_code } = body
+  if (Array.isArray(detail)) {
+    const fields = toFieldErrors(detail)
+    const message = Object.entries(fields)
+      .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+      .join('; ')
+    return new ApiError(
+      status,
+      message || 'Validation failed',
+      error_code ?? 'validation_error',
+      fields
+    )
+  }
+  const message = typeof detail === 'string' && detail ? detail : `HTTP ${status}`
+  return new ApiError(status, message, error_code)
+}
+
+/**
+ * True when the backend refused the request for lack of a valid session:
+ * - 401 for a token it does not accept (expired, revoked, unknown);
+ * - 403 "Not authenticated" from FastAPI's HTTPBearer when no token was sent,
+ *   e.g. the user signed out in another tab while this one stayed open.
+ * A 401 without a token (wrong password on /auth/login) is a normal error.
+ */
+function isRejectedSession(status: number, body: ApiErrorBody | null, sentToken: boolean) {
+  if (status === 401) return sentToken
+  return status === 403 && body?.detail === 'Not authenticated'
 }
 
 class ApiClient {
@@ -62,30 +107,16 @@ class ApiClient {
       throw new ApiError(0, 'Network request failed', 'network_error')
     }
 
-    if (response.status === 401) {
-      clearAuthToken()
-      throw new ApiError(401, 'Session expired')
-    }
-
     if (!response.ok) {
-      // Parse the error body; if it isn't valid JSON, surface a structured
-      // error instead of silently swallowing the parse failure.
-      let data: ApiErrorResponse
-      try {
-        data = await response.json()
-      } catch {
-        throw new ApiError(response.status, `HTTP ${response.status}`, 'invalid_error_body')
+      const body = await readErrorBody(response)
+      if (isRejectedSession(response.status, body, token !== null)) {
+        // Drop the dead session: AuthProvider clears the cached data, and pages
+        // in routes/_authed/ send the user to /login. The message is fixed
+        // because the backend's detail is meant for developers.
+        clearAuthToken()
+        throw new ApiError(response.status, SESSION_EXPIRED_MESSAGE, body?.error_code)
       }
-      const { detail, error_code } = data
-      if (Array.isArray(detail)) {
-        throw new ApiError(
-          response.status,
-          'Validation failed',
-          error_code ?? 'validation_error',
-          toFieldErrors(detail)
-        )
-      }
-      throw new ApiError(response.status, detail || `HTTP ${response.status}`, error_code)
+      throw toApiError(response.status, body)
     }
 
     return response

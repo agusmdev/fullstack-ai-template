@@ -93,22 +93,24 @@ const FormLabel = React.forwardRef<
 })
 FormLabel.displayName = 'FormLabel'
 
-const FormControl = React.forwardRef<React.ElementRef<'div'>, React.HTMLAttributes<HTMLDivElement>>(
-  ({ ...props }, ref) => {
-    const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+type ControlProps = Pick<
+  React.HTMLAttributes<HTMLElement>,
+  'id' | 'aria-describedby' | 'aria-invalid'
+>
 
-    return (
-      <div
-        ref={ref}
-        id={formItemId}
-        aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
-        aria-invalid={!!error}
-        {...props}
-      />
-    )
-  }
-)
-FormControl.displayName = 'FormControl'
+/**
+ * Puts the field's id and ARIA state on its only child (the input itself), so
+ * the <FormLabel> names the input and screen readers hear the error message.
+ */
+function FormControl({ children }: { children: React.ReactElement<ControlProps> }) {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+
+  return React.cloneElement(React.Children.only(children), {
+    id: formItemId,
+    'aria-describedby': error ? `${formDescriptionId} ${formMessageId}` : formDescriptionId,
+    'aria-invalid': !!error,
+  })
+}
 
 const FormDescription = React.forwardRef<
   HTMLParagraphElement,

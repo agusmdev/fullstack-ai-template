@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as ItemsRouteImport } from './routes/items'
+import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OauthErrorRouteImport } from './routes/oauth/error'
+import { Route as OauthCallbackRouteImport } from './routes/oauth/callback'
+import { Route as AuthedItemsRouteImport } from './routes/_authed/items'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -24,9 +27,8 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ItemsRoute = ItemsRouteImport.update({
-  id: '/items',
-  path: '/items',
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -34,39 +36,83 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthErrorRoute = OauthErrorRouteImport.update({
+  id: '/oauth/error',
+  path: '/oauth/error',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthCallbackRoute = OauthCallbackRouteImport.update({
+  id: '/oauth/callback',
+  path: '/oauth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedItemsRoute = AuthedItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
+  getParentRoute: () => AuthedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/items': typeof ItemsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/items': typeof AuthedItemsRoute
+  '/oauth/callback': typeof OauthCallbackRoute
+  '/oauth/error': typeof OauthErrorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/items': typeof ItemsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/items': typeof AuthedItemsRoute
+  '/oauth/callback': typeof OauthCallbackRoute
+  '/oauth/error': typeof OauthErrorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/items': typeof ItemsRoute
+  '/_authed': typeof AuthedRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/_authed/items': typeof AuthedItemsRoute
+  '/oauth/callback': typeof OauthCallbackRoute
+  '/oauth/error': typeof OauthErrorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/items' | '/login' | '/register'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/items'
+    | '/oauth/callback'
+    | '/oauth/error'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/items' | '/login' | '/register'
-  id: '__root__' | '/' | '/items' | '/login' | '/register'
+  to:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/items'
+    | '/oauth/callback'
+    | '/oauth/error'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authed'
+    | '/login'
+    | '/register'
+    | '/_authed/items'
+    | '/oauth/callback'
+    | '/oauth/error'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ItemsRoute: typeof ItemsRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  OauthCallbackRoute: typeof OauthCallbackRoute
+  OauthErrorRoute: typeof OauthErrorRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,11 +131,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/items': {
-      id: '/items'
-      path: '/items'
-      fullPath: '/items'
-      preLoaderRoute: typeof ItemsRouteImport
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -99,14 +145,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oauth/error': {
+      id: '/oauth/error'
+      path: '/oauth/error'
+      fullPath: '/oauth/error'
+      preLoaderRoute: typeof OauthErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/callback': {
+      id: '/oauth/callback'
+      path: '/oauth/callback'
+      fullPath: '/oauth/callback'
+      preLoaderRoute: typeof OauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/items': {
+      id: '/_authed/items'
+      path: '/items'
+      fullPath: '/items'
+      preLoaderRoute: typeof AuthedItemsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
+interface AuthedRouteChildren {
+  AuthedItemsRoute: typeof AuthedItemsRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedItemsRoute: AuthedItemsRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ItemsRoute: ItemsRoute,
+  AuthedRoute: AuthedRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  OauthCallbackRoute: OauthCallbackRoute,
+  OauthErrorRoute: OauthErrorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
