@@ -2,7 +2,7 @@ name: Backend CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'template/backend/**'
       - 'template/docker-compose.yml' # the e2e suite reads the Postgres image from it

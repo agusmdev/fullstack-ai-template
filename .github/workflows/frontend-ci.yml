@@ -4,7 +4,7 @@ name: Frontend CI
 # so any change under template/ can break it.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'template/**'
       - '.github/workflows/frontend-ci.yml'
