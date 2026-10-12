@@ -38,7 +38,7 @@ The backend container runs `alembic upgrade head` before it starts.
 | http://localhost:9095/docs | OpenAPI docs |
 | http://localhost:9095/health | Health check |
 
-Stop: `docker compose down`. Reset the database: `make db-reset`. Ports clash? Change `BACKEND_PORT`, `FRONTEND_PORT` or `DB_PORT` in `.env`. The URLs in `.env` do not follow the ports: with a new `BACKEND_PORT` also change `VITE_API_BASE_URL` and `GOOGLE_REDIRECT_URI`; with a new `FRONTEND_PORT` also change `FRONTEND_URL`. Then run `docker compose up -d --build` (the frontend bakes `VITE_API_BASE_URL` in at build time). See [README.md](README.md#environment).
+Stop: `docker compose down`. Reset the database: `make db-reset`. Ports clash? Change `BACKEND_PORT`, `FRONTEND_PORT` or `DB_PORT` in `.env`. The URLs in `.env` do not follow the ports: with a new `BACKEND_PORT` also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it); with a new `FRONTEND_PORT` also change `FRONTEND_URL`. Then run `docker compose up -d --build` (the frontend bakes `VITE_API_BASE_URL` in at build time). See [README.md](README.md#environment).
 
 ## Run backend and frontend outside Docker (hot reload)
 

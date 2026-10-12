@@ -95,7 +95,7 @@ def init(
     - TanStack Start frontend (React Query, shadcn/ui)
     - PostgreSQL 18.1 via docker compose
     - Auth system (session-based)
-    - AGENTS.md files and .pi skills for AI coding agents
+    - AGENTS.md files and the project-standards skill for AI coding agents
 
     Example usage:
         ai-fsr init my-project

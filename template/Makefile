@@ -192,8 +192,8 @@ check: ## Run every static check CI runs, without changing files
 	$(MAKE) backend-check
 	$(MAKE) frontend-lint
 	$(MAKE) frontend-format-check
-	$(MAKE) frontend-typecheck
 	$(MAKE) frontend-build
+	$(MAKE) frontend-typecheck
 
 ci: ## Run what CI runs: static checks, then both e2e suites
 	$(MAKE) check

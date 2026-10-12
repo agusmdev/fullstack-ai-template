@@ -93,7 +93,7 @@ Docker Compose does **not** read `backend/.env`. The backend container gets its 
 
 ### Change a port
 
-Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL` and `GOOGLE_REDIRECT_URI`; for the frontend port, also change `FRONTEND_URL`. Then rebuild: `docker compose up -d --build`.
+Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it); for the frontend port, also change `FRONTEND_URL`. Then rebuild: `docker compose up -d --build`.
 
 ### Change the database credentials
 

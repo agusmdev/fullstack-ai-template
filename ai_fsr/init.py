@@ -148,6 +148,12 @@ def get_substitutions(project_name: str) -> dict[str, dict[str, str]]:
                 f"@localhost:5432/{project_name}"
             ),
         },
+        "backend/app/core/config.py": {
+            "postgresql://app:app@localhost:5432/app": (
+                f"postgresql://{project_name}:{project_name}"
+                f"@localhost:5432/{project_name}"
+            ),
+        },
         "backend/pyproject.toml": {
             'name = "backend-template"': backend_name,
         },
