@@ -73,6 +73,10 @@ def test_order_by_accepts_several_fields(auth_client: httpx.Client) -> None:
     "order_by",
     [
         "not_a_column",
+        # Model attributes that are not columns (a 500 before, not a 422).
+        "metadata",
+        "-__table__",
+        "registry",
         # The same field twice is ambiguous.
         "name,-name",
     ],

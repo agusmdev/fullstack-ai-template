@@ -4,6 +4,8 @@
  * The ports differ from the dev stack (db 5432, backend 9095, frontend 3000), so
  * the suite never touches a running dev environment. Set E2E_DB_PORT,
  * E2E_BACKEND_PORT or E2E_FRONTEND_PORT to run two checkouts side by side.
+ * The e2e frontend does not start the TanStack devtools event bus (fixed port
+ * 42069, see vite.config.ts), so no other port is shared.
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'

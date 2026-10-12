@@ -8,17 +8,17 @@ List endpoints use `fastapi-filter` (2.0.1) for filtering and sorting and
 ## The filter class
 
 ```python
-from fastapi_filter.contrib.sqlalchemy.filter import Filter
+from app.core.filters import ModelFilter
 
 from app.modules.items.models import Item
 
 
-class ItemFilter(Filter):
+class ItemFilter(ModelFilter):
     order_by: list[str] = ["created_at"]
     name__ilike: str | None = None
     search: str | None = None
 
-    class Constants(Filter.Constants):
+    class Constants(ModelFilter.Constants):
         model = Item
         search_model_fields = ["name", "description"]
 ```

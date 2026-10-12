@@ -53,7 +53,7 @@ docstring first), guard hooks in `tests/conftest.py`, guard logic in
 Helpers (`tests/e2e/helpers.py`): `assert_error(response, status, error_code, detail=None)`,
 `create_item`, `login`, `unique_email`, `password_reset_token`,
 `email_verification_token`, `deactivate_user`, `create_passwordless_user`,
-`drop_server_connections` (simulates a database outage), constants
+`drop_server_connections(db)`, a context manager (`with drop_server_connections(db): response = ...`) that simulates a database outage until the block ends, constants
 `DEFAULT_PASSWORD`, `EXPIRED`, `NUL`. Put a `create_<entity>` helper here for
 each new resource.
 
@@ -205,6 +205,10 @@ three `webServer` entries through `e2e/support/stack.sh`, in order:
 The dev ports (5432, 9095, 3000) are never touched. Each piece stops if the
 Playwright runner dies.
 
+The TanStack devtools event bus always listens on port 42069.
+`vite.config.ts` turns it off when `E2E_RUNNER_PID` is set (Playwright sets
+it), so the e2e frontend shares no port with `bun run dev` or another e2e run.
+
 One-time setup: `bun install`, `cd ../backend && uv sync`,
 `bunx playwright install --with-deps chromium`. Linux, macOS and CI only (bash).
 
@@ -298,9 +302,12 @@ test('deletes a note', async ({ authedPage: page, api, user }) => {
   const note = await createNote(api, user, { name: 'Old' })
   await page.goto('/notes')
   await page.getByRole('button', { name: 'Delete Old' }).click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  const confirm = page.getByRole('alertdialog')
+  await confirm.getByRole('button', { name: 'Delete' }).click()
 
-  await expect(page.getByText('Old')).toBeHidden()
+  // Wait for the dialog first: its text (delete "Old"?) also contains 'Old'.
+  await expect(confirm).toBeHidden()
+  await expect(page.getByText('Old', { exact: true })).toBeHidden()
   expect(await listNotes(api, user)).toEqual([])
   const gone = await api.get(`/notes/${note.id}`, { headers: authHeaders(user) })
   expect(gone.status()).toBe(404) // also covers API.NOTES.DETAIL for the guard
@@ -331,7 +338,9 @@ Style:
 
 **ESLint** (`bun run lint`, on all `e2e/**` JS/TS files):
 - `page`/`context` `.route`, `routeFromHAR`, `unroute`, `unrouteAll`,
-  `routeWebSocket`, `fulfill`, `addInitScript`, `addScriptTag`, `waitForTimeout`.
+  `routeWebSocket`, `fulfill`, `addInitScript`, `addScriptTag`, `setContent`, `waitForTimeout`.
+  The same network bans apply in `src/`. Specs may import from `src/` only
+  `lib/api-endpoints`, `lib/auth` and `types/*`.
 - Assigning or defining `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`;
   any string literal equal to one of those names or a route method name.
 - A string of code passed to `evaluate`, `evaluateHandle`, `evaluateAll`,

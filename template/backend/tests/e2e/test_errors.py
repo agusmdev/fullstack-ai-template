@@ -208,9 +208,8 @@ def test_unhandled_error_is_a_json_500_the_frontend_can_read(
     register_user: Callable[..., RegisteredUser], db: Database
 ) -> None:
     user = register_user()
-    drop_server_connections(db)
-
-    response = user.client.get("/users/me", headers={"Origin": FRONTEND_URL})
+    with drop_server_connections(db):
+        response = user.client.get("/users/me", headers={"Origin": FRONTEND_URL})
 
     assert_error(response, 500, "internal_server_error", "Internal Server Error")
     assert response.headers["access-control-allow-origin"] == FRONTEND_URL

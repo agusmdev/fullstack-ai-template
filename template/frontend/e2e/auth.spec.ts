@@ -43,6 +43,7 @@ test('the home page offers sign-in and registration to anonymous users', async (
   await page.getByRole('link', { name: 'Sign In', exact: true }).first().click()
   await expect(page).toHaveURL('/login')
   await page.goBack()
+  await expect(page).toHaveURL('/')
   await page.getByRole('link', { name: 'Get Started' }).click()
   await expect(page).toHaveURL('/register')
 })

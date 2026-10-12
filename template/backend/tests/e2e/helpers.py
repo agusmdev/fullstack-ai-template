@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     import httpx
 
     from tests.e2e.stack import Database
@@ -111,18 +115,51 @@ def create_passwordless_user(db: Database, email: str) -> None:
     )
 
 
-def drop_server_connections(db: Database) -> None:
-    """Make Postgres close every database connection of the live server (an outage).
+@contextmanager
+def drop_server_connections(db: Database) -> Iterator[None]:
+    """Cut the live server off from Postgres (an outage) for the ``with`` block.
 
-    The server's next request that uses the database fails, like after a
+    Use it as ``with drop_server_connections(db): response = client.get(...)``.
+    Every request in the block that uses the database fails, like after a
     database restart or a network cut. (The server runs with the production
     default DB_POOL_PRE_PING=false, so it does not test connections first.)
     Send one successful request before this, so the server has connections.
+
+    Postgres refuses new connections to the database until the block ends,
+    so the server cannot replace a dropped connection with a working one.
+    The open connection of ``db`` stays, so ``db`` works in the block.
     """
-    rows = db.fetch_all(
-        "SELECT pg_terminate_backend(pid, 5000) FROM pg_stat_activity "
-        "WHERE datname = current_database() AND pid <> pg_backend_pid() "
-        "AND backend_type = 'client backend'"
-    )
-    assert rows, "the server had no database connection to drop"
-    assert all(terminated for (terminated,) in rows), rows
+    _wait_until_server_connections_are_idle(db)
+    db.allow_connections(False)
+    try:
+        rows = db.fetch_all(
+            "SELECT pg_terminate_backend(pid, 5000) FROM pg_stat_activity "
+            f"WHERE {_SERVER_BACKENDS}"
+        )
+        assert rows, "the server had no database connection to drop"
+        assert all(terminated for (terminated,) in rows), rows
+        yield
+    finally:
+        db.allow_connections(True)
+
+
+# The server's connections: every client backend on this database except db's.
+_SERVER_BACKENDS = (
+    "datname = current_database() AND pid <> pg_backend_pid() "
+    "AND backend_type = 'client backend'"
+)
+
+
+def _wait_until_server_connections_are_idle(db: Database) -> None:
+    # The server ends a request's transaction (COMMIT, then the connection goes
+    # back to the pool) after it sent the response. A connection dropped in
+    # that step is discarded, not put back in the pool. Wait for that step to
+    # end, so the pool keeps the dropped connections and the next request
+    # gets one of them (a failed SQL statement, not a failed connect).
+    deadline = time.monotonic() + 10
+    while db.fetch_all(
+        f"SELECT pid FROM pg_stat_activity WHERE {_SERVER_BACKENDS} "
+        "AND state IS DISTINCT FROM 'idle'"
+    ):
+        assert time.monotonic() < deadline, "the server's connections stay busy"
+        time.sleep(0.01)

@@ -1,1 +1,1 @@
-"""Core infrastructure: configuration, logging, optional model utilities."""
+"""Core infrastructure: configuration, logging, list filters, optional model utilities."""

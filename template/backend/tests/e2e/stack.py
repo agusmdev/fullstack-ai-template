@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 import psycopg
 from psycopg import sql
+from psycopg.conninfo import make_conninfo
 from testcontainers.postgres import PostgresContainer
 
 if TYPE_CHECKING:
@@ -197,6 +198,21 @@ class Database:
     ) -> list[tuple[Any, ...]]:
         """Run a query and return all rows."""
         return self._conn.execute(query, params).fetchall()  # type: ignore[arg-type]
+
+    def allow_connections(self, allow: bool) -> None:
+        """Let new connections to this database in, or turn them away.
+
+        Open connections, such as this object's own, stay. Postgres does not
+        change this for the current database, so it goes through ``postgres``.
+        """
+        name = self.fetch_one("SELECT current_database()")[0]
+        conninfo = make_conninfo(self.url, dbname="postgres")
+        with psycopg.connect(conninfo, autocommit=True) as conn:
+            conn.execute(
+                sql.SQL("ALTER DATABASE {} WITH ALLOW_CONNECTIONS {}").format(
+                    sql.Identifier(name), sql.Literal(allow)
+                )
+            )
 
     def close(self) -> None:
         """Close the connection."""

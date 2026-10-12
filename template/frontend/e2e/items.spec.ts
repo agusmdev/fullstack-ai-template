@@ -86,6 +86,22 @@ test('edits an item', async ({ authedPage: page, api, user }) => {
   expect(await response.json()).toMatchObject({ name: 'Final', description: 'Second version' })
 })
 
+test('clears an item description', async ({ authedPage: page, api, user }) => {
+  const item = await createItem(api, user, { name: 'Notes', description: 'Remove me' })
+  await openItemsPage(page)
+  await expect(itemCard(page, 'Notes')).toContainText('Remove me')
+
+  await page.getByRole('button', { name: 'Edit Notes', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Edit Item' })
+  await dialog.getByLabel('Description (Optional)').fill('')
+  await dialog.getByRole('button', { name: 'Update' }).click()
+
+  await expect(dialog).toBeHidden()
+  await expect(itemCard(page, 'Notes')).not.toContainText('Remove me')
+  const response = await api.get(`/items/${item.id}`, { headers: authHeaders(user) })
+  expect(await response.json()).toMatchObject({ name: 'Notes', description: null })
+})
+
 test('deletes an item only after confirmation', async ({ authedPage: page, api, user }) => {
   const [keep, remove] = await createItems(api, user, ['Keep me', 'Delete me'])
   await openItemsPage(page)

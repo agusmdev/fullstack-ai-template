@@ -1,11 +1,10 @@
 """Item filters - for filtering and searching items."""
 
-from fastapi_filter.contrib.sqlalchemy.filter import Filter
-
+from app.core.filters import ModelFilter
 from app.modules.items.models import Item
 
 
-class ItemFilter(Filter):
+class ItemFilter(ModelFilter):
     """Filter for Item queries.
 
     Usage in requests:
@@ -18,6 +17,6 @@ class ItemFilter(Filter):
     name__ilike: str | None = None
     search: str | None = None
 
-    class Constants(Filter.Constants):
+    class Constants(ModelFilter.Constants):
         model = Item
         search_model_fields = ["name", "description"]

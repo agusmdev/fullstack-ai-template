@@ -46,4 +46,4 @@ repos:
         language: pygrep
         files: ^frontend/e2e/
         entry: >-
-          ^(?!\s*(//|/?\*)).*(\.(route|routeFromHAR|unroute|unrouteAll|routeWebSocket|fulfill|addInitScript)\s*\(|\b(window|globalThis|self)\.(fetch|XMLHttpRequest|WebSocket|EventSource)\s*=[^=]|from\s+['"](msw|msw/.*|@mswjs/.*|nock|sinon|fetch-mock|miragejs|pretender|vitest|jest|@testing-library/.*)['"])
+          ^(?!\s*(//|/?\*)).*(\.(route|routeFromHAR|unroute|unrouteAll|routeWebSocket|fulfill|addInitScript|addScriptTag|setContent)\s*\(|\b(window|globalThis|self)\.(fetch|XMLHttpRequest|WebSocket|EventSource)\s*=[^=]|from\s+['"](msw|msw/.*|@mswjs/.*|nock|sinon|fetch-mock|miragejs|pretender|vitest|jest|@testing-library/.*)['"])

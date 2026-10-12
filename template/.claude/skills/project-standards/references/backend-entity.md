@@ -211,19 +211,19 @@ class NoteService(BaseService[Note]):
 ```python
 """Note filters."""
 
-from fastapi_filter.contrib.sqlalchemy.filter import Filter
+from app.core.filters import ModelFilter
 
 from app.modules.notes.models import Note
 
 
-class NoteFilter(Filter):
+class NoteFilter(ModelFilter):  # ?order_by= accepts model columns only (else 422)
     """?search=, ?name__ilike=%pattern%, ?order_by=-created_at"""
 
     order_by: list[str] = ["created_at"]
     name__ilike: str | None = None
     search: str | None = None
 
-    class Constants(Filter.Constants):
+    class Constants(ModelFilter.Constants):
         model = Note
         search_model_fields = ["name", "description"]
 ```

@@ -57,6 +57,43 @@ const playwrightEntryPoints = [
   'playwright-core',
 ]
 const playwrightSubpaths = ['@playwright/*', 'playwright/*', 'playwright-core/*']
+const PLAYWRIGHT_IN_E2E_ONLY =
+  'Playwright belongs in e2e/ only, where lint checks it for network fakes. Do not put test helpers in app code.'
+const noPlaywrightImports = {
+  patterns: [
+    noMockImports,
+    { group: [...playwrightEntryPoints, ...playwrightSubpaths], message: PLAYWRIGHT_IN_E2E_ONLY },
+  ],
+}
+
+// App code that specs may import. Anything else under src/ could hide a
+// network fake from the e2e rules, so specs cannot import it.
+const SRC_IMPORTS =
+  'Specs may import only API endpoints, auth constants and types from src/. Put test helpers in e2e/.'
+const restrictedSrcImports = {
+  regex: '^(@/|(\\.\\./)+src/)(?!(lib/api-endpoints|lib/auth|types/[\\w-]+)$)',
+  message: SRC_IMPORTS,
+}
+
+// Playwright methods that fake the backend, inject page code or render fake HTML.
+const fakingProperties = [
+  ...[...networkFakes, 'fulfill'].map(property => ({
+    property,
+    message: `${NO_MOCKS} ${property}() fakes the backend; seed data through the real API instead.`,
+  })),
+  {
+    property: 'addInitScript',
+    message: `${NO_MOCKS} Init scripts can stub fetch in the page. To sign in, use the authedPage or loginAs fixture.`,
+  },
+  {
+    property: 'addScriptTag',
+    message: `${NO_MOCKS} Injected scripts can stub fetch in the page.`,
+  },
+  {
+    property: 'setContent',
+    message: `${NO_MOCKS} setContent() renders fake HTML in place of the app; open a real page with goto().`,
+  },
+]
 
 export default [
   {
@@ -98,7 +135,8 @@ export default [
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
-      'no-restricted-imports': ['error', { patterns: [noMockImports] }],
+      'no-restricted-imports': ['error', noPlaywrightImports],
+      'no-restricted-properties': ['error', ...fakingProperties],
     },
   },
   {
@@ -109,23 +147,16 @@ export default [
         'error',
         {
           paths: playwrightEntryPoints.map(name => ({ name, message: USE_FIXTURES })),
-          patterns: [noMockImports, { group: playwrightSubpaths, message: USE_FIXTURES }],
+          patterns: [
+            noMockImports,
+            restrictedSrcImports,
+            { group: playwrightSubpaths, message: USE_FIXTURES },
+          ],
         },
       ],
       'no-restricted-properties': [
         'error',
-        ...[...networkFakes, 'fulfill'].map(property => ({
-          property,
-          message: `${NO_MOCKS} ${property}() fakes the backend; seed data through the real API instead.`,
-        })),
-        {
-          property: 'addInitScript',
-          message: `${NO_MOCKS} Init scripts can stub fetch in the page. To sign in, use the authedPage or loginAs fixture.`,
-        },
-        {
-          property: 'addScriptTag',
-          message: `${NO_MOCKS} Injected scripts can stub fetch in the page.`,
-        },
+        ...fakingProperties,
         {
           property: 'waitForTimeout',
           message: 'Do not sleep. Wait for the visible result with expect(...), which retries.',
@@ -189,6 +220,7 @@ export default [
             .map(name => ({ name, message: USE_FIXTURES })),
           patterns: [
             noMockImports,
+            restrictedSrcImports,
             { group: [...playwrightSubpaths, '!@playwright/test'], message: USE_FIXTURES },
           ],
         },

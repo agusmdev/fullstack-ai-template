@@ -8,7 +8,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
   plugins: [
-    devtools(),
+    // The devtools server event bus always listens on port 42069. The e2e stack
+    // (E2E_RUNNER_PID is set by playwright.config.ts) turns it off, so a test
+    // run can start while `bun run dev` or another checkout's e2e run is up.
+    devtools({ eventBusConfig: { enabled: !process.env.E2E_RUNNER_PID } }),
     nitro(),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
