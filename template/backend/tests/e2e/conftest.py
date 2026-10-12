@@ -42,7 +42,7 @@ Rules the run enforces (``tests/e2e/guards.py``, hooked in ``tests/conftest.py``
 - Every app route gets at least one successful request somewhere in the suite.
 - The models and the migrations agree (``alembic check``).
 
-Failure paths are real too: ``with helpers.drop_server_connections(db):``
+Failure paths are real too: ``with helpers.drop_server_connections(db, client):``
 cuts the server off from Postgres (an outage), and the suite's Google
 endpoints are a closed local port (Google is down).
 

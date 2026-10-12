@@ -9,7 +9,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from tests.e2e.helpers import EXPIRED, assert_error, email_verification_token
+from tests.e2e.helpers import (
+    EXPIRED,
+    assert_error,
+    email_verification_token,
+    unique_email,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -127,3 +132,23 @@ def test_unknown_token_is_rejected(api: httpx.Client) -> None:
     )
 
     assert_error(response, 400, "invalid_token", "Invalid or expired token")
+
+
+def test_changing_the_email_needs_a_new_verification(
+    api: httpx.Client, register_user: Callable[..., RegisteredUser], db: Database
+) -> None:
+    user = register_user()
+    user.client.post("/auth/email/verify")
+    api.post(
+        "/auth/email/verify/confirm",
+        json={"token": email_verification_token(db, user.id)},
+    )
+
+    same = user.client.patch("/users/me", json={"email": user.email.upper()})
+    assert same.status_code == 200
+    assert same.json()["is_email_verified"] is True
+
+    changed = user.client.patch("/users/me", json={"email": unique_email()})
+    assert changed.status_code == 200
+    assert changed.json()["is_email_verified"] is False
+    assert changed.json()["email_verified_at"] is None

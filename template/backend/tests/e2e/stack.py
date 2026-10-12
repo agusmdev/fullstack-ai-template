@@ -53,6 +53,8 @@ UNREACHABLE_OAUTH_PROVIDER = "https://127.0.0.1:1"
 READINESS_PROBE_ID = "e2e-readiness-probe"
 
 STARTUP_TIMEOUT_S = 30.0
+# The server's SQLAlchemy pool size (DB_POOL_SIZE).
+SERVER_DB_POOL_SIZE = 5
 
 # One wide event (canonical log line) is emitted per request with this message.
 WIDE_EVENT_MESSAGE = "request_completed"
@@ -99,7 +101,7 @@ def server_environment(db_url: str) -> dict[str, str]:
         **os.environ,
         "PYTHONUNBUFFERED": "1",
         "DB_URL": db_url,
-        "DB_POOL_SIZE": "5",
+        "DB_POOL_SIZE": str(SERVER_DB_POOL_SIZE),
         "DB_POOL_PRE_PING": "false",
         "APP_NAME": "backend-e2e",
         # "local" makes create_app() leave Sentry off.

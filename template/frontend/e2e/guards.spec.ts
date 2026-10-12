@@ -98,6 +98,19 @@ test('every backend endpoint the app calls is used by an e2e spec or fixture', (
   ).toEqual([])
 })
 
+test('every test file in e2e/ is a spec Playwright runs', () => {
+  // Playwright runs only '**/*.spec.ts'; any other test-like file would never run.
+  const allowed = (file: string) =>
+    file.endsWith('.spec.ts') || file === 'fixtures.ts' || file.startsWith('support/')
+  const files = readdirSync(fromFrontend('e2e'), { recursive: true, encoding: 'utf8' })
+    .map(file => file.split('\\').join('/'))
+    .filter(file => /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(file))
+  expect(
+    files.filter(file => !allowed(file)),
+    'Rename these to *.spec.ts (or move helpers to e2e/support/)'
+  ).toEqual([])
+})
+
 test('no mocking library is installed', () => {
   const pkg = JSON.parse(readFileSync(fromFrontend('package.json'), 'utf8'))
   const installed = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })

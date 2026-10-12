@@ -57,6 +57,8 @@ class OAuthCallback(BaseModel):
 class OAuthUser(BaseModel):
     token: str
     email: EmailStr
+    # The provider confirmed that the user owns this email.
+    email_verified: bool
     display_name: str
 
 

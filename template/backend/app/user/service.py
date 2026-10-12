@@ -69,6 +69,21 @@ class UserService(BaseService[User]):
         hashed_password = _ph.hash(new_password)
         await self.repo.update(user_id, {"password": hashed_password})
 
+    async def update(self, entity_id: uuid.UUID, entity: BaseModel) -> User:
+        """Update a user; a new email is not verified until it is confirmed again."""
+        values = entity.model_dump(exclude_unset=True)
+        if "email" in values:
+            current = await self.repo.get(entity_id)
+            if current is not None and current.email != values["email"]:
+                values["email_verified_at"] = None
+        result = await self.repo.update(entity_id, values)
+        self._log_entity(entity_id)
+        return result
+
+    async def clear_password(self, user_id: uuid.UUID) -> None:
+        """Remove a user's password, so only their sign-in provider can log in."""
+        await self.repo.update(user_id, {"password": None})
+
     async def mark_email_verified(self, user_id: uuid.UUID) -> None:
         """Mark a user's email as verified."""
         await self.repo.update(user_id, {"email_verified_at": datetime.now(tz=UTC)})

@@ -53,7 +53,7 @@ docstring first), guard hooks in `tests/conftest.py`, guard logic in
 Helpers (`tests/e2e/helpers.py`): `assert_error(response, status, error_code, detail=None)`,
 `create_item`, `login`, `unique_email`, `password_reset_token`,
 `email_verification_token`, `deactivate_user`, `create_passwordless_user`,
-`drop_server_connections(db)`, a context manager (`with drop_server_connections(db): response = ...`) that simulates a database outage until the block ends, constants
+`drop_server_connections(db, client)`, a context manager (`with drop_server_connections(db, client): response = client.get(...)`) that simulates a database outage until the block ends, then waits until the server's pool works again, constants
 `DEFAULT_PASSWORD`, `EXPIRED`, `NUL`. Put a `create_<entity>` helper here for
 each new resource.
 
@@ -341,8 +341,11 @@ Style:
   `routeWebSocket`, `fulfill`, `addInitScript`, `addScriptTag`, `setContent`, `waitForTimeout`.
   The same network bans apply in `src/`. Specs may import from `src/` only
   `lib/api-endpoints`, `lib/auth` and `types/*`.
-- Assigning or defining `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`;
-  any string literal equal to one of those names or a route method name.
+- Assigning or defining `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`,
+  `Response`, `Request`, `Headers`, or patching their `prototype`; using one of
+  those names or a route method name as a string to reach it (`window['fetch']`,
+  `Reflect.set(…, 'fetch')`, `const r = 'route'`). Plain strings such as
+  `resourceType() === 'fetch'` are fine.
 - A string of code passed to `evaluate`, `evaluateHandle`, `evaluateAll`,
   `$eval`, `$$eval` (pass a function).
 - Importing `@playwright/test`, `playwright`, `playwright-core` (or subpaths)
@@ -354,6 +357,8 @@ Style:
   `happy-dom`, ...
 
 **`e2e/guards.spec.ts`** (runs with the suite; comments do not count):
+- every test file in `e2e/` is a `*.spec.ts` (Playwright runs nothing else);
+  helpers go in `e2e/support/`.
 - every page route in `src/routeTree.gen.ts` is opened by a spec with
   `page.goto('/path')` or `toHaveURL('/path')`;
 - every endpoint in `src/lib/api-endpoints.ts` appears as a string in a spec

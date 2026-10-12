@@ -163,7 +163,7 @@ def test_unhandled_error_is_logged_with_its_traceback(
     server_log: ServerLogView,
 ) -> None:
     user = register_user()
-    with drop_server_connections(db):
+    with drop_server_connections(db, user.client):
         response = user.client.get("/items")
 
     assert response.status_code == 500
@@ -202,7 +202,7 @@ def test_secrets_stay_out_of_the_logs_when_a_request_fails(
     for path, body in requests:
         # A successful request first, so the server holds a connection to drop.
         assert user.client.get("/users/me").status_code == 200
-        with drop_server_connections(db):
+        with drop_server_connections(db, api):
             failed = api.post(path, json=body)
         assert_error(failed, 500, "internal_server_error")
         server_log.wide_event_for(failed)  # all its output has been read

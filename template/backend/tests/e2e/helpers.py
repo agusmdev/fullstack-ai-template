@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
     from tests.e2e.stack import Database
 
+from tests.e2e.stack import SERVER_DB_POOL_SIZE
+
 DEFAULT_PASSWORD = "correct-horse-battery-staple"
 EXPIRED = "2000-01-01 00:00:00+00"
 # JSON allows "\u0000" in strings; Postgres text cannot store it.
@@ -116,10 +118,10 @@ def create_passwordless_user(db: Database, email: str) -> None:
 
 
 @contextmanager
-def drop_server_connections(db: Database) -> Iterator[None]:
+def drop_server_connections(db: Database, client: httpx.Client) -> Iterator[None]:
     """Cut the live server off from Postgres (an outage) for the ``with`` block.
 
-    Use it as ``with drop_server_connections(db): response = client.get(...)``.
+    Use it as ``with drop_server_connections(db, client): response = client.get(...)``.
     Every request in the block that uses the database fails, like after a
     database restart or a network cut. (The server runs with the production
     default DB_POOL_PRE_PING=false, so it does not test connections first.)
@@ -128,6 +130,8 @@ def drop_server_connections(db: Database) -> Iterator[None]:
     Postgres refuses new connections to the database until the block ends,
     so the server cannot replace a dropped connection with a working one.
     The open connection of ``db`` stays, so ``db`` works in the block.
+    When the block ends, ``client`` sends requests until the server's pool
+    holds no dropped connection, so later requests and tests are not hit.
     """
     _wait_until_server_connections_are_idle(db)
     db.allow_connections(False)
@@ -141,6 +145,7 @@ def drop_server_connections(db: Database) -> Iterator[None]:
         yield
     finally:
         db.allow_connections(True)
+        _wait_until_server_pool_recovers(client)
 
 
 # The server's connections: every client backend on this database except db's.
@@ -148,6 +153,23 @@ _SERVER_BACKENDS = (
     "datname = current_database() AND pid <> pg_backend_pid() "
     "AND backend_type = 'client backend'"
 )
+
+
+def _wait_until_server_pool_recovers(client: httpx.Client) -> None:
+    # A dropped connection stays in the pool until a request uses it and
+    # fails. The pool hands out idle connections in order (FIFO), so
+    # pool-size + 1 database requests in a row without a 500 prove that every
+    # pooled connection works again. A login with an unknown email reads the
+    # database and needs no account.
+    successes = attempts = 0
+    while successes <= SERVER_DB_POOL_SIZE:
+        attempts += 1
+        assert attempts <= 10 * SERVER_DB_POOL_SIZE, "the server did not recover"
+        response = client.post(
+            "/auth/login",
+            json={"email": unique_email(), "password": DEFAULT_PASSWORD},
+        )
+        successes = successes + 1 if response.status_code != 500 else 0
 
 
 def _wait_until_server_connections_are_idle(db: Database) -> None:

@@ -75,6 +75,7 @@ class GoogleOAuth:
         return OAuthUser(
             token=token["access_token"],
             email=user_info.get("email"),
+            email_verified=user_info.get("verified_email") is True,
             display_name=user_info.get("name"),
         )
 
@@ -144,6 +145,9 @@ class AuthService:
             raise UnsupportedOAuthProviderError()
 
         oauth_user = await provider.callback(payload)
+        if not oauth_user.email_verified:
+            # An unverified provider email proves nothing; never link it.
+            raise OAuthProviderError()
         user = await self.user_service.find_or_create_by_email(
             oauth_user.email,
             UserCreate(
@@ -153,6 +157,14 @@ class AuthService:
         )
         if not user.is_active:
             raise InactiveUserError()
+        if user.email_verified_at is None:
+            if user.password is not None:
+                # Anyone could have registered this unverified email with a
+                # password. The provider proved the real owner, so the old
+                # password and its sessions must not keep access.
+                await self.user_service.clear_password(user.id)
+                await self.logout_all(user.id)
+            await self.user_service.mark_email_verified(user.id)
         return await self._create_session_for_user(user.id)
 
     async def validate_session(self, session_id: str) -> User:

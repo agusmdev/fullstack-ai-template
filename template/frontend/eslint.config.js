@@ -183,17 +183,20 @@ export default [
           selector: `MemberExpression[property.name='prototype']:matches([object.name=${networkClasses}], [object.property.name=${networkClasses}])`,
           message: `${NO_MOCKS} Do not patch the browser's network classes.`,
         },
-        // Any string naming a network API or a Playwright interception method:
-        // catches window['fetch'], Reflect.set(…, 'fetch'), and
-        // `const r = 'route'; (page as any)[r](…)`.
-        {
-          selector: `Literal[value=${networkNames}]`,
+        // A string naming a network API or a Playwright interception method, used
+        // to reach it: window['fetch'], Reflect.set(…, 'fetch'),
+        // `const r = 'route'; (page as any)[r](…)`. Plain strings such as
+        // resourceType() === 'fetch' or { name: 'Request' } are fine.
+        ...[
+          `MemberExpression[computed=true] > Literal.property[value=${networkNames}]`,
+          `MemberExpression[computed=true] > TemplateLiteral.property > TemplateElement[value.cooked=${networkNames}]`,
+          `CallExpression[callee.object.name=/^(Reflect|Object)$/] > Literal[value=${networkNames}]`,
+          `VariableDeclarator > Literal.init[value=${networkNames}]`,
+          `VariableDeclarator > TemplateLiteral.init > TemplateElement[value.cooked=${networkNames}]`,
+        ].map(selector => ({
+          selector,
           message: `${NO_MOCKS} Do not reach network APIs or route() by name.`,
-        },
-        {
-          selector: `TemplateElement[value.cooked=${networkNames}]`,
-          message: `${NO_MOCKS} Do not reach network APIs or route() by name.`,
-        },
+        })),
         // page.evaluate('window.fetch = …') hides code from these rules: pass a function.
         {
           selector:
