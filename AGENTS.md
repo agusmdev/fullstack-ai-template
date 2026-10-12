@@ -4,8 +4,8 @@
 
 ```
 template/
-├── backend/           # FastAPI API server (see backend/AGENTS.md)
-├── frontend/          # React 19 SPA (see frontend/AGENTS.md)
+├── backend/           # FastAPI API server (see template/backend/AGENTS.md)
+├── frontend/          # React 19 SPA (see template/frontend/AGENTS.md)
 ├── docker-compose.yml # Service orchestration (db, backend, frontend)
 └── Makefile           # Dev commands (run `make help`)
 ```
@@ -74,9 +74,5 @@ bd sync               # Sync with git
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session
 
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+Push yourself instead of handing the push to the user, because unpushed work stays stranded locally. If the push fails, resolve the cause and push again.
 

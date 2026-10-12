@@ -5,6 +5,7 @@
 - **Run single test:** `uv run pytest tests/path/to/test.py::test_function_name -v`
 - **Run unit tests:** `uv run pytest tests/unit -v`
 - **Lint & format:** `uv run ruff check app --fix && uv run ruff format app`
+- **Type check:** `uvx ty check`
 - **Run app:** `uv run uvicorn app.main:app --reload`
 - **Generate migration:** `uv run alembic revision --autogenerate -m "description"`
 - **Apply migrations:** `uv run alembic upgrade head`
@@ -36,14 +37,14 @@
 
 - **Routers:** HTTP endpoints only. NO business logic. Inject service via `Depends(get_*_service)`.
 - **Services:** ALL business logic. Inherit `BaseService[T]` from `app/services/base_crud_service.py`.
-- **Repositories:** Data access only. Inherit `SQLAlchemyRepository[T]` from `app/repositories/sql_repository.py`. Uses INSERT...RETURNING, ON CONFLICT.
+- **Repositories:** Data access only. Inherit `SQLAlchemyRepository[T]` from `app/repositories/sql_repository.py` and use its base methods. Uses INSERT...RETURNING, ON CONFLICT.
 - **Modules:** Self-contained in `app/modules/{name}/` with: `models.py`, `schemas.py`, `repository.py`, `service.py`, `routers.py`, `filters.py`, `dependencies.py`
 
 ```
 app/
 ├── main.py              # App factory, CORS, middleware, Sentry
 ├── routers.py           # Central router registration
-├── core/                # Config, permissions, logging, base schemas
+├── core/                # Config, logging, base schemas
 ├── database/            # Base model, engine, session, mixins
 ├── repositories/        # BaseRepository, SQLAlchemyRepository, QueryBuilder
 ├── services/            # BaseService (generic CRUD)
@@ -75,13 +76,19 @@ async def list_items(service: ItemService = Depends(get_item_service)):
 
 ## Auth
 
-- **Guard dependency:** `Depends(AuthenticatedUser.current_user_id)` on protected routers
-- **Get user ID:** `user_id: uuid.UUID = Depends(AuthenticatedUser.current_user_id)`
+- **Guard dependency (feature modules):** `Depends(require_current_user_id)`, imported from `app.user.auth` (see `app/modules/items/routers.py`)
+- **Get user ID:** `user_id: uuid.UUID = Depends(require_current_user_id)`
+- `AuthenticatedUser.current_user_id` is the same guard; use it only inside `app/user/` and `app/user/auth/`
+- Import auth from the `app.user.auth` package, not from `app.user.auth.permissions` directly
 - **Get email:** `email: str = Depends(AuthenticatedUser.current_user_email)`
 - Session-based with Bearer token transport, argon2 hashing, DB-stored sessions
 
 ## Error Handling
 
+- **Services/repositories:** raise domain exceptions (`NotFoundError`, `AuthenticationError`, etc.) with `from original_exc` to preserve context.
+- **Routers:** do not catch exceptions — let them propagate to the FastAPI exception handlers and middleware, which log them. Exception: redirect-based OAuth endpoints may handle specific known exceptions at the router level.
+- **External I/O (HTTP clients, OAuth):** catch protocol-level exceptions and wrap them in domain exceptions with `from err`.
+- Do not use `raise ... from None`, because it drops the original exception context that debugging needs.
 - Custom exceptions inherit `HTTPExceptionMixin` with class attrs: `status_code`, `detail`, `error_code`
 - Repository exceptions auto-parsed from SQLAlchemy `IntegrityError`:
   - `NotFoundError` (404) — entity not found
@@ -100,6 +107,11 @@ Wide event / canonical log lines pattern via `WideEventMiddleware`:
 - **Naming:** snake_case (functions/vars), PascalCase (classes), SCREAMING_SNAKE_CASE (constants)
 - **Types:** Type hints everywhere. `@partial_model` for update schemas. SQLAlchemy models inherit `Base` + `TimestampMixin`
 - **Git:** Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`)
+
+## Package `__init__.py` Convention
+- Every package directory has an `__init__.py`, because missing init files cause inconsistent import behavior.
+- Packages with a **public API** (re-exported symbols) define `__all__` (see `app/repositories/__init__.py`, `app/modules/items/__init__.py`).
+- **Internal namespaces** with no re-exports keep `__init__.py` empty (a one-line docstring is fine).
 
 ## New Entities
 
