@@ -101,7 +101,7 @@ frontend-install: ## Install frontend dependencies locally (requires bun)
 frontend-build: ## Build the frontend bundle locally
 	cd frontend && bun run build
 
-frontend-test: ## Run frontend unit tests
+frontend-test: ## Run frontend end-to-end tests (Playwright)
 	cd frontend && bun run test
 
 frontend-lint: ## Lint frontend code
@@ -132,7 +132,7 @@ migrate-current: ## Show current migration version
 	cd backend && uv run alembic current
 
 db-shell: ## Open PostgreSQL shell in database container
-	docker compose exec db psql -U app -d app
+	docker compose exec db sh -c 'exec psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
 db-reset: ## Reset database (stop, remove volumes, restart, migrate)
 	docker compose down -v

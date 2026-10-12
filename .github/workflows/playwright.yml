@@ -19,24 +19,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin uv" >> $GITHUB_PATH
-
       - name: Start backend and database
-        run: |
-          cd backend
-          uv sync
-          uv run alembic upgrade head
-          docker compose up -d db backend
-        env:
-          DATABASE_URL: postgresql://app:app@localhost:5432/app
+        # The backend container applies migrations on boot.
+        run: docker compose up -d --build --wait db backend
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -73,6 +58,4 @@ jobs:
 
       - name: Stop services
         if: always()
-        run: |
-          cd template
-          docker compose down
+        run: docker compose down

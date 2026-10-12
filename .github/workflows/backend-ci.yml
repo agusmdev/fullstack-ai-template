@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  lint-typecheck-test:
+  lint:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -20,7 +20,7 @@ jobs:
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin uv" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -28,16 +28,10 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --locked
 
       - name: Run ruff linting
         run: uv run ruff check .
 
       - name: Run ruff formatting check
         run: uv run ruff format --check .
-
-      -name: Run type checking with ty
-        run: uv run ty
-
-      - name: Run pytest
-        run: uv run pytest

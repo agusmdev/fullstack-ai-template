@@ -1,0 +1,16 @@
+# ---------- Environment (the committed .env.example files are the templates) ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Docker ----------
+docker-compose.override.yml
+
+# ---------- OS / editors ----------
+.DS_Store
+.idea/
+.vscode/
+
+# ---------- Desloppify ----------
+.desloppify/
+scorecard.png

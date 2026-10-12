@@ -1,0 +1,45 @@
+name: Generator CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run ruff linting
+        run: uv run ruff check ai_fsr
+
+      - name: Run ruff formatting check
+        run: uv run ruff format --check ai_fsr
+
+      - name: Generate a project
+        run: uv run ai-fsr init ci-smoke --output-dir "$RUNNER_TEMP"
+
+      - name: Check generated backend lockfile
+        working-directory: ${{ runner.temp }}/ci-smoke/backend
+        run: uv lock --check
+
+      - name: Check generated Docker Compose file
+        working-directory: ${{ runner.temp }}/ci-smoke
+        run: docker compose config -q

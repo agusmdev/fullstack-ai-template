@@ -20,12 +20,12 @@ services:
   backend:
     build:
       context: ./backend
-    image: template-backend:latest
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-9095}:9095"
     environment:
-      DB_URL: ${DB_URL:-postgresql://app:app@db:5432/app}
+      # Built from the db service credentials unless DB_URL is set in .env.
+      DB_URL: ${DB_URL:-postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-app}}
       ENVIRONMENT: ${ENVIRONMENT:-local}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
@@ -52,7 +52,6 @@ services:
       args:
         # Baked in at build time by Vite, so it must match the published port.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:9095}
-    image: template-frontend:latest
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
