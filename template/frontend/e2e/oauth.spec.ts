@@ -1,4 +1,13 @@
-import { test, expect, BACKEND_URL, createItem, loginUser, storedToken } from './fixtures'
+import {
+  test,
+  expect,
+  BACKEND_URL,
+  authHeaders,
+  createItem,
+  loginUser,
+  registerUser,
+  storedToken,
+} from './fixtures'
 
 // The backend's OAuth callback ends with a redirect to the frontend:
 //   success -> /oauth/callback?session=<session id>
@@ -18,6 +27,30 @@ test('the callback stores the session and opens the app', async ({ page, api, us
   expect(await storedToken(page)).toBe(session)
   await page.getByRole('link', { name: 'Items' }).click()
   await expect(page.getByText('Made before the OAuth sign-in')).toBeVisible()
+})
+
+test('an OAuth sign-in over another session shows only the new user and ends the old session', async ({
+  api,
+  user,
+  authedPage: page,
+}) => {
+  await createItem(api, user, { name: 'Owned by the first user' })
+  const other = await registerUser(api)
+  await createItem(api, other, { name: 'Owned by the second user' })
+  await page.goto('/items')
+  await expect(page.getByText('Owned by the first user')).toBeVisible()
+
+  await page.goto(`/oauth/callback?session=${encodeURIComponent(other.token)}`)
+
+  await expect(page).toHaveURL('/')
+  expect(await storedToken(page)).toBe(other.token)
+  await page.getByRole('link', { name: 'Items' }).click()
+  await expect(page.getByText('Owned by the second user')).toBeVisible()
+  await expect(page.getByText('Owned by the first user')).toHaveCount(0)
+  // The replaced session is revoked on the server, not only forgotten.
+  await expect
+    .poll(async () => (await api.get('/items', { headers: authHeaders(user) })).status())
+    .toBe(401)
 })
 
 test('the callback without a session shows the error page', async ({ page }) => {

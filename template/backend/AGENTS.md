@@ -13,7 +13,7 @@
 | Tests + coverage | `make test-cov` (report in `htmlcov/`) |
 | Lint + format (changes files) | `make lint-all` (`ruff check . --fix`, `ruff format .`) |
 | Check only (what CI runs) | `make check` (`ruff check .`, `ruff format --check .`) |
-| Type check (advisory) | `uvx ty check app` (or `make backend-typecheck` at the root, pinned ty). `ty` is not a dependency and reports known diagnostics; it is not in CI |
+| Type check (advisory) | `make backend-typecheck` at the root (runs `cd backend && uvx ty@0.0.84 check app`; version pinned by `TY_VERSION` in the root `Makefile`). Do not run `uvx ty` without a version: it fetches the newest release and skips the 7-day supply-chain floor. `ty` is not a dependency and reports known diagnostics; it is not in CI |
 | New migration | `make migrate-new msg="add orders"` = `uv run alembic revision --autogenerate -m "..."` |
 | Apply / undo migration | `make migrate` / `make migrate-down` |
 | Git hooks | `make pre-commit` (install), `make pre-commit-all` (run on all files). Both use `../.pre-commit-config.yaml` |

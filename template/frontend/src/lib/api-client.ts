@@ -158,3 +158,20 @@ class ApiClient {
 }
 
 export const api = new ApiClient()
+
+/**
+ * Best-effort sign-out of a session that is no longer the stored one, e.g. the
+ * old session when a new sign-in replaces it. Uses fetch directly: a rejected
+ * old session must not clear the new token, as api.* would do on 401.
+ */
+export async function revokeSession(token: string): Promise<void> {
+  try {
+    await fetch(`${getConfig().apiBaseUrl}${API.AUTH.LOGOUT}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: '{}',
+    })
+  } catch {
+    // Ignore: the new session is already active; the old one expires anyway.
+  }
+}

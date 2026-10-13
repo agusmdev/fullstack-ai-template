@@ -42,8 +42,8 @@ test('the home page offers sign-in and registration to anonymous users', async (
   // The hero's call to action (the page repeats it at the bottom).
   await page.getByRole('link', { name: 'Sign In', exact: true }).first().click()
   await expect(page).toHaveURL('/login')
-  await page.goBack()
-  await expect(page).toHaveURL('/')
+  // A fresh load, not goBack(): a click during the router's back navigation can be lost.
+  await page.goto('/')
   await page.getByRole('link', { name: 'Get Started' }).click()
   await expect(page).toHaveURL('/register')
 })
@@ -241,7 +241,9 @@ test.describe('session', () => {
     api,
   }) => {
     await page.goto('/items')
-    await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible()
+    // The loaded list, not only the heading: the list request must end before
+    // the revoke, or its 401 sends the page to login before the click below.
+    await expect(page.getByText('No items yet')).toBeVisible()
     // Revoke the session elsewhere (another device, an admin, expiry).
     expect((await api.post('/auth/logout', { headers: authHeaders(user) })).ok()).toBe(true)
 
@@ -261,7 +263,8 @@ test.describe('session', () => {
   }) => {
     const otherTab = await page.context().newPage()
     await otherTab.goto('/items')
-    await expect(otherTab.getByRole('heading', { name: 'Items' })).toBeVisible()
+    // Wait for the loaded list, so no list request is still running at logout.
+    await expect(otherTab.getByText('No items yet')).toBeVisible()
 
     await page.goto('/')
     await logoutButton(page).click()

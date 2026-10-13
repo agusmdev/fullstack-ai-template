@@ -8,7 +8,7 @@ import React, {
 import { useRouter } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { getAuthToken, setAuthToken, clearAuthToken, subscribeToAuthChanges } from '@/lib/auth'
-import { api } from '@/lib/api-client'
+import { api, revokeSession } from '@/lib/api-client'
 import { API } from '@/lib/api-endpoints'
 
 interface AuthContextValue {
@@ -36,17 +36,25 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
   const router = useRouter()
   const token = useSyncExternalStore(subscribeToAuthChanges, getAuthToken, getServerToken)
 
-  // When the token goes away (logout, or the API client dropped a rejected
-  // session), drop the signed-in user's cached data. Pages in routes/_authed/
-  // then send the user to /login by themselves.
+  // When the token changes (logout, the API client dropped a rejected session,
+  // or a new sign-in replaced the old session), drop the previous user's cached
+  // data: query keys are not scoped by user. Pages in routes/_authed/ send a
+  // signed-out user to /login by themselves.
   useEffect(() => {
+    let previous = getAuthToken()
     return subscribeToAuthChanges(() => {
-      if (getAuthToken() === null) queryClient.clear()
+      const current = getAuthToken()
+      if (current === previous) return
+      previous = current
+      queryClient.clear()
     })
   }, [queryClient])
 
   const login = useCallback((token: string) => {
+    const previous = getAuthToken()
     setAuthToken(token)
+    // A sign-in on top of another session: end the old one on the server too.
+    if (previous !== null && previous !== token) void revokeSession(previous)
   }, [])
 
   const logout = useCallback(async () => {

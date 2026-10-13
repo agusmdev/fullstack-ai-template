@@ -59,7 +59,8 @@ class OAuthUser(BaseModel):
     email: EmailStr
     # The provider confirmed that the user owns this email.
     email_verified: bool
-    display_name: str
+    # Optional: some provider accounts have no name.
+    display_name: str | None = None
 
 
 class LogoutResponse(BaseModel):
