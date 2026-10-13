@@ -122,7 +122,9 @@ class ApiClient {
         // Drop the dead session: AuthProvider clears the cached data, and pages
         // in routes/_authed/ send the user to /login. The message is fixed
         // because the backend's detail is meant for developers.
-        clearAuthToken()
+        // Only if this request's token is still the stored one: a late 401 for a
+        // replaced (revoked) session must not sign out the new session.
+        if (getAuthToken() === token) clearAuthToken()
         throw new ApiError(response.status, SESSION_EXPIRED_MESSAGE, body?.error_code)
       }
       throw toApiError(response.status, body)

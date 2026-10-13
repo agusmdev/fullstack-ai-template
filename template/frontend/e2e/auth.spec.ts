@@ -4,8 +4,10 @@ import {
   expect,
   PASSWORD,
   authHeaders,
+  createItem,
   errorToast,
   loginUser,
+  registerUser,
   storedToken,
   uniqueEmail,
 } from './fixtures'
@@ -117,6 +119,35 @@ test.describe('login', () => {
     await expect(page).toHaveURL('/')
     await expect(logoutButton(page)).toBeVisible()
     await expect(page.getByRole('link', { name: 'Items' })).toBeVisible()
+  })
+
+  test('signing in as another user over a session shows only the new user', async ({
+    api,
+    user,
+    authedPage: page,
+  }) => {
+    await createItem(api, user, { name: 'Owned by the first user' })
+    const other = await registerUser(api)
+    await createItem(api, other, { name: 'Owned by the second user' })
+    await page.goto('/items')
+    await expect(page.getByText('Owned by the first user')).toBeVisible()
+
+    // In-app navigation only, so the first user's cached data is still there.
+    await page.getByRole('link', { name: 'Home' }).click()
+    await page.getByRole('link', { name: 'Sign In', exact: true }).first().click()
+    await expect(page).toHaveURL('/login')
+    await fillLoginForm(page, other.email, other.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page).toHaveURL('/')
+    await page.getByRole('link', { name: 'Items' }).click()
+
+    await expect(page.getByText('Owned by the second user')).toBeVisible()
+    await expect(page.getByText('Owned by the first user')).toHaveCount(0)
+    expect(await storedToken(page)).not.toBe(user.token)
+    // The replaced session is revoked on the server, not only forgotten.
+    await expect
+      .poll(async () => (await api.get('/items', { headers: authHeaders(user) })).status())
+      .toBe(401)
   })
 
   test('accepts the email in any letter case', async ({ page, user }) => {
