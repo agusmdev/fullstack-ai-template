@@ -7,6 +7,10 @@ from pydantic import BaseModel
 
 from app.services.base_crud_service import BaseService
 from app.user.auth.exceptions import AuthenticationError, InvalidPasswordError
+from app.user.auth.repository import (
+    EmailVerificationTokenRepository,
+    PasswordResetTokenRepository,
+)
 from app.user.models import User, _ph
 from app.user.repository import UserRepository
 from app.user.schemas import (
@@ -22,15 +26,23 @@ class UserService(BaseService[User]):
 
     Args:
         repo (UserRepository): The repository to interact with the user collection
+        email_verification_repo: Email verification tokens, ended on email change
+        password_reset_repo: Password reset tokens, ended on email change
     """
 
     repo: UserRepository
+    email_verification_repo: EmailVerificationTokenRepository
+    password_reset_repo: PasswordResetTokenRepository
 
     def __init__(
         self,
         repo: UserRepository,
+        email_verification_repo: EmailVerificationTokenRepository,
+        password_reset_repo: PasswordResetTokenRepository,
     ) -> None:
         self.repo = repo
+        self.email_verification_repo = email_verification_repo
+        self.password_reset_repo = password_reset_repo
 
     async def find_or_create(
         self, field: str, value: str, create_fields: BaseModel
@@ -70,13 +82,22 @@ class UserService(BaseService[User]):
         await self.repo.update(user_id, {"password": hashed_password})
 
     async def update(self, entity_id: uuid.UUID, entity: BaseModel) -> User:
-        """Update a user; a new email is not verified until it is confirmed again."""
+        """Update a user; a new email is not verified until it is confirmed again.
+
+        On an email change, open verification and reset tokens are ended too:
+        they were sent to the old address, so they must not prove the new one.
+        """
         values = entity.model_dump(exclude_unset=True)
+        email_changed = False
         if "email" in values:
             current = await self.repo.get(entity_id)
             if current is not None and current.email != values["email"]:
                 values["email_verified_at"] = None
+                email_changed = True
         result = await self.repo.update(entity_id, values)
+        if email_changed:
+            await self.email_verification_repo.invalidate_user_tokens(entity_id)
+            await self.password_reset_repo.invalidate_user_tokens(entity_id)
         self._log_entity(entity_id)
         return result
 

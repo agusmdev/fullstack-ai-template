@@ -43,7 +43,9 @@ const networkFakes = ['route', 'routeFromHAR', 'unroute', 'unrouteAll', 'routeWe
 // Browser network APIs a test could replace or patch in the page.
 const networkApiNames = 'fetch|XMLHttpRequest|WebSocket|EventSource|Response|Request|Headers'
 const networkApis = `/^(${networkApiNames})$/`
-const networkNames = `/^(${networkApiNames}|${networkFakes.join('|')}|fulfill)$/`
+// Chrome DevTools Protocol sessions: Fetch.fulfillRequest fakes any response.
+const cdpSessions = ['newCDPSession', 'newBrowserCDPSession']
+const networkNames = `/^(${networkApiNames}|${[...networkFakes, ...cdpSessions].join('|')}|fulfill)$/`
 // Network classes whose prototype a test could patch: Response.prototype.json = …
 const networkClasses = '/^(XMLHttpRequest|WebSocket|EventSource|Response|Request|Headers)$/'
 
@@ -92,6 +94,10 @@ const fakingProperties = [
     property: 'addScriptTag',
     message: `${NO_MOCKS} Injected scripts can stub fetch in the page.`,
   },
+  ...cdpSessions.map(property => ({
+    property,
+    message: `${NO_MOCKS} A CDP session can intercept and fake network traffic (Fetch.fulfillRequest).`,
+  })),
   {
     property: 'setContent',
     message: `${NO_MOCKS} setContent() renders fake HTML in place of the app; open a real page with goto().`,
@@ -197,6 +203,12 @@ export default [
           selector,
           message: `${NO_MOCKS} Do not reach network APIs or route() by name.`,
         })),
+        // CDP network commands ('Fetch.enable', 'Fetch.fulfillRequest', 'Network.…'),
+        // in case a CDP session is reached another way.
+        {
+          selector: String.raw`:matches(Literal[value=/^(Fetch|Network)\./], TemplateElement[value.cooked=/^(Fetch|Network)\./])`,
+          message: `${NO_MOCKS} Do not send CDP network commands.`,
+        },
         // page.evaluate('window.fetch = …') hides code from these rules: pass a function.
         {
           selector:
@@ -210,6 +222,12 @@ export default [
         {
           selector: "CallExpression[callee.name='require']",
           message: `${USE_FIXTURES} Use static imports.`,
+        },
+        // retries: 0 in playwright.config.ts. A flaky test is a bug to fix, not to
+        // retry: test.describe.configure({ retries }) would hide it.
+        {
+          selector: "Property:matches([key.name='retries'], [key.value='retries'])",
+          message: 'Do not set retries. A flaky test is a bug to fix, not to retry.',
         },
         // Every test runs, every time. A test that cannot pass is a bug to fix or delete.
         {

@@ -218,7 +218,7 @@ stack that is already running (never in CI); without it a busy e2e port fails
 the run.
 
 Config (`playwright.config.ts`): only `*.spec.ts` run, `forbidOnly: true`,
-`retries: 0` (fix a flaky test, do not retry it), traces and screenshots kept
+`retries: 0` (fix a flaky test, do not retry it; ESLint rejects a `retries` override in specs), traces and screenshots kept
 on failure.
 
 ### Fixtures (`e2e/fixtures.ts`)
@@ -338,7 +338,8 @@ Style:
 
 **ESLint** (`bun run lint`, on all `e2e/**` JS/TS files):
 - `page`/`context` `.route`, `routeFromHAR`, `unroute`, `unrouteAll`,
-  `routeWebSocket`, `fulfill`, `addInitScript`, `addScriptTag`, `setContent`, `waitForTimeout`.
+  `routeWebSocket`, `fulfill`, `addInitScript`, `addScriptTag`, `setContent`, `newCDPSession`,
+  `newBrowserCDPSession`, `waitForTimeout`.
   The same network bans apply in `src/`. Specs may import from `src/` only
   `lib/api-endpoints`, `lib/auth` and `types/*`.
 - Assigning or defining `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`,
@@ -346,6 +347,9 @@ Style:
   those names or a route method name as a string to reach it (`window['fetch']`,
   `Reflect.set(…, 'fetch')`, `const r = 'route'`). Plain strings such as
   `resourceType() === 'fetch'` are fine.
+- CDP network commands as strings (`'Fetch.enable'`, `'Fetch.fulfillRequest'`, `'Network.…'`).
+- Setting `retries` in a spec (`test.describe.configure({ retries })`);
+  `retries: 0` in `playwright.config.ts` is the rule.
 - A string of code passed to `evaluate`, `evaluateHandle`, `evaluateAll`,
   `$eval`, `$$eval` (pass a function).
 - Importing `@playwright/test`, `playwright`, `playwright-core` (or subpaths)

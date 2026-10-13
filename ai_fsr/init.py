@@ -6,6 +6,9 @@ import subprocess
 from pathlib import Path
 from typing import Final
 
+# Postgres truncates or rejects identifiers longer than NAMEDATALEN - 1 bytes.
+POSTGRES_MAX_IDENTIFIER_LENGTH: Final = 63
+
 # Local build output, caches and secrets that must never reach a generated
 # project, even when the generator runs from a developer checkout.
 IGNORED_NAMES: Final = (
@@ -95,6 +98,15 @@ def validate_project_name(name: str) -> list[str] | None:
     if not normalized:
         errors.append(
             "Project name must contain at least one valid character (a-z, 0-9)"
+        )
+
+    # The name becomes the Postgres user and database name, and Postgres
+    # rejects identifiers longer than 63 bytes (the db container exits).
+    if len(normalized) > POSTGRES_MAX_IDENTIFIER_LENGTH:
+        errors.append(
+            f"Project name '{normalized}' is {len(normalized)} characters long; "
+            f"the maximum is {POSTGRES_MAX_IDENTIFIER_LENGTH} because it is "
+            "used as the Postgres user and database name"
         )
 
     # Check for reserved names

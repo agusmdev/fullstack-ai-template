@@ -13,6 +13,7 @@ from tests.e2e.helpers import (
     EXPIRED,
     assert_error,
     email_verification_token,
+    password_reset_token,
     unique_email,
 )
 
@@ -152,3 +153,30 @@ def test_changing_the_email_needs_a_new_verification(
     assert changed.status_code == 200
     assert changed.json()["is_email_verified"] is False
     assert changed.json()["email_verified_at"] is None
+
+
+def test_changing_the_email_ends_tokens_sent_to_the_old_address(
+    api: httpx.Client, register_user: Callable[..., RegisteredUser], db: Database
+) -> None:
+    user = register_user()
+    user.client.post("/auth/email/verify")
+    verify_token = email_verification_token(db, user.id)
+    api.post("/auth/password/reset", json={"email": user.email})
+    reset_token = password_reset_token(db, user.id)
+    new_email = unique_email("changed")
+
+    changed = user.client.patch("/users/me", json={"email": new_email})
+    assert changed.status_code == 200
+    assert changed.json()["is_email_verified"] is False
+
+    # A token sent to the old address must not prove the new one.
+    verify = api.post("/auth/email/verify/confirm", json={"token": verify_token})
+    assert_error(verify, 400, "invalid_token")
+    reset = api.post(
+        "/auth/password/confirm",
+        json={"token": reset_token, "new_password": "brand-new-pass"},
+    )
+    assert_error(reset, 400, "invalid_token")
+    me = user.client.get("/users/me").json()
+    assert me["email"] == new_email
+    assert me["is_email_verified"] is False

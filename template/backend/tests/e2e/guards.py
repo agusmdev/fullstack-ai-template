@@ -361,8 +361,14 @@ def route_coverage_message(problems: list[str]) -> str:
 
 
 def is_full_run(config: pytest.Config, deselected: int) -> bool:
-    """Return True when the whole e2e suite ran (no -k/-m/--lf, no subset)."""
+    """Return True when the whole e2e suite ran (no -k/-m/--lf/--ignore, no subset)."""
     if deselected:
+        return False
+    # --lf skips files and items at collection without pytest_deselected,
+    # and --ignore/--ignore-glob drop files the same way.
+    if config.getoption("lf", False):
+        return False
+    if config.getoption("ignore", None) or config.getoption("ignore_glob", None):
         return False
     # These options select tests but run none of them.
     if config.option.collectonly or config.option.setuponly or config.option.setupplan:
