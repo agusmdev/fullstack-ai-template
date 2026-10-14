@@ -26,16 +26,22 @@ import { toastApiError } from '@/lib/error-handler'
 import { itemSchema, type ItemFormData } from '@/features/items/item-schemas'
 
 type ItemFormDialogProps =
-  | { mode: 'create'; trigger: React.ReactNode; onSubmit: (data: ItemFormData) => Promise<void>; isPending: boolean; item?: never }
-  | { mode: 'edit'; item: Item; trigger: React.ReactNode; onSubmit: (data: ItemFormData) => Promise<void>; isPending: boolean }
+  | {
+      mode: 'create'
+      trigger: React.ReactNode
+      onSubmit: (data: ItemFormData) => Promise<void>
+      isPending: boolean
+      item?: never
+    }
+  | {
+      mode: 'edit'
+      item: Item
+      trigger: React.ReactNode
+      onSubmit: (data: ItemFormData) => Promise<void>
+      isPending: boolean
+    }
 
-export function ItemFormDialog({
-  mode,
-  item,
-  trigger,
-  onSubmit,
-  isPending,
-}: ItemFormDialogProps) {
+export function ItemFormDialog({ mode, item, trigger, onSubmit, isPending }: ItemFormDialogProps) {
   const [open, setOpen] = useState(false)
 
   const form = useForm<ItemFormData>({
@@ -63,10 +69,7 @@ export function ItemFormDialog({
       await onSubmit(data)
       setOpen(false)
     } catch (error) {
-      toastApiError(
-        error,
-        mode === 'create' ? 'Failed to create item' : 'Failed to update item'
-      )
+      toastApiError(error, mode === 'create' ? 'Failed to create item' : 'Failed to update item')
     }
   }
 
@@ -96,7 +99,12 @@ export function ItemFormDialog({
           <DialogDescription>{content.description}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form method="post" action="#" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            method="post"
+            action="#"
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -117,22 +125,14 @@ export function ItemFormDialog({
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Enter item description"
-                      {...field}
-                      rows={3}
-                    />
+                    <Textarea placeholder="Enter item description" {...field} rows={3} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>

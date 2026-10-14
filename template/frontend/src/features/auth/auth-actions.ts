@@ -5,8 +5,8 @@ import { toastApiError } from '@/lib/error-handler'
 import type { AuthSessionResponse } from '@/types/auth'
 
 /**
- * Core auth submit logic — a framework-agnostic orchestrator extracted from the
- * useAuthSubmit hook so it can be unit-tested without React mounting.
+ * Core auth submit logic — a framework-agnostic orchestrator used by the
+ * useAuthSubmit hook.
  *
  * Handles the api.post → login → toast → navigate sequence. On failure the
  * error is surfaced via toastApiError AND re-thrown so callers (e.g.
@@ -23,7 +23,7 @@ export async function executeAuthSubmit(
     successMessage: string
     errorMessage: string
     redirect: NavigateOptions
-  },
+  }
 ): Promise<void> {
   try {
     const result = await api.post<AuthSessionResponse>(endpoint, payload)

@@ -1,4 +1,4 @@
-.PHONY: help install clean lint format run test test-unit test-integration migrate migrate-new venv
+.PHONY: help install clean lint format lint-all check run test test-cov migrate migrate-new migrate-history migrate-down pre-commit pre-commit-all venv
 
 # Default target
 help:
@@ -7,22 +7,25 @@ help:
 	@echo "  make clean            - Remove temporary files and caches"
 	@echo "  make lint             - Run ruff linter with auto-fix"
 	@echo "  make format           - Run ruff formatter"
-	@echo "  make run              - Run the FastAPI application"
-	@echo "  make test             - Run all tests"
-	@echo "  make test-unit        - Run unit tests only"
-	@echo "  make test-integration - Run integration tests only"
-	@echo "  make test-cov         - Run tests with coverage report"
+	@echo "  make lint-all         - Run lint and format"
+	@echo "  make check            - Check lint and format without changing files (CI)"
+	@echo "  make run              - Run the FastAPI application on port 9095"
+	@echo "  make test             - Run the end-to-end suite (needs Docker)"
+	@echo "  make test-cov         - Run the end-to-end suite with an app coverage report"
 	@echo "  make migrate          - Apply database migrations"
 	@echo "  make migrate-new      - Create a new migration (usage: make migrate-new msg='description')"
+	@echo "  make migrate-history  - Show migration history"
+	@echo "  make migrate-down     - Downgrade migration by one"
 	@echo "  make venv             - Activate virtual environment (source this)"
-	@echo "  make pre-commit       - Install pre-commit hooks"
+	@echo "  make pre-commit       - Install the project's git hooks (../.pre-commit-config.yaml)"
+	@echo "  make pre-commit-all   - Run the project's git hooks on all files"
 
 # Install dependencies and set up environment
 install:
 	@echo "Setting up virtual environment..."
 	uv sync
 	@echo "Installing pre-commit hooks..."
-	uv run pre-commit install
+	$(MAKE) pre-commit
 	@echo "Installation complete!"
 
 # Remove temporary files and caches
@@ -39,36 +42,32 @@ clean:
 # Run ruff linter with auto-fix
 lint:
 	@echo "Running ruff linter..."
-	uv run ruff check app --fix
+	uv run ruff check . --fix
 
 # Run ruff formatter
 format:
 	@echo "Running ruff formatter..."
-	uv run ruff format app
+	uv run ruff format .
 
 # Run both lint and format
 lint-all: lint format
 
+# Check lint and format without changing files (what CI runs)
+check:
+	uv run ruff check .
+	uv run ruff format --check .
+
 # Run the FastAPI application
 run:
-	uv run uvicorn app.main:app --port 8000 --reload
+	uv run uvicorn --factory app.main:create_app --reload --port 9095
 
-# Run all tests
+# Run the end-to-end suite: real Postgres (Docker) + migrations + live server
 test:
-	uv run pytest tests/ -v
+	uv run pytest
 
-# Run unit tests only
-test-unit:
-	uv run pytest tests/unit -v
-
-# Run integration tests only
-test-integration:
-	@echo "Running integration tests..."
-	uv run pytest tests/integration -m integration -v
-
-# Run tests with coverage
+# Same, with a coverage report of app/ (the server process is measured too)
 test-cov:
-	uv run pytest tests/ --cov=app --cov-report=html --cov-report=term
+	uv run pytest --cov=app --cov-report=html --cov-report=term
 	@echo "Coverage report generated in htmlcov/"
 
 # Apply database migrations
@@ -91,13 +90,17 @@ migrate-history:
 migrate-down:
 	uv run alembic downgrade -1
 
-# Install pre-commit hooks
-pre-commit:
-	uv run pre-commit install
+# The project has one pre-commit config, at the project root (backend ruff,
+# frontend eslint + prettier, no-mock guards). pre-commit comes from this venv.
+PRE_COMMIT_CONFIG := ../.pre-commit-config.yaml
 
-# Run pre-commit on all files
+# Install pre-commit hooks (needs a git repository)
+pre-commit:
+	uv run pre-commit install --config $(PRE_COMMIT_CONFIG)
+
+# Run pre-commit on all files of the project
 pre-commit-all:
-	uv run pre-commit run --all-files
+	uv run pre-commit run --all-files --config $(PRE_COMMIT_CONFIG)
 
 # Activate virtual environment (print instructions)
 venv:

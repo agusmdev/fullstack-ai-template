@@ -21,11 +21,7 @@ user_router = APIRouter(dependencies=[Depends(AuthenticatedUser.current_user_id)
 async def get_authenticated_user(
     user: User = Depends(AuthenticatedUser.get_current_user),
 ) -> UserResponse:
-    return UserResponse(
-        id=user.id,
-        email=user.email,
-        display_name=user.display_name,
-    )
+    return UserResponse.model_validate(user)
 
 
 @user_router.patch(

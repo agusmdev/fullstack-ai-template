@@ -7,17 +7,24 @@ import { AuthFormShell } from '@/components/AuthFormShell'
 import { EmailField, PasswordField } from '@/components/AuthFormFields'
 import { API } from '@/lib/api-endpoints'
 import { useAuthSubmit } from '@/hooks/useAuthSubmit'
-import { registerSchema, registerFormToPayload, type RegisterFormData, type RegisterPayload } from '@/features/auth/auth-schemas'
+import { useHydrated } from '@/hooks/useHydrated'
+import {
+  registerSchema,
+  registerFormToPayload,
+  type RegisterFormData,
+  type RegisterPayload,
+} from '@/features/auth/auth-schemas'
 
 export const Route = createFileRoute('/register')({
   component: Register,
 })
 
 function Register() {
+  const hydrated = useHydrated()
   const { submit, isLoading } = useAuthSubmit<RegisterPayload>(
     API.AUTH.REGISTER,
     'Account created successfully',
-    'Registration failed',
+    'Registration failed'
   )
 
   const form = useForm<RegisterFormData>({
@@ -25,8 +32,10 @@ function Register() {
     defaultValues: { email: '', password: '', confirmPassword: '' },
   })
 
-  const onSubmit = (data: RegisterFormData) =>
-    submit(registerFormToPayload(data))
+  // Inert until hydrated, and while the request runs.
+  const disabled = isLoading || !hydrated
+
+  const onSubmit = (data: RegisterFormData) => submit(registerFormToPayload(data))
 
   return (
     <AuthFormShell
@@ -35,23 +44,33 @@ function Register() {
       footer={
         <div className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link to="/login" className="text-primary hover:text-primary/80 underline-offset-4 hover:underline">
+          <Link
+            to="/login"
+            className="text-primary hover:text-primary/80 underline-offset-4 hover:underline"
+          >
             Sign in
           </Link>
         </div>
       }
     >
       <Form {...form}>
-        <form method="post" action="#" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <EmailField control={form.control} name="email" isLoading={isLoading} />
-          <PasswordField control={form.control} name="password" isLoading={isLoading} />
+        {/* noValidate: the zod schema validates, so its messages show instead of the browser's. */}
+        <form
+          method="post"
+          action="#"
+          noValidate
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
+        >
+          <EmailField control={form.control} name="email" disabled={disabled} />
+          <PasswordField control={form.control} name="password" disabled={disabled} />
           <PasswordField
             control={form.control}
             name="confirmPassword"
-            isLoading={isLoading}
+            disabled={disabled}
             label="Confirm Password"
           />
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={disabled}>
             {isLoading ? 'Creating account...' : 'Create account'}
           </Button>
         </form>

@@ -2,14 +2,11 @@
 
 import logging
 import sys
-from typing import TYPE_CHECKING
 
 from loguru import logger
 
-if TYPE_CHECKING:
-    import loguru
-
 from app.core.config import settings
+from app.core.logging.sanitizer import sanitize_query_string
 
 
 class InterceptHandler(logging.Handler):
@@ -33,16 +30,37 @@ class InterceptHandler(logging.Handler):
         )
 
 
+class RedactAccessLogQuery(logging.Filter):
+    """Redact sensitive query params in uvicorn access lines.
+
+    uvicorn logs ``'%s - "%s %s HTTP/%s" %d'`` with the path and query string
+    as the third argument; without this filter a token passed in the query
+    string would reach the logs in plain text.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str):
+            path, separator, query = args[2].partition("?")
+            if separator:
+                record.args = (
+                    *args[:2],
+                    f"{path}?{sanitize_query_string(query)}",
+                    *args[3:],
+                )
+        return True
+
+
 def _get_log_level() -> str:
     """Get log level from settings, defaulting to INFO."""
-    level = getattr(settings, "LOG_LEVEL", "INFO").upper()
+    level = settings.LOG_LEVEL.upper()
     valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
     return level if level in valid_levels else "INFO"
 
 
 def _get_log_format() -> str:
     """Get log format from settings."""
-    return getattr(settings, "LOG_FORMAT", "console")
+    return settings.LOG_FORMAT
 
 
 def configure_logging() -> None:
@@ -63,6 +81,9 @@ def configure_logging() -> None:
         log_format != "console" and settings.ENVIRONMENT != "local"
     )
 
+    # Tracebacks never show variable values (diagnose) or frames outside the
+    # catch point (backtrace): local variables hold passwords, password hashes
+    # and tokens, and a traceback must not print them.
     if use_json:
         # JSON output for production
         logger.add(
@@ -70,6 +91,8 @@ def configure_logging() -> None:
             format="{message}",
             serialize=True,
             level=log_level,
+            backtrace=False,
+            diagnose=False,
         )
     else:
         # Pretty console output for local development
@@ -83,6 +106,8 @@ def configure_logging() -> None:
             ),
             colorize=True,
             level=log_level,
+            backtrace=False,
+            diagnose=False,
         )
 
     # Bind environment context that will be included in all logs
@@ -92,11 +117,11 @@ def configure_logging() -> None:
     }
 
     # Add optional deployment context
-    if hasattr(settings, "VERSION") and settings.VERSION:
+    if settings.VERSION:
         env_context["version"] = settings.VERSION
-    if hasattr(settings, "COMMIT_HASH") and settings.COMMIT_HASH:
+    if settings.COMMIT_HASH:
         env_context["commit_hash"] = settings.COMMIT_HASH
-    if hasattr(settings, "INSTANCE_ID") and settings.INSTANCE_ID:
+    if settings.INSTANCE_ID:
         env_context["instance_id"] = settings.INSTANCE_ID
 
     logger.configure(extra=env_context)
@@ -117,11 +142,11 @@ def configure_logging() -> None:
         logging.getLogger(logger_name).handlers = [InterceptHandler()]
         # Keep uvicorn.access at INFO for request logs, others at WARNING
         if logger_name == "uvicorn.access":
-            logging.getLogger(logger_name).setLevel(logging.INFO)
+            access_logger = logging.getLogger(logger_name)
+            access_logger.setLevel(logging.INFO)
+            if not any(
+                isinstance(f, RedactAccessLogQuery) for f in access_logger.filters
+            ):
+                access_logger.addFilter(RedactAccessLogQuery())
         else:
             logging.getLogger(logger_name).setLevel(logging.WARNING)
-
-
-def get_logger() -> "loguru.Logger":
-    """Get the configured loguru logger instance."""
-    return logger

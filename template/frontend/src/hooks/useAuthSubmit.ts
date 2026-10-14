@@ -7,7 +7,7 @@ export function useAuthSubmit<TPayload extends Record<string, unknown>>(
   endpoint: string,
   successMessage: string,
   errorMessage: string,
-  redirect: NavigateOptions = { to: '/' },
+  redirect: NavigateOptions = { to: '/' }
 ) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -15,7 +15,13 @@ export function useAuthSubmit<TPayload extends Record<string, unknown>>(
 
   const mutation = useMutation<void, Error, TPayload>({
     mutationFn: (payload: TPayload) =>
-      executeAuthSubmit(endpoint, payload, { login, navigate, successMessage, errorMessage, redirect }),
+      executeAuthSubmit(endpoint, payload, {
+        login,
+        navigate,
+        successMessage,
+        errorMessage,
+        redirect,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries()
     },

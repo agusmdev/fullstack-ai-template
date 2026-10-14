@@ -6,17 +6,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 function lazyDev<P = any>(factory: () => Promise<React.ComponentType<P>>): React.ComponentType<P> {
   return import.meta.env.DEV
     ? React.lazy(() => factory().then(c => ({ default: c })))
-    : (() => null) as React.ComponentType<P>
+    : ((() => null) as React.ComponentType<P>)
 }
 
-const ReactQueryDevtools = lazyDev(
-  () => import('@tanstack/react-query-devtools').then(m => m.ReactQueryDevtools)
+const ReactQueryDevtools = lazyDev(() =>
+  import('@tanstack/react-query-devtools').then(m => m.ReactQueryDevtools)
 )
-const TanStackDevtools = lazyDev(
-  () => import('@tanstack/react-devtools').then(m => m.TanStackDevtools)
+const TanStackDevtools = lazyDev(() =>
+  import('@tanstack/react-devtools').then(m => m.TanStackDevtools)
 )
-const TanStackRouterDevtoolsPanel = lazyDev(
-  () => import('@tanstack/react-router-devtools').then(m => m.TanStackRouterDevtoolsPanel)
+const TanStackRouterDevtoolsPanel = lazyDev(() =>
+  import('@tanstack/react-router-devtools').then(m => m.TanStackRouterDevtoolsPanel)
 )
 
 import { Layout } from '@/components/Layout'
@@ -38,7 +38,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Manta',
+        title: 'Full-Stack Template',
       },
     ],
     links: [
@@ -53,16 +53,19 @@ export const Route = createRootRoute({
 })
 
 function RootDocument() {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 60 * 1000, // 1 minute
-        gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
-        retry: 1,
-        refetchOnWindowFocus: false,
-      },
-    },
-  }))
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 60 * 1000, // 1 minute
+            gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  )
 
   useEffect(() => {
     initWebVitals()

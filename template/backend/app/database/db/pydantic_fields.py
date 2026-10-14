@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Callable
 from types import UnionType
 from typing import (
     TYPE_CHECKING,
@@ -20,9 +19,6 @@ if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
 SELECT_STRATEGY_KEY = "_select_strategy"
-
-type JsonDict = dict[str, Any]
-type JsonSchemaExtra = JsonDict | Callable[[JsonDict], None]
 
 
 def pydantic_field_name(name: str, field: FieldInfo) -> str:

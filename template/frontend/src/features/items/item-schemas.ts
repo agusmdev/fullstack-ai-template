@@ -7,7 +7,11 @@ export const itemSchema = z.object({
 
 export type ItemFormData = z.infer<typeof itemSchema>
 
-/** Maps form values to the mutation payload shape expected by item API hooks. */
+/**
+ * Maps form values to the mutation payload shape expected by item API hooks.
+ * An empty description is sent as `null`, not left out: the update endpoint
+ * keeps fields that are missing from the body, so `null` is how a user clears it.
+ */
 export function itemFormToPayload(data: ItemFormData) {
-  return { name: data.name, description: data.description || undefined }
+  return { name: data.name, description: data.description || null }
 }

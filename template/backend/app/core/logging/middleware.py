@@ -3,9 +3,11 @@
 import time
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Any, Literal
+from typing import Literal
 
+import sentry_sdk
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Match
@@ -15,6 +17,8 @@ from app.core.logging.context import (
     clear_wide_event_context,
     set_wide_event_context,
 )
+from app.core.logging.sanitizer import sanitize_query_string
+from app.exceptions import ErrorResponse
 
 
 class WideEventMiddleware(BaseHTTPMiddleware):
@@ -26,21 +30,10 @@ class WideEventMiddleware(BaseHTTPMiddleware):
     - High dimensionality (many fields per event)
     - Business context from handlers
 
-    Args:
-        app: The ASGI application.
-        on_request_cleanup: Optional callback invoked after each request to clean up
-            request-scoped state (e.g., clearing a request context cache). Injected
-            at registration time so core does not depend on app-level modules.
+    It also turns an unhandled exception into the JSON error contract (500,
+    ``{detail, error_code}``). It runs inside CORSMiddleware, so the 500 keeps
+    its CORS headers and the browser can read it.
     """
-
-    def __init__(
-        self,
-        app: Any,
-        on_request_cleanup: Callable[[], None] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(app, **kwargs)
-        self._on_request_cleanup = on_request_cleanup or (lambda: None)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -59,28 +52,34 @@ class WideEventMiddleware(BaseHTTPMiddleware):
             "x-request-id"
         )
 
-        # Capture query string (without sensitive params)
+        # Capture query string, with the values of sensitive params redacted
         if request.url.query:
-            ctx.query_string = str(request.url.query)
+            ctx.query_string = sanitize_query_string(request.url.query)
 
         start_time = time.perf_counter()
+        unhandled: Exception | None = None
 
         try:
             response = await call_next(request)
+        except Exception as exc:
+            # A bug or an outage (e.g. the database is down). Do not re-raise:
+            # uvicorn would answer with plain text, without CORS headers, and
+            # close the connection.
+            unhandled = exc
+            sentry_sdk.capture_exception(exc)  # no-op when Sentry is off
+            ctx.set_error(type(exc).__name__, str(exc))
+            response = JSONResponse(
+                status_code=500,
+                content=ErrorResponse().model_dump(mode="json"),
+            )
+
+        try:
             duration_ms = (time.perf_counter() - start_time) * 1000
             ctx.finalize(response.status_code, duration_ms)
-            return response
-
-        except Exception as exc:
-            duration_ms = (time.perf_counter() - start_time) * 1000
-            ctx.set_error(type(exc).__name__, str(exc))
-            ctx.finalize(status_code=500, duration_ms=duration_ms)
-            raise
-
+            self._emit_wide_event(ctx, unhandled)
         finally:
-            self._emit_wide_event(ctx)
             clear_wide_event_context()
-            self._on_request_cleanup()
+        return response
 
     def _get_client_ip(self, request: Request) -> str:
         """Extract client IP, considering common proxy headers."""
@@ -112,8 +111,14 @@ class WideEventMiddleware(BaseHTTPMiddleware):
                         return route.path
         return None
 
-    def _emit_wide_event(self, ctx: WideEventContext) -> None:
-        """Emit the wide event log."""
+    def _emit_wide_event(
+        self, ctx: WideEventContext, exc: Exception | None = None
+    ) -> None:
+        """Emit the wide event log, with the traceback of an unhandled exception.
+
+        The log sinks never print variable values (see configure_logging), so
+        the traceback shows code only, not the passwords or tokens in it.
+        """
         event_data = ctx.to_dict()
 
         # Determine log level based on status code
@@ -126,4 +131,4 @@ class WideEventMiddleware(BaseHTTPMiddleware):
             level = "INFO"
 
         # Log with all context bound
-        logger.bind(**event_data).log(level, "request_completed")
+        logger.bind(**event_data).opt(exception=exc).log(level, "request_completed")

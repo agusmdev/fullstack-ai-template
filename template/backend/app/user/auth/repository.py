@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Generic, TypeVar
 
 from sqlalchemy import delete, select, update
@@ -37,7 +37,7 @@ class _TokenRepository(SQLAlchemyRepository[T_Token], Generic[T_Token]):  # noqa
         result = await self._session.execute(
             select(model).where(
                 model.id == token_id,
-                model.expires_at > datetime.now(),
+                model.expires_at > datetime.now(UTC),
                 model.used_at.is_(None),
             )
         )
@@ -47,7 +47,7 @@ class _TokenRepository(SQLAlchemyRepository[T_Token], Generic[T_Token]):  # noqa
         """Stamp `used_at` on the token, permanently invalidating it."""
         model = self.model  # type: ignore[attr-defined]
         await self._session.execute(
-            update(model).where(model.id == token_id).values(used_at=datetime.now())
+            update(model).where(model.id == token_id).values(used_at=datetime.now(UTC))
         )
         await self._session.commit()
 
@@ -57,7 +57,7 @@ class _TokenRepository(SQLAlchemyRepository[T_Token], Generic[T_Token]):  # noqa
         await self._session.execute(
             update(model)
             .where(model.user_id == user_id, model.used_at.is_(None))
-            .values(used_at=datetime.now())
+            .values(used_at=datetime.now(UTC))
         )
         await self._session.commit()
 

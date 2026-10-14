@@ -1,0 +1,58 @@
+name: Generator CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint-and-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.10.8'
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run ruff linting
+        run: uv run ruff check ai_fsr
+
+      - name: Run ruff formatting check
+        run: uv run ruff format --check ai_fsr
+
+      - name: Generate a project
+        run: uv run ai-fsr init ci-smoke --output-dir "$RUNNER_TEMP"
+
+      - name: Check generated backend lockfile
+        working-directory: ${{ runner.temp }}/ci-smoke/backend
+        run: uv lock --check
+
+      # The generator writes the project name into backend Python files, so
+      # check that the generated backend still passes its own ruff gate.
+      - name: Check generated backend formatting and lint
+        working-directory: ${{ runner.temp }}/ci-smoke/backend
+        run: |
+          uv run --locked ruff format --check .
+          uv run --locked ruff check .
+
+      - name: Check generated Docker Compose file
+        working-directory: ${{ runner.temp }}/ci-smoke
+        run: docker compose config -q
+
+      # Same pre-commit version as the backend dev dependency (pyproject.toml).
+      - name: Check generated pre-commit config
+        working-directory: ${{ runner.temp }}/ci-smoke
+        run: uvx pre-commit@4.3.0 validate-config .pre-commit-config.yaml

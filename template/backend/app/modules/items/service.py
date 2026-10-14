@@ -20,24 +20,26 @@ class ItemService(BaseService[Item]):
     def __init__(self, repo: ItemRepository) -> None:
         self.repo = repo
 
-    def _assert_ownership(self, item: Item, user_id: uuid.UUID) -> None:
-        """Raise NotFoundError if the item does not belong to user_id."""
-        if item.user_id != user_id:
-            raise NotFoundError(detail=f"Item '{item.id}' not found")
+    @staticmethod
+    def _owned_or_404(item: Item | None, user_id: uuid.UUID, detail: str) -> Item:
+        """Return the item if user_id owns it; otherwise raise NotFoundError.
+
+        Another user's item gets the exact error of a missing item, so the
+        response never reveals that the item exists (or its id).
+        """
+        if item is None or item.user_id != user_id:
+            raise NotFoundError(detail=detail)
+        return item
 
     async def get_by_id(self, entity_id: uuid.UUID, *, user_id: uuid.UUID) -> Item:  # type: ignore[override]  # adds required user_id to enforce ownership (intentional Liskov narrowing)
         """Get an item by ID, enforcing ownership."""
-        item = await self.repo.get(entity_id, raise_error=True)
-        self._assert_ownership(item, user_id)
-        return item
+        item = await self.repo.get(entity_id, raise_error=False)
+        return self._owned_or_404(item, user_id, f"Item {entity_id} not found")
 
     async def get_by_sku(self, sku: str, *, user_id: uuid.UUID) -> Item:
         """Get an item by SKU, enforcing ownership."""
         item = await self.repo.get_by_field("sku", sku, raise_error=False)
-        if not item:
-            raise NotFoundError(detail=f"Item with SKU '{sku}' not found")
-        self._assert_ownership(item, user_id)
-        return item
+        return self._owned_or_404(item, user_id, f"Item with SKU '{sku}' not found")
 
     async def get_all_paginated(  # type: ignore[override]  # adds required user_id to scope the list by ownership (intentional Liskov narrowing)
         self,
@@ -59,12 +61,10 @@ class ItemService(BaseService[Item]):
         self, entity_id: uuid.UUID, entity: BaseModel, *, user_id: uuid.UUID
     ) -> Item:  # type: ignore[override]  # adds required user_id to enforce ownership (intentional Liskov narrowing)
         """Update an item, enforcing ownership."""
-        item = await self.repo.get(entity_id, raise_error=True)
-        self._assert_ownership(item, user_id)
+        await self.get_by_id(entity_id, user_id=user_id)
         return await super().update(entity_id, entity)
 
     async def delete(self, entity_id: uuid.UUID, *, user_id: uuid.UUID) -> None:  # type: ignore[override]  # adds required user_id to enforce ownership (intentional Liskov narrowing)
         """Delete an item, enforcing ownership."""
-        item = await self.repo.get(entity_id, raise_error=True)
-        self._assert_ownership(item, user_id)
+        await self.get_by_id(entity_id, user_id=user_id)
         await super().delete(entity_id)

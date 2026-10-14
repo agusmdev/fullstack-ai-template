@@ -20,24 +20,61 @@ dependencies = [
     "typer==0.21.1",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "ruff==0.14.14",
-    "pytest==9.0.2",
-]
-
 [project.scripts]
 ai-fsr = "ai_fsr.cli:cli"
+
+[dependency-groups]
+dev = [
+    "ruff==0.14.14",
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.wheel]
-packages = ["ai_fsr"]
+[tool.hatch.build]
+# Hatch reads only the repo-root .gitignore (and none at all when the checkout
+# sits under an ignored path such as tmp/), so list local junk explicitly.
+# Keep in sync with IGNORED_NAMES in ai_fsr/init.py.
+exclude = [
+    "*.db",
+    "*.log",
+    ".DS_Store",
+    ".coverage",
+    ".desloppify/",
+    ".idea/",
+    ".mypy_cache/",
+    ".nitro/",
+    ".output/",
+    ".pytest_cache/",
+    ".ruff_cache/",
+    ".tanstack/",
+    ".ty_cache/",
+    ".venv/",
+    ".vscode/",
+    "__pycache__/",
+    "blob-report/",
+    "build/",
+    "dist/",
+    "htmlcov/",
+    "node_modules/",
+    "playwright-report/",
+    "scorecard.png",
+    "test-results/",
+    ".env",
+    ".env.*",
+    "!.env.example",
+]
 
-# Include the template directory in the package
-[tool.hatch.build.targets.wheel.force-include]
+[tool.hatch.build.targets.wheel]
+only-include = ["ai_fsr", "template"]
+# Editable installs import straight from the checkout (template/ is found
+# next to ai_fsr/); the `sources` rewrite below only works for real wheels.
+dev-mode-dirs = ["."]
+
+# Ship the template inside the package. Do not use force-include here: it skips
+# .gitignore, so local node_modules/.venv/.output would land in the wheel.
+[tool.hatch.build.targets.wheel.sources]
 "template" = "ai_fsr/template"
 
 # ---------- Ruff ----------

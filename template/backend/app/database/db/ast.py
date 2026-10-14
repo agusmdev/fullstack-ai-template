@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy.orm import DeclarativeBase
-
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -44,20 +42,6 @@ class ASTNode:
 
     model: type[DeclarativeBase]
     children: list[ASTNode] = field(default_factory=list)
-
-    def visualize(self, indent: int = 0) -> None:
-        """Print a visual representation of the AST tree for debugging.
-
-        Args:
-            indent: Indentation level for this node.
-        """
-        indentation = "\t" * indent
-        kwargs = ", ".join(f"{k}={v}" for k, v in self.__dict__.items())
-
-        print(f"{indentation}{self.__class__.__name__}({kwargs})")
-
-        for child in self.children:
-            child.visualize(indent + 1)
 
 
 class LoadOnlyNode(ASTNode):

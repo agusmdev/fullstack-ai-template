@@ -11,7 +11,6 @@ from app.repositories.exceptions import (
     ReferencedError,
     RepositoryError,
 )
-from app.repositories.query_builder import QueryBuilder
 from app.repositories.sql_repository import SQLAlchemyRepository
 
 __all__ = [
@@ -25,6 +24,5 @@ __all__ = [
     "NotFoundError",
     "ReferencedError",
     "RepositoryError",
-    "QueryBuilder",
     "SQLAlchemyRepository",
 ]

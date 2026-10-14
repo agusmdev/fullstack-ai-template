@@ -1,788 +1,141 @@
-# Full-Stack Application Template
+# Full-Stack App
 
-A production-ready template for building full-stack applications with FastAPI backend, modern frontend, and PostgreSQL database.
+FastAPI backend + React 19 frontend (TanStack Start) + PostgreSQL 18.1, run with Docker Compose.
 
-## Quick Start
+| Part | Stack | Docs |
+|---|---|---|
+| `backend/` | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic 2, uv | [backend/AGENTS.md](backend/AGENTS.md) |
+| `frontend/` | React 19, TanStack Start/Router/Query, Tailwind v4, shadcn/ui, bun | [frontend/AGENTS.md](frontend/AGENTS.md) |
+| `db` | PostgreSQL 18.1 (`postgres:18.1-alpine`) | `docker-compose.yml` |
 
-### Using Make (Recommended)
+Included: session auth (register, login, logout, password reset, email verification, Google OAuth), an example `items` CRUD feature, structured request logging, and two end-to-end test suites.
 
-```bash
-# View all available commands
-make help
+**Working with an AI agent?** It starts at [AGENTS.md](AGENTS.md). Code standards for agents and people: `.claude/skills/project-standards/SKILL.md`.
 
-# Initial setup and start all services
-make setup
-make start
+## 1. Prerequisites
 
-# Or start with fresh database
-make dev-fresh
+- Docker with Compose v2
+- [uv](https://docs.astral.sh/uv/) — backend outside Docker, backend tests, git hooks
+- [bun](https://bun.sh/) — frontend outside Docker, frontend tests
 
-# Access the application
-# Backend API: http://localhost:9095
-# Frontend: http://localhost:3000
-# API Docs: http://localhost:9095/docs
-```
-
-### Using Docker Compose Directly
+## 2. Start everything with Docker
 
 ```bash
-# 1. Copy environment template (optional - defaults work out of the box)
-cp .env.example .env
-
-# 2. Start all services
-docker compose up
-
-# 3. Access the application
-# Backend API: http://localhost:9095
-# Frontend: http://localhost:3000
-# API Docs: http://localhost:9095/docs
+cp .env.example .env          # optional; every value has a default
+docker compose up -d --build  # `make start` = `docker compose up -d` (no rebuild)
 ```
 
-That's it! The template uses sensible defaults that work without any configuration.
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:9095 (no `/api` prefix; `GET /` is 404, check `/health`)
+- API docs: http://localhost:9095/docs
 
-## Architecture
+The backend container runs the migrations (`alembic upgrade head`) before it starts. Logs: `make logs`. Stop: `make down`. Reset the database: `make db-reset`, then `docker compose up -d` (the reset leaves only `db` running).
 
-```
-┌─────────────┐     ┌──────────────┐     ┌────────────┐
-│  Frontend   │────▶│   Backend    │────▶│ PostgreSQL │
-│ (Port 3000) │     │ (Port 9095)  │     │ (Port 5432)│
-└─────────────┘     └──────────────┘     └────────────┘
-```
+## 3. Develop with hot reload (optional)
 
-- **Backend**: FastAPI with async SQLAlchemy, Pydantic v2, structured 3-layer architecture
-- **Frontend**: TanStack Start (React 19) on Nitro, built and served with Bun
-- **Database**: PostgreSQL 18.1 with automated migrations
-- **Infrastructure**: Docker Compose with health checks
-
-## Project Structure
-
-```
-template/
-├── .env.example              # Docker Compose configuration
-├── docker-compose.yml        # Service orchestration
-├── ENV_STRATEGY.md          # Environment files documentation
-├── backend/
-│   ├── .env.example         # Backend app configuration
-│   ├── pyproject.toml       # Python dependencies (uv)
-│   ├── src/
-│   │   ├── app.py          # FastAPI application factory
-│   │   ├── core/           # Base models, repositories, services
-│   │   ├── database/       # Database setup and sessions
-│   │   └── ...
-│   └── tests/
-└── frontend/
-    └── (to be scaffolded)
-```
-
-## Environment Configuration
-
-See [ENV_STRATEGY.md](./ENV_STRATEGY.md) for detailed documentation.
-
-### Default Configuration
-
-The template works out of the box with these defaults:
-- **Backend**: `http://localhost:9095`
-- **Frontend**: `http://localhost:3000`
-- **Database**: `postgresql://app:app@localhost:5432/app`
-
-### Customizing Ports
-
-#### Port Conflict Detection
-
-If you encounter port conflicts when starting services, you'll see errors like:
-```
-Error starting userland proxy: listen tcp4 0.0.0.0:9095: bind: address already in use
-```
-
-#### Quick Fix
-
-Create a `.env` file in the template root directory to override default ports:
+Run Postgres in Docker and the apps on your machine:
 
 ```bash
-# .env
-BACKEND_PORT=9096
-FRONTEND_PORT=3001
-DB_PORT=5433
+docker compose up -d db
 
-# The frontend bakes this URL in at build time, so keep it in sync
-# with BACKEND_PORT and rebuild the frontend image afterwards.
-VITE_API_BASE_URL=http://localhost:9096
-```
-
-> Do not put inline `# comments` after a value in `.env` — Compose reads the
-> whole line as the value.
-
-Then rebuild and restart your services:
-```bash
-docker compose down
-docker compose up --build
-```
-
-#### Checking for Port Conflicts
-
-Before starting services, check if ports are available:
-
-```bash
-# Check if default ports are in use
-lsof -i :9095  # Backend
-lsof -i :3000  # Frontend
-lsof -i :5432  # Database
-
-# Or use netstat
-netstat -an | grep -E ':(9095|3000|5432)'
-```
-
-#### Complete Override Example
-
-If all default ports conflict with existing services:
-
-```bash
-# Copy the example file
-cp .env.example .env
-
-# Edit .env with your preferred ports
-cat > .env << EOF
-# Service Ports
-BACKEND_PORT=8080
-FRONTEND_PORT=3000
-DB_PORT=5433
-
-# Database Configuration
-POSTGRES_USER=app
-POSTGRES_PASSWORD=app
-POSTGRES_DB=app
-
-# Frontend build-time API URL (must match BACKEND_PORT)
-VITE_API_BASE_URL=http://localhost:8080
-EOF
-
-# Start services with custom ports (--build re-bakes VITE_API_BASE_URL)
-docker compose up --build
-```
-
-Access your application at the new ports:
-- Backend API: `http://localhost:8080`
-- Frontend: `http://localhost:3000`
-- Database: `localhost:5433`
-
-**Note**: The `.env` file is ignored by git, so your local port overrides won't affect other developers.
-
-## Development
-
-### Using Make Commands
-
-The project includes a comprehensive Makefile that simplifies all common development tasks:
-
-```bash
-# View all available commands
-make help
-
-# Start development environment
-make dev                  # Start all services with logs
-make dev-backend          # Start only backend and database
-make dev-fresh            # Fresh start (clean, setup, start)
-
-# Backend development
-make backend-dev          # Run backend locally (outside Docker)
-make backend-install      # Install dependencies
-make backend-test         # Run tests
-make backend-test-cov     # Run tests with coverage
-make backend-format       # Format code
-make backend-lint         # Lint code
-make backend-lint-fix     # Lint and auto-fix
-make backend-typecheck    # Type checking
-
-# Database operations
-make migrate              # Apply migrations
-make migrate-create message="Add users table"  # Create new migration
-make migrate-rollback     # Rollback last migration
-make db-reset             # Reset database completely
-make db-shell             # Open PostgreSQL shell
-
-# Quality checks
-make quality              # Run all quality checks (format, lint, typecheck)
-make test                 # Run all tests
-make lint-fix             # Lint and auto-fix all issues
-
-# Docker operations
-make up                   # Start services (foreground)
-make start                # Start services (background)
-make stop                 # Stop all services
-make restart              # Restart all services
-make logs                 # View all logs
-make logs-backend         # View backend logs only
-make clean                # Clean up containers and volumes
-
-# Utilities
-make check-ports          # Check if default ports are available
-make api-docs             # Open API docs in browser
-make api-health           # Check API health
-```
-
-### Backend Development (Manual Commands)
-
-If you prefer not to use Make:
-
-```bash
+# terminal 1
 cd backend
+cp .env.example .env          # DB_URL must match POSTGRES_* in the root .env
+uv sync && uv run alembic upgrade head
+make run                      # http://localhost:9095
 
-# Create virtual environment and install dependencies
-uv sync
-
-# Run migrations
-uv run alembic upgrade head
-
-# Start development server
-uv run uvicorn src.app:app --reload --host 0.0.0.0 --port 9095
-
-# Run tests
-uv run pytest
-
-# Format and lint
-uv run ruff format .
-uv run ruff check . --fix
+# terminal 2
+cd frontend
+bun install && bun run dev    # http://localhost:3000
 ```
 
-### Frontend Development
+`make setup` copies both `.env` files and installs the backend and frontend dependencies in one step.
 
-(To be documented when frontend is scaffolded)
+## 4. Git hooks
 
-## Backend Architecture
-
-### 3-Layer Pattern
-
-1. **Models** (`src/core/models/`) - SQLAlchemy ORM models with UUID primary keys
-2. **Repositories** (`src/core/repositories/`) - Data access layer with CRUD operations
-3. **Services** (`src/core/services/`) - Business logic layer
-4. **Routers** (`src/api/`) - HTTP endpoints using services
-
-### Key Features
-
-- **Async SQLAlchemy 2.0** with type hints
-- **Pydantic v2** for request/response validation
-- **UUID primary keys** for all models
-- **Soft delete** support via mixin
-- **Timestamp tracking** (created_at, updated_at)
-- **Repository pattern** for data access
-- **Service layer** for business logic
-- **Dependency injection** for database sessions
-
-### Example: Creating a New Entity
+After `git init` (and `uv sync` in `backend/`, `bun install` in `frontend/`):
 
 ```bash
-# Use the fastapi-entity skill (if available)
-# This creates model, schemas, repository, service, and router
-
-# Manual approach:
-# 1. Define model in src/core/models/
-# 2. Create repository in src/core/repositories/
-# 3. Create service in src/core/services/
-# 4. Add router in src/api/
-# 5. Generate migration: uv run alembic revision --autogenerate -m "Add entity"
+make pre-commit-install       # ruff, frontend eslint + prettier, no-mock guards
+make pre-commit-run           # run them on every tracked file
 ```
 
-## Database Migrations
+The hooks are in `.pre-commit-config.yaml`. They are fast early warnings; the real checks are `make check` and `make test`.
+
+## Environment
+
+There are two sets of settings:
+
+| File | Read by | Used for |
+|---|---|---|
+| `.env` (from `.env.example`) | Docker Compose | Ports, Postgres credentials, every backend setting for the container, the frontend build URL |
+| `backend/.env` (from `backend/.env.example`) | the backend when you run it **outside** Docker (`make run`) | Same backend settings; `DB_URL` points at `localhost` |
+| `frontend/.env` (from `frontend/.env.example`, optional) | `bun run dev` / `bun run build` outside Docker | `VITE_API_BASE_URL` |
+
+Docker Compose does **not** read `backend/.env`. The backend container gets its settings only from `docker-compose.yml`, which takes them from the root `.env` (with defaults). All `.env` files are git-ignored; the `.env.example` files are committed.
+
+### Root `.env` variables
+
+| Variable | Default | Notes |
+|---|---|---|
+| `BACKEND_PORT`, `FRONTEND_PORT`, `DB_PORT` | `9095`, `3000`, `5432` | Host ports. Check what is free: `make check-ports` |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | the project name (`app` in the raw template; `ai-fsr init` sets them) | Used by `db`, and to build the backend `DB_URL` (host `db`) |
+| `DB_URL` | built from `POSTGRES_*` | Not in `.env.example`. Set it only for an external Postgres, or when the password has `@ : / # %` (URL-encode them) |
+| `DB_POOL_SIZE`, `DB_POOL_PRE_PING` | `100`, `false` | SQLAlchemy pool |
+| `APP_NAME`, `ENVIRONMENT`, `DEBUG_MODE` | `backend`, `local`, `false` | Sentry is off when `ENVIRONMENT=local` |
+| `LOG_LEVEL`, `LOG_FORMAT` | `INFO`, `console` | `json` = one wide event per request, for log shipping |
+| `FRONTEND_URL` | `http://localhost:3000` | CORS origin and OAuth redirect target. Keep in sync with `FRONTEND_PORT` |
+| `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE` | empty, `0.0`, `0.0` | Empty DSN = off |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | empty | Empty = Google OAuth not set up |
+| `GOOGLE_REDIRECT_URI` | `http://localhost:${BACKEND_PORT}/auth/oauth/google/callback` | Must match the Google console |
+| `VERSION`, `COMMIT_HASH`, `INSTANCE_ID` | empty | Optional log context |
+| `VITE_API_BASE_URL` | `http://localhost:9095` | Baked into the frontend image at build time |
+
+### Change a port
+
+Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it); for the frontend port, also change `FRONTEND_URL`. Then rebuild: `docker compose up -d --build`.
+
+### Change the database credentials
+
+Change `POSTGRES_*` in `.env` and the matching `DB_URL` in `backend/.env`. An existing database volume keeps the old credentials: reset it with `make db-reset` (this deletes the data), then run `docker compose up -d` (the reset starts only `db`).
+
+## Tests
+
+All tests are end to end against the real stack. There are no unit tests and no mocks.
 
 ```bash
-cd backend
-
-# Create a new migration
-uv run alembic revision --autogenerate -m "Description"
-
-# Apply migrations
-uv run alembic upgrade head
-
-# Rollback one migration
-uv run alembic downgrade -1
-
-# View migration history
-uv run alembic history
+make test             # both suites
+make test-backend     # API suite: Postgres (testcontainers) + migrations + live server (needs Docker)
+make test-e2e         # browser suite: Postgres + backend + Vite + Playwright (needs Docker, uv, bun, Chromium)
+make check            # every static check: ruff, ESLint, prettier, tsc, build
+make ci               # check + test
 ```
 
-## Docker Commands
-
-```bash
-# Start all services
-docker compose up
-
-# Start in detached mode
-docker compose up -d
-
-# View logs
-docker compose logs -f
-
-# Restart a service
-docker compose restart backend
-
-# Stop all services
-docker compose down
-
-# Stop and remove volumes (resets database)
-docker compose down -v
-
-# Rebuild containers after code changes
-docker compose up --build
-```
-
-## Testing
-
-```bash
-cd backend
-
-# Run all tests
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov=src --cov-report=html
-
-# Run specific test file
-uv run pytest tests/test_example.py
-
-# Run with verbose output
-uv run pytest -v
-```
-
-## Code Quality
-
-```bash
-cd backend
-
-# Format code
-uv run ruff format .
-
-# Lint and auto-fix
-uv run ruff check . --fix
-
-# Type checking (if mypy is configured)
-uv run mypy src/
-```
-
-## AI Provider Configuration
-
-The backend includes support for structured LLM outputs via the `/api/v1/ai/extract` endpoint. You can configure different AI providers through environment variables.
-
-### Supported Providers
-
-- **mock** (default) - Returns fake data for development/testing
-- **openai** - OpenAI GPT models
-- **anthropic** - Anthropic Claude models
-- **azure** - Azure OpenAI Service
-
-### Configuration
-
-Configure the AI provider in `backend/.env`:
-
-```bash
-# Provider Selection (required)
-AI_PROVIDER=mock  # Options: mock, openai, anthropic, azure
-
-# API Key (required for openai, anthropic, azure)
-AI_API_KEY=your-api-key-here
-
-# Model Selection (optional, provider-specific defaults used if not set)
-AI_MODEL=gpt-4o-mini  # or claude-3-5-haiku-20241022, etc.
-
-# Azure-specific (required only for azure provider)
-AI_AZURE_ENDPOINT=https://your-resource.openai.azure.com/
-```
-
-### Provider-Specific Configuration
-
-#### OpenAI
-```bash
-AI_PROVIDER=openai
-AI_API_KEY=sk-...
-AI_MODEL=gpt-4o-mini  # Default if not specified
-```
-
-**Supported models**: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, etc.
-
-#### Anthropic
-```bash
-AI_PROVIDER=anthropic
-AI_API_KEY=sk-ant-...
-AI_MODEL=claude-3-5-haiku-20241022  # Default if not specified
-```
-
-**Supported models**: `claude-3-5-sonnet-20241022`, `claude-3-5-haiku-20241022`, etc.
-
-#### Azure OpenAI
-```bash
-AI_PROVIDER=azure
-AI_API_KEY=your-azure-key
-AI_AZURE_ENDPOINT=https://your-resource.openai.azure.com/
-AI_MODEL=gpt-4o-mini  # Must match your Azure deployment
-```
-
-**Note**: The `AI_MODEL` must match your Azure OpenAI deployment name.
-
-#### Mock Provider (Development)
-```bash
-AI_PROVIDER=mock
-# No API key needed - returns fake data
-```
-
-The mock provider is perfect for:
-- Local development without API costs
-- Testing AI endpoints without external dependencies
-- CI/CD pipelines
-
-### Getting API Keys
-
-- **OpenAI**: https://platform.openai.com/api-keys
-- **Anthropic**: https://console.anthropic.com/settings/keys
-- **Azure**: https://portal.azure.com (create an OpenAI resource)
-
-### Example API Usage
-
-```bash
-# Using the AI extract endpoint
-curl -X POST http://localhost:9095/api/v1/ai/extract \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "prompt": "Extract key information from: John Smith, age 30, lives in NYC",
-    "response_model": {
-      "name": "string",
-      "age": "integer",
-      "location": "string"
-    }
-  }'
-```
-
-### Error Handling
-
-If the AI provider is misconfigured, you'll see helpful error messages:
-
-- `AI_API_KEY environment variable is required for OpenAI provider`
-- `AI_AZURE_ENDPOINT environment variable is required for Azure provider`
-- `Unsupported AI provider: xyz. Supported providers: openai, anthropic, azure, mock`
-
-## API Documentation
-
-Once the backend is running, visit:
-- **Swagger UI**: http://localhost:9095/docs
-- **ReDoc**: http://localhost:9095/redoc
-- **OpenAPI JSON**: http://localhost:9095/openapi.json
-
-### Authentication Endpoints
-
-The template includes session-based authentication with the following endpoints:
-
-#### POST /api/v1/auth/register
-Register a new user account.
-
-**Request:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123",
-  "full_name": "John Doe"
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "token": "session_token_here",
-  "session": {
-    "id": "uuid",
-    "user_id": "uuid",
-    "expires_at": "2026-01-29T10:00:00Z",
-    "created_at": "2026-01-28T10:00:00Z"
-  }
-}
-```
-
-#### POST /api/v1/auth/login
-Login with email and password to create a session.
-
-**Request:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "token": "session_token_here",
-  "session": {
-    "id": "uuid",
-    "user_id": "uuid",
-    "expires_at": "2026-01-29T10:00:00Z",
-    "created_at": "2026-01-28T10:00:00Z"
-  }
-}
-```
-
-**Error Response (401 Unauthorized):**
-```json
-{
-  "detail": "Invalid credentials"
-}
-```
-
-#### GET /api/v1/auth/me
-Get current authenticated user information.
-
-**Headers:**
-```
-Authorization: Bearer session_token_here
-```
-
-**Response (200 OK):**
-```json
-{
-  "id": "uuid",
-  "email": "user@example.com",
-  "full_name": "John Doe",
-  "created_at": "2026-01-28T10:00:00Z",
-  "updated_at": "2026-01-28T10:00:00Z"
-}
-```
-
-#### POST /api/v1/auth/logout
-Logout and invalidate the current session.
-
-**Headers:**
-```
-Authorization: Bearer session_token_here
-```
-
-**Response (204 No Content)**
-
-### Items Endpoints (Protected)
-
-All items endpoints require authentication via Bearer token in the Authorization header.
-
-#### GET /api/v1/items
-List all items for the current user.
-
-**Headers:**
-```
-Authorization: Bearer session_token_here
-```
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": "uuid",
-    "name": "My First Item",
-    "description": "Item description",
-    "user_id": "uuid",
-    "created_at": "2026-01-28T10:00:00Z",
-    "updated_at": "2026-01-28T10:00:00Z"
-  }
-]
-```
-
-#### POST /api/v1/items
-Create a new item.
-
-**Headers:**
-```
-Authorization: Bearer session_token_here
-```
-
-**Request:**
-```json
-{
-  "name": "My New Item",
-  "description": "Optional description"
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": "uuid",
-  "name": "My New Item",
-  "description": "Optional description",
-  "user_id": "uuid",
-  "created_at": "2026-01-28T10:00:00Z",
-  "updated_at": "2026-01-28T10:00:00Z"
-}
-```
-
-#### GET /api/v1/items/{item_id}
-Get a specific item by ID.
-
-**Headers:**
-```
-Authorization: Bearer session_token_here
-```
-
-**Response (200 OK):**
-```json
-{
-  "id": "uuid",
-  "name": "My Item",
-  "description": "Item description",
-  "user_id": "uuid",
-  "created_at": "2026-01-28T10:00:00Z",
-  "updated_at": "2026-01-28T10:00:00Z"
-}
-```
-
-#### PUT /api/v1/items/{item_id}
-Update a specific item.
-
-**Headers:**
-```
-Authorization: Bearer session_token_here
-```
-
-**Request:**
-```json
-{
-  "name": "Updated Item Name",
-  "description": "Updated description"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "id": "uuid",
-  "name": "Updated Item Name",
-  "description": "Updated description",
-  "user_id": "uuid",
-  "created_at": "2026-01-28T10:00:00Z",
-  "updated_at": "2026-01-28T10:00:00Z"
-}
-```
-
-#### DELETE /api/v1/items/{item_id}
-Delete a specific item (soft delete).
-
-**Headers:**
-```
-Authorization: Bearer session_token_here
-```
-
-**Response (204 No Content)**
-
-### API Usage Example
-
-Here's a complete workflow using curl:
-
-```bash
-# 1. Register a new user
-curl -X POST http://localhost:9095/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "password123",
-    "full_name": "Test User"
-  }'
-
-# Save the token from the response
-TOKEN="session_token_from_response"
-
-# 2. Create an item
-curl -X POST http://localhost:9095/api/v1/items \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "name": "My First Item",
-    "description": "This is a test item"
-  }'
-
-# 3. List all items
-curl http://localhost:9095/api/v1/items \
-  -H "Authorization: Bearer $TOKEN"
-
-# 4. Get current user info
-curl http://localhost:9095/api/v1/auth/me \
-  -H "Authorization: Bearer $TOKEN"
-
-# 5. Logout
-curl -X POST http://localhost:9095/api/v1/auth/logout \
-  -H "Authorization: Bearer $TOKEN"
-```
+First Playwright run: `cd frontend && bunx playwright install --with-deps chromium`. The suites use their own ports (55432, 59095, 53000) and never touch the dev stack. The e2e frontend turns off the TanStack devtools event bus (fixed port 42069), so `bun run dev` can stay up.
+
+Where tests go and how to write them: [AGENTS.md](AGENTS.md#testing-end-to-end-only) and `.claude/skills/project-standards/references/e2e-testing.md`.
+
+## Make targets
+
+Run `make help` for the full list. The most used:
+
+| Target | What it does |
+|---|---|
+| `make start` / `make down` | Start the stack in the background / stop it |
+| `make logs`, `make logs-backend` | Follow logs |
+| `make rebuild` | Rebuild images and start |
+| `make migrate`, `make migrate-create message="..."`, `make migrate-rollback` | Alembic |
+| `make db-shell`, `make db-reset` | psql in the `db` container / wipe and re-migrate (only `db` runs afterwards; then `docker compose up -d`) |
+| `make lint`, `make lint-fix`, `make format`, `make typecheck` | Code quality (both apps) |
+| `make backend-typecheck` | ty on the backend (advisory, not in CI) |
+| `make clean` | Remove this project's containers, networks and volumes |
 
 ## Troubleshooting
 
-### Port Already in Use
-
-See the [Customizing Ports](#customizing-ports) section for detailed port override documentation.
-
-**Quick fix options:**
-
-1. **Override ports** (recommended):
-```bash
-# Create .env file with different ports
-cp .env.example .env
-# Edit BACKEND_PORT, FRONTEND_PORT, or DB_PORT
-docker compose down && docker compose up
-```
-
-2. **Kill conflicting process**:
-```bash
-# Find process using port
-lsof -i :9095
-
-# Kill process (use with caution)
-kill -9 <PID>
-```
-
-3. **Check what's using the port**:
-```bash
-# On macOS/Linux
-lsof -i :9095
-lsof -i :3000
-lsof -i :5432
-
-# Or use netstat
-netstat -an | grep -E ':(9095|3000|5432)'
-```
-
-### Database Connection Issues
-```bash
-# Check database health
-docker compose ps
-
-# View database logs
-docker compose logs db
-
-# Reset database
-docker compose down -v
-docker compose up -d db
-```
-
-### Backend Won't Start
-```bash
-# Check backend logs
-docker compose logs backend
-
-# Rebuild backend
-docker compose up --build backend
-
-# Check if migrations are applied
-docker compose exec backend uv run alembic current
-```
-
-## Production Deployment
-
-(To be documented)
-
-Key considerations:
-- Use production-grade secrets management
-- Configure proper CORS origins
-- Set DEBUG=false
-- Use a production ASGI server (already using uvicorn)
-- Set up database backups
-- Configure logging and monitoring
-- Use HTTPS/TLS
-
-## Contributing
-
-(To be documented)
-
-## License
-
-(To be specified)
+| Problem | Fix |
+|---|---|
+| Port already in use | `make check-ports`, then change the port in `.env` (see above) |
+| Backend cannot reach the database | `docker compose ps`, `make logs-db`; after a credential change run `make db-reset`, then `docker compose up -d` |
+| Frontend calls the wrong backend URL | `VITE_API_BASE_URL` is baked in at build time: `docker compose up -d --build frontend` |
+| `make test-e2e` says a port is busy | Another e2e run uses it. Wait, or set `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` |
+| `bun run dev` fails with `EADDRINUSE ... 42069` | Another `bun run dev` holds the TanStack devtools port. Stop it (e2e runs do not use 42069) |

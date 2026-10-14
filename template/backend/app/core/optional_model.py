@@ -1,6 +1,5 @@
-# ruff: noqa: UP045 (This file uses Optional[...] for dynamic type manipulation)
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, create_model
 from pydantic.fields import FieldInfo
@@ -10,40 +9,44 @@ from pydantic.fields import FieldInfo
 
 
 def partial_model(model: type[BaseModel]) -> type[BaseModel]:
-    """Class decorator that makes all fields optional with a default of None.
+    """Class decorator that makes every field omittable, for PATCH payloads.
 
-    Used on update schemas so PATCH endpoints accept partial payloads — only the
-    fields present in the request body are updated, others remain unchanged.
+    Only the fields present in the request body are updated (callers dump with
+    ``exclude_unset=True``); omitted fields stay unchanged.
+
+    A field keeps its original type, so ``null`` is accepted only when the
+    original type allows ``None`` (for example ``description: str | None``).
+    Sending ``null`` for a required column (for example ``name: str``) is a 422
+    validation error, not a NOT NULL violation in the database.
 
     Args:
-        model: A Pydantic BaseModel class whose fields should all become optional.
+        model: A Pydantic BaseModel class whose fields should become omittable.
 
     Returns:
-        A new model class named ``Partial<OriginalName>`` where every field is
-        ``Optional[original_type]`` with ``default=None``.
+        A new model class named ``Partial<OriginalName>`` where every field has
+        ``default=None``. The default is not validated, so an omitted field
+        never fails validation and is not part of ``exclude_unset`` dumps.
 
     Example::
 
         @partial_model
         class ItemUpdate(ItemBase):
             pass
-        # ItemUpdate(name="new name")  # only name; description is None
+        # ItemUpdate(name="new name")  # only name is set
+        # ItemUpdate(name=None)        # ValidationError: name is not nullable
     """
 
-    def make_field_optional(
-        field: FieldInfo, default: Any = None
-    ) -> tuple[Any, FieldInfo]:
+    def make_field_omittable(field: FieldInfo) -> tuple[Any, FieldInfo]:
         new = deepcopy(field)
-        new.default = default
-        new.annotation = Optional[field.annotation]
-        return new.annotation, new
+        new.default = None
+        return field.annotation, new
 
     return create_model(  # type: ignore[no-any-return, call-overload]
         f"Partial{model.__name__}",
         __base__=model,
         __module__=model.__module__,
         **{
-            field_name: make_field_optional(field_info)
+            field_name: make_field_omittable(field_info)
             for field_name, field_info in model.model_fields.items()
         },
     )

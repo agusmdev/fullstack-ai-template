@@ -2,25 +2,44 @@ name: Backend CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
+    paths:
+      - 'template/backend/**'
+      - 'template/docker-compose.yml' # the e2e suite reads the Postgres image from it
+      - '.github/workflows/backend-ci.yml'
   pull_request:
-    branches: [main]
+    paths:
+      - 'template/backend/**'
+      - 'template/docker-compose.yml'
+      - '.github/workflows/backend-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: template/backend
 
 jobs:
-  lint-typecheck-test:
+  lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: template/backend
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin uv" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.10.8'
+          enable-cache: true
+          cache-dependency-glob: template/backend/uv.lock
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -28,16 +47,40 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --locked
 
+      # Includes TID251: no mock / fake-HTTP / in-process-app imports in tests.
       - name: Run ruff linting
         run: uv run ruff check .
 
       - name: Run ruff formatting check
         run: uv run ruff format --check .
 
-      -name: Run type checking with ty
-        run: uv run ty
+  e2e:
+    # Real Postgres (testcontainers, Docker is on the runner) -> alembic upgrade
+    # head + alembic check -> live uvicorn -> HTTP tests. Guards: no mocks
+    # (collection), every route covered, no model change without a migration.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
-      - name: Run pytest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.10.8'
+          enable-cache: true
+          cache-dependency-glob: template/backend/uv.lock
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run the end-to-end suite
         run: uv run pytest

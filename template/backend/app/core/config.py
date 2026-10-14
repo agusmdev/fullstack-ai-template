@@ -7,12 +7,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class CommonSettings(BaseSettings):
     APP_NAME: str = Field(default="backend")
     DEBUG_MODE: bool = Field(default=False)
-    MAX_ALLOWED_MATCHES: int = Field(default=50)
     ENVIRONMENT: str = Field(default="local")
 
 
 class DatabaseSettings(BaseSettings):
-    DB_URL: str = Field(default="sqlite:///sql.db")
+    # The template is Postgres-only. The default matches .env.example (the
+    # docker-compose `db` service published on localhost).
+    DB_URL: str = Field(default="postgresql://app:app@localhost:5432/app")
     DB_POOL_SIZE: int = Field(default=100)
     DB_POOL_PRE_PING: bool = Field(default=False)
 
@@ -24,7 +25,8 @@ class CORSSettings(BaseSettings):
 class OAuthSettings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/oauth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "http://localhost:9095/auth/oauth/google/callback"
+    GOOGLE_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
     GOOGLE_USER_INFO_URL: str = "https://www.googleapis.com/oauth2/v1/userinfo"
 
 

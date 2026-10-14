@@ -1,14 +1,18 @@
 import asyncio
 import secrets
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
+import requests
+from oauthlib.oauth2 import OAuth2Error
 from requests_oauthlib import OAuth2Session
 
 from app.core.config import settings
 from app.user.auth.exceptions import (
     EmailAlreadyVerifiedError,
+    InactiveUserError,
     InvalidTokenError,
+    OAuthProviderError,
     OAuthUserPasswordResetError,
     SessionExpiredError,
     UnsupportedOAuthProviderError,
@@ -20,12 +24,10 @@ from app.user.auth.repository import (
     SessionRepository,
 )
 from app.user.auth.schemas import (
-    EmailVerificationTokenCreate,
     OAuthCallback,
     OAuthUser,
-    PasswordResetTokenCreate,
-    SessionCreate,
     SessionResponse,
+    TokenCreate,
     UserSessionResponse,
 )
 from app.user.models import User
@@ -43,6 +45,15 @@ class GoogleOAuth:
         return await asyncio.to_thread(self._fetch_user, callback)
 
     def _fetch_user(self, callback: OAuthCallback) -> OAuthUser:
+        try:
+            return self._exchange_code(callback)
+        except (OAuth2Error, requests.RequestException, ValueError) as err:
+            # Google rejected the code (expired, already used, wrong client
+            # secret), was unreachable, or sent a user without an email
+            # (ValueError covers bad JSON and pydantic's ValidationError).
+            raise OAuthProviderError() from err
+
+    def _exchange_code(self, callback: OAuthCallback) -> OAuthUser:
         google = OAuth2Session(
             client_id=settings.GOOGLE_CLIENT_ID,
             redirect_uri=settings.GOOGLE_REDIRECT_URI,
@@ -51,16 +62,20 @@ class GoogleOAuth:
         )
 
         token = google.fetch_token(
-            "https://oauth2.googleapis.com/token",
+            settings.GOOGLE_TOKEN_URL,
             client_secret=settings.GOOGLE_CLIENT_SECRET,
             code=callback.code,
+            timeout=10,
         )
 
-        user_info = google.get(settings.GOOGLE_USER_INFO_URL).json()
+        response = google.get(settings.GOOGLE_USER_INFO_URL, timeout=10)
+        response.raise_for_status()
+        user_info = response.json()
 
         return OAuthUser(
             token=token["access_token"],
             email=user_info.get("email"),
+            email_verified=user_info.get("verified_email") is True,
             display_name=user_info.get("name"),
         )
 
@@ -101,10 +116,10 @@ class AuthService:
     async def _create_session_for_user(self, user_id: uuid.UUID) -> SessionResponse:
         """Create a new session for the given user and return the session response."""
         created_session = await self.repo.create(
-            SessionCreate(
+            TokenCreate(
                 id=self.generate_session_id(),
                 user_id=user_id,
-                expires_at=datetime.now() + timedelta(days=365),
+                expires_at=datetime.now(UTC) + timedelta(days=365),
             )
         )
         return SessionResponse(
@@ -130,6 +145,9 @@ class AuthService:
             raise UnsupportedOAuthProviderError()
 
         oauth_user = await provider.callback(payload)
+        if not oauth_user.email_verified:
+            # An unverified provider email proves nothing; never link it.
+            raise OAuthProviderError()
         user = await self.user_service.find_or_create_by_email(
             oauth_user.email,
             UserCreate(
@@ -137,15 +155,28 @@ class AuthService:
                 display_name=oauth_user.display_name or "",
             ),
         )
+        if not user.is_active:
+            raise InactiveUserError()
+        if user.email_verified_at is None:
+            if user.password is not None:
+                # Anyone could have registered this unverified email with a
+                # password. The provider proved the real owner, so the old
+                # password and its sessions must not keep access.
+                await self.user_service.clear_password(user.id)
+                await self.logout_all(user.id)
+            await self.user_service.mark_email_verified(user.id)
         return await self._create_session_for_user(user.id)
 
     async def validate_session(self, session_id: str) -> User:
         session = await self.repo.get_by_field(
             "id", session_id, response_model=UserSessionResponse, raise_error=True
         )
-        if session.expires_at < datetime.now():
+        if session.expires_at < datetime.now(UTC):
             raise SessionExpiredError()
-        return session.user
+        user = session.user
+        if not user.is_active:
+            raise InactiveUserError()
+        return user
 
     async def logout(self, session_id: str) -> None:
         """Invalidate a session by deleting it."""
@@ -177,10 +208,10 @@ class AuthService:
 
         token = self.generate_token("pr")
         await self.password_reset_repo.create(
-            PasswordResetTokenCreate(
+            TokenCreate(
                 id=token,
                 user_id=user.id,
-                expires_at=datetime.now()
+                expires_at=datetime.now(UTC)
                 + timedelta(hours=PASSWORD_RESET_TOKEN_EXPIRY_HOURS),
             )
         )
@@ -216,16 +247,16 @@ class AuthService:
         if not user:
             raise UserNotFoundError()
 
-        if user.email_verified_at is not None:
+        if user.is_email_verified:
             raise EmailAlreadyVerifiedError()
 
         await self.email_verification_repo.invalidate_user_tokens(user_id)
         token = self.generate_token("ev")
         await self.email_verification_repo.create(
-            EmailVerificationTokenCreate(
+            TokenCreate(
                 id=token,
                 user_id=user_id,
-                expires_at=datetime.now()
+                expires_at=datetime.now(UTC)
                 + timedelta(hours=EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS),
             )
         )
