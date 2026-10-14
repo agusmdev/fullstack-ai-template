@@ -19,6 +19,18 @@ class SessionExpiredError(AuthenticationError):
     status_code = 401
 
 
+class InvalidSessionError(AuthenticationError):
+    detail = "Invalid session"
+    error_code = "invalid_session"
+    status_code = 401
+
+
+class InactiveUserError(AuthenticationError):
+    detail = "User is not allowed to login"
+    error_code = "inactive_user"
+    status_code = 401
+
+
 class InvalidTokenError(HTTPExceptionMixin):
     detail = "Invalid or expired token"
     error_code = "invalid_token"
@@ -47,3 +59,11 @@ class UnsupportedOAuthProviderError(HTTPExceptionMixin):
     detail = "Unsupported OAuth provider"
     error_code = "unsupported_oauth_provider"
     status_code = 400
+
+
+class OAuthProviderError(HTTPExceptionMixin):
+    """The provider did not complete the sign-in: it rejected the code or was unreachable."""
+
+    detail = "The sign-in provider did not complete the sign-in"
+    error_code = "provider_error"
+    status_code = 502

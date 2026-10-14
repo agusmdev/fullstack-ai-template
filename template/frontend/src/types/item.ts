@@ -9,7 +9,6 @@ export interface Item {
   id: string
   created_at: string
   updated_at: string
-  deleted_at: string | null
   name: string
   description: string | null
   user_id: string
@@ -25,10 +24,11 @@ export interface ItemsResponse {
 
 export interface CreateItemData {
   name: string
-  description?: string
+  description?: string | null
 }
 
 export interface UpdateItemData {
   name?: string
-  description?: string
+  /** `null` clears the description; a missing key leaves it unchanged. */
+  description?: string | null
 }

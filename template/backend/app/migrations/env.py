@@ -17,25 +17,19 @@ import app.modules.items.models  # noqa: F401, E402
 # access to the values within the .ini file in use.
 config = context.config
 
-# Derive sync URL from DB_URL for Alembic migrations
+# Derive sync URL from DB_URL for Alembic migrations.
+# The ini parser treats "%" as interpolation syntax, and a URL-encoded password
+# (p%40ss for p@ss) contains "%". Escape it so the parser gives back the URL.
 alembic_url = _convert_url_to_sync(settings.DB_URL)
-config.set_main_option("sqlalchemy.url", alembic_url)
+config.set_main_option("sqlalchemy.url", alembic_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+# Metadata for 'autogenerate' support
 target_metadata = Base.metadata
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def run_migrations_offline() -> None:
@@ -69,18 +63,14 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    # PostgreSQL-specific connect args for migration safety
-    extra_kwargs = {}
-    if alembic_url.startswith("postgresql"):
-        extra_kwargs["connect_args"] = {
-            "options": "-c lock_timeout=10000 -c statement_timeout=15000",
-        }
-
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        **extra_kwargs,
+        # Fail fast instead of waiting forever on a lock held by the live app.
+        connect_args={"options": "-c lock_timeout=10000 -c statement_timeout=15000"},
+        # Keep bound values out of error messages (see create_async_sqlalchemy_engine).
+        hide_parameters=True,
     )
 
     with connectable.connect() as connection:

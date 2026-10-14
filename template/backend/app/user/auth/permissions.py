@@ -1,19 +1,15 @@
 import uuid
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import Protocol, cast
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.core.context import ensure_request_context
 from app.core.logging import log_user
 from app.repositories.exceptions import NotFoundError
 from app.user.auth.dependencies import get_auth_service
-from app.user.auth.exceptions import SessionExpiredError
+from app.user.auth.exceptions import InvalidSessionError
 from app.user.auth.service import AuthService
 from app.user.models import User
-
-if TYPE_CHECKING:
-    from app.core.context import RequestContext
 
 
 class _RequestState(Protocol):
@@ -38,16 +34,13 @@ async def _get_authenticated_user(
     """
     if not getattr(request.state, "user", None):
         try:
+            # SessionExpiredError and InactiveUserError are 401s with their
+            # own error_code and propagate unchanged.
             user = await auth_service.validate_session(http_auth.credentials)
-        except (SessionExpiredError, NotFoundError) as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=exc.detail,
-            ) from exc
+        except NotFoundError as exc:
+            # Unknown token. The generic error never echoes the token back.
+            raise InvalidSessionError() from exc
         _typed_state(request).user = user
-        req_ctx: RequestContext = ensure_request_context()
-        req_ctx.user_id = str(user.id)
-        req_ctx.email = user.email
         log_user(user.id, user.email)
     return _typed_state(request).user
 

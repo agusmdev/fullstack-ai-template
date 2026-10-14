@@ -9,7 +9,7 @@ services:
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql  # Postgres 18 keeps PGDATA in 18/docker below this
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
       interval: 5s
@@ -20,15 +20,31 @@ services:
   backend:
     build:
       context: ./backend
-    image: template-backend:latest
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-9095}:9095"
     environment:
-      DB_URL: ${DB_URL:-postgresql://app:app@db:5432/app}
+      # Built from the db service credentials unless DB_URL is set in .env.
+      DB_URL: ${DB_URL:-postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-app}}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-100}
+      DB_POOL_PRE_PING: ${DB_POOL_PRE_PING:-false}
+      APP_NAME: ${APP_NAME:-backend}
       ENVIRONMENT: ${ENVIRONMENT:-local}
+      DEBUG_MODE: ${DEBUG_MODE:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-console}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Optional integrations: empty values turn them off.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE:-0.0}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:${BACKEND_PORT:-9095}/auth/oauth/google/callback}
+      # Optional log context: empty values are left out of the logs.
+      VERSION: ${VERSION:-}
+      COMMIT_HASH: ${COMMIT_HASH:-}
+      INSTANCE_ID: ${INSTANCE_ID:-}
     depends_on:
       db:
         condition: service_healthy
@@ -52,7 +68,6 @@ services:
       args:
         # Baked in at build time by Vite, so it must match the published port.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:9095}
-    image: template-frontend:latest
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"

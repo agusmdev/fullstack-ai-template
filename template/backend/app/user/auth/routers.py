@@ -1,14 +1,18 @@
 """Module with the routers related to the auth service"""
 
 import uuid
+from urllib.parse import urlencode
 
 import loguru
 from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
+from app.core.logging import log_custom
 from app.user.auth.dependencies import get_auth_service
 from app.user.auth.exceptions import (
+    InactiveUserError,
+    OAuthProviderError,
     OAuthUserPasswordResetError,
 )
 from app.user.auth.permissions import AuthenticatedUser
@@ -28,6 +32,14 @@ from app.user.auth.service import OAUTH_PROVIDER_NAMES, AuthService
 from app.user.schemas import UserRegister
 
 auth_router = APIRouter()
+
+
+def _frontend_redirect(path: str, **params: str) -> RedirectResponse:
+    """Redirect the browser to a frontend page with URL-encoded query params."""
+    return RedirectResponse(
+        url=f"{settings.FRONTEND_URL}{path}?{urlencode(params)}",
+        status_code=status.HTTP_302_FOUND,
+    )
 
 
 @auth_router.post(
@@ -93,15 +105,25 @@ async def oauth_callback(
     callback: OAuthCallback = Query(...),
 ) -> RedirectResponse:
     if provider not in OAUTH_PROVIDER_NAMES:
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/oauth/error?error=unsupported_provider",
-            status_code=status.HTTP_302_FOUND,
+        return _frontend_redirect("/oauth/error", error="unsupported_provider")
+    if callback.error or not callback.code:
+        # The provider redirects back without a code when the user declines
+        # consent (?error=access_denied). Send the browser to the frontend
+        # error page instead of a JSON validation error.
+        return _frontend_redirect(
+            "/oauth/error", error=callback.error or "missing_code"
         )
-    session = await auth_service.oauth_login(provider_name=provider, payload=callback)
-    return RedirectResponse(
-        url=f"{settings.FRONTEND_URL}/oauth/callback?session={session.id}",
-        status_code=status.HTTP_302_FOUND,
-    )
+    try:
+        session = await auth_service.oauth_login(
+            provider_name=provider, payload=callback
+        )
+    except InactiveUserError:
+        return _frontend_redirect("/oauth/error", error="inactive_user")
+    except OAuthProviderError as err:
+        # The redirect hides the cause from the browser; the wide event keeps it.
+        log_custom(provider_failure=type(err.__cause__).__name__)
+        return _frontend_redirect("/oauth/error", error=err.error_code)
+    return _frontend_redirect("/oauth/callback", session=session.id)
 
 
 # Password Reset Endpoints

@@ -1,326 +1,315 @@
-import { test, expect, type Page } from '@playwright/test'
+import {
+  type Page,
+  test,
+  expect,
+  authHeaders,
+  createItem,
+  createItems,
+  errorToast,
+  listItems,
+  registerUser,
+} from './fixtures'
 
-/**
- * E2E tests for Items CRUD flow.
- *
- * These tests cover the complete items management lifecycle:
- * - Creating a new item
- * - Reading (viewing) items list
- * - Updating an existing item
- * - Deleting an item
- * - Searching/filtering items
- * - Pagination
- *
- * NOTE: These tests require a running backend server and authenticated user.
- */
+const PAGE_SIZE = 9 // the items page shows 9 items per page
 
-test.describe('Items CRUD Flow', () => {
-  const generateTestEmail = () => `e2e-items-${Date.now()}@example.com`
-  const testPassword = 'TestPassword123!'
+function itemCard(page: Page, name: string) {
+  return page.getByTestId('item-card').filter({ has: page.getByText(name, { exact: true }) })
+}
 
-  // Helper function to authenticate user
-  async function authenticateUser(page: Page, email: string, password: string) {
-    await page.goto('/register')
-    await page.fill('input[type="email"]', email)
-    await page.fill('input[name="password"]', password)
-    await page.fill('input[name="confirmPassword"]', password)
-    await page.click('button[type="submit"]')
+function searchBox(page: Page) {
+  return page.getByPlaceholder('Search items by name...')
+}
 
-    // Register redirects to home on success
-    await expect(page).toHaveURL('/')
-  }
+async function openItemsPage(page: Page) {
+  await page.goto('/items')
+  await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible()
+}
 
-  test.beforeEach(async ({ page }) => {
-    await page.context().clearCookies()
+test('a new user sees the empty state', async ({ authedPage: page }) => {
+  await openItemsPage(page)
+  await expect(page.getByText('No items yet')).toBeVisible()
+  await expect(page.getByText('Get started by creating your first item.')).toBeVisible()
+  await expect(page.getByText('No items found')).toBeVisible()
+})
 
-    const testEmail = generateTestEmail()
-    await authenticateUser(page, testEmail, testPassword)
+test('creates an item through the dialog', async ({ authedPage: page, api, user }) => {
+  await openItemsPage(page)
+  await page.getByRole('button', { name: 'Create Item' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Create New Item' })
+  await dialog.getByLabel('Name').fill('Groceries')
+  await dialog.getByLabel('Description (Optional)').fill('Milk, eggs, bread')
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+
+  await expect(dialog).toBeHidden()
+  await expect(itemCard(page, 'Groceries')).toContainText('Milk, eggs, bread')
+  await expect(page.getByText('1 item total')).toBeVisible()
+  const saved = await listItems(api, user)
+  expect(saved.map(({ name, description }) => ({ name, description }))).toEqual([
+    { name: 'Groceries', description: 'Milk, eggs, bread' },
+  ])
+})
+
+test('the create dialog requires a name and can be cancelled', async ({
+  authedPage: page,
+  api,
+  user,
+}) => {
+  await openItemsPage(page)
+  await page.getByRole('button', { name: 'Create Item' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Create New Item' })
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(dialog.getByText('Name is required')).toBeVisible()
+
+  await dialog.getByLabel('Name').fill('Not wanted')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText('No items yet')).toBeVisible()
+  expect(await listItems(api, user)).toEqual([])
+})
+
+test('edits an item', async ({ authedPage: page, api, user }) => {
+  const item = await createItem(api, user, { name: 'Draft', description: 'First version' })
+  await openItemsPage(page)
+
+  await page.getByRole('button', { name: 'Edit Draft', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Edit Item' })
+  await expect(dialog.getByLabel('Name')).toHaveValue('Draft')
+  await expect(dialog.getByLabel('Description (Optional)')).toHaveValue('First version')
+  await dialog.getByLabel('Name').fill('Final')
+  await dialog.getByLabel('Description (Optional)').fill('Second version')
+  await dialog.getByRole('button', { name: 'Update' }).click()
+
+  await expect(dialog).toBeHidden()
+  await expect(itemCard(page, 'Final')).toContainText('Second version')
+  await expect(itemCard(page, 'Draft')).toHaveCount(0)
+  const response = await api.get(`/items/${item.id}`, { headers: authHeaders(user) })
+  expect(await response.json()).toMatchObject({ name: 'Final', description: 'Second version' })
+})
+
+test('clears an item description', async ({ authedPage: page, api, user }) => {
+  const item = await createItem(api, user, { name: 'Notes', description: 'Remove me' })
+  await openItemsPage(page)
+  await expect(itemCard(page, 'Notes')).toContainText('Remove me')
+
+  await page.getByRole('button', { name: 'Edit Notes', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Edit Item' })
+  await dialog.getByLabel('Description (Optional)').fill('')
+  await dialog.getByRole('button', { name: 'Update' }).click()
+
+  await expect(dialog).toBeHidden()
+  await expect(itemCard(page, 'Notes')).not.toContainText('Remove me')
+  const response = await api.get(`/items/${item.id}`, { headers: authHeaders(user) })
+  expect(await response.json()).toMatchObject({ name: 'Notes', description: null })
+})
+
+test('deletes an item only after confirmation', async ({ authedPage: page, api, user }) => {
+  const [keep, remove] = await createItems(api, user, ['Keep me', 'Delete me'])
+  await openItemsPage(page)
+
+  await page.getByRole('button', { name: 'Delete Delete me', exact: true }).click()
+  const confirm = page.getByRole('alertdialog', { name: 'Delete Item' })
+  await expect(confirm).toContainText('Are you sure you want to delete "Delete me"?')
+  await confirm.getByRole('button', { name: 'Cancel' }).click()
+  await expect(confirm).toBeHidden()
+  await expect(itemCard(page, 'Delete me')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Delete Delete me', exact: true }).click()
+  await confirm.getByRole('button', { name: 'Delete' }).click()
+
+  await expect(confirm).toBeHidden()
+  await expect(itemCard(page, 'Delete me')).toHaveCount(0)
+  await expect(itemCard(page, 'Keep me')).toBeVisible()
+  await expect(page.getByText('1 item total')).toBeVisible()
+  expect((await listItems(api, user)).map(item => item.id)).toEqual([keep.id])
+  const gone = await api.get(`/items/${remove.id}`, { headers: authHeaders(user) })
+  expect(gone.status()).toBe(404)
+})
+
+test('searches by name on the backend, ignoring case', async ({ authedPage: page, api, user }) => {
+  await createItems(api, user, ['Apple pie', 'Banana bread', 'Pineapple juice'])
+  await openItemsPage(page)
+  await expect(page.getByTestId('item-card')).toHaveCount(3)
+
+  // Typed one key at a time, slower than the search debounce, like a real user.
+  await searchBox(page).pressSequentially('APPLE', { delay: 350 })
+  await expect(searchBox(page)).toHaveValue('APPLE')
+  await expect(searchBox(page)).toBeFocused()
+  await expect(page.getByText('2 items total')).toBeVisible()
+  await expect(itemCard(page, 'Apple pie')).toBeVisible()
+  await expect(itemCard(page, 'Pineapple juice')).toBeVisible()
+  await expect(itemCard(page, 'Banana bread')).toHaveCount(0)
+
+  await searchBox(page).fill('no such thing')
+  await expect(page.getByText('No matching items')).toBeVisible()
+  await expect(page.getByTestId('item-card')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Clear' }).click()
+  await expect(searchBox(page)).toHaveValue('')
+  await expect(page.getByTestId('item-card')).toHaveCount(3)
+})
+
+test('search treats % and _ as plain characters', async ({ authedPage: page, api, user }) => {
+  await createItems(api, user, ['A_B', 'AxB', '100%', '1000'])
+  await openItemsPage(page)
+  await expect(page.getByTestId('item-card')).toHaveCount(4)
+
+  await searchBox(page).fill('_')
+  await expect(page.getByText('1 item total')).toBeVisible()
+  await expect(itemCard(page, 'A_B')).toBeVisible()
+  await expect(page.getByTestId('item-card')).toHaveCount(1)
+
+  await searchBox(page).fill('0%')
+  await expect(itemCard(page, '100%')).toBeVisible()
+  await expect(page.getByTestId('item-card')).toHaveCount(1)
+})
+
+test('paginates the list', async ({ authedPage: page, api, user }) => {
+  const names = Array.from(
+    { length: PAGE_SIZE + 3 },
+    (_, i) => `Item ${String(i + 1).padStart(2, '0')}`
+  )
+  await createItems(api, user, names)
+  await openItemsPage(page)
+
+  const pagination = page.getByRole('navigation', { name: 'Pagination' })
+  const previous = pagination.getByRole('button', { name: 'Go to previous page' })
+  const next = pagination.getByRole('button', { name: 'Go to next page' })
+  await expect(page.getByText(`${names.length} items total`)).toBeVisible()
+  await expect(pagination).toContainText('Page 1 of 2')
+  await expect(page.getByTestId('item-card')).toHaveCount(PAGE_SIZE)
+  await expect(itemCard(page, 'Item 01')).toBeVisible()
+  await expect(previous).toBeDisabled()
+
+  await next.click()
+  await expect(pagination).toContainText('Page 2 of 2')
+  await expect(page.getByTestId('item-card')).toHaveCount(3)
+  await expect(itemCard(page, 'Item 12')).toBeVisible()
+  await expect(itemCard(page, 'Item 01')).toHaveCount(0)
+  await expect(next).toBeDisabled()
+
+  await previous.click()
+  await expect(pagination).toContainText('Page 1 of 2')
+  await expect(itemCard(page, 'Item 01')).toBeVisible()
+})
+
+test('deleting the last item of a page goes back to the last page with items', async ({
+  authedPage: page,
+  api,
+  user,
+}) => {
+  const names = Array.from(
+    { length: PAGE_SIZE + 1 },
+    (_, i) => `Item ${String(i + 1).padStart(2, '0')}`
+  )
+  await createItems(api, user, names)
+  await openItemsPage(page)
+
+  const pagination = page.getByRole('navigation', { name: 'Pagination' })
+  await pagination.getByRole('button', { name: 'Go to next page' }).click()
+  await expect(pagination).toContainText('Page 2 of 2')
+  await expect(page.getByTestId('item-card')).toHaveCount(1)
+
+  await page.getByRole('button', { name: 'Delete Item 10', exact: true }).click()
+  await page
+    .getByRole('alertdialog', { name: 'Delete Item' })
+    .getByRole('button', { name: 'Delete' })
+    .click()
+
+  await expect(page.getByText(`${PAGE_SIZE} items total`)).toBeVisible()
+  await expect(page.getByTestId('item-card')).toHaveCount(PAGE_SIZE)
+  await expect(itemCard(page, 'Item 01')).toBeVisible()
+  await expect(page.getByText('No items yet')).toHaveCount(0)
+})
+
+test('a new search starts again at page 1', async ({ authedPage: page, api, user }) => {
+  // 20 items: 3 pages. "Item 1" matches Item 10 to Item 19: 2 pages.
+  const names = Array.from({ length: 20 }, (_, i) => `Item ${String(i + 1).padStart(2, '0')}`)
+  await createItems(api, user, names)
+  await openItemsPage(page)
+
+  const pagination = page.getByRole('navigation', { name: 'Pagination' })
+  await pagination.getByRole('button', { name: 'Go to next page' }).click()
+  await expect(pagination).toContainText('Page 2 of 3')
+  await expect(itemCard(page, 'Item 10')).toBeVisible()
+
+  await searchBox(page).fill('Item 1')
+  await expect(page.getByText('10 items total')).toBeVisible()
+  await expect(pagination).toContainText('Page 1 of 2')
+  await expect(page.getByTestId('item-card')).toHaveCount(PAGE_SIZE)
+  await expect(itemCard(page, 'Item 10')).toBeVisible()
+  await expect(itemCard(page, 'Item 19')).toHaveCount(0)
+})
+
+test('users never see each other’s items', async ({ authedPage: page, api, user, loginAs }) => {
+  const otherUser = await registerUser(api)
+  const theirs = await createItem(api, otherUser, { name: 'Their secret' })
+  await createItem(api, user, { name: 'Mine' })
+
+  await openItemsPage(page)
+  await expect(itemCard(page, 'Mine')).toBeVisible()
+  await expect(page.getByText('Their secret')).toHaveCount(0)
+  await expect(page.getByText('1 item total')).toBeVisible()
+
+  const otherPage = await loginAs(otherUser)
+  await openItemsPage(otherPage)
+  await expect(itemCard(otherPage, 'Their secret')).toBeVisible()
+  await expect(otherPage.getByText('Mine', { exact: true })).toHaveCount(0)
+
+  // The backend refuses direct access to another user's item too.
+  const headers = authHeaders(user)
+  expect((await api.get(`/items/${theirs.id}`, { headers })).status()).toBe(404)
+  const patch = await api.patch(`/items/${theirs.id}`, { headers, data: { name: 'Hacked' } })
+  expect(patch.status()).toBe(404)
+  expect((await api.delete(`/items/${theirs.id}`, { headers })).status()).toBe(404)
+  expect((await listItems(api, otherUser)).map(item => item.name)).toEqual(['Their secret'])
+})
+
+test.describe('backend errors show as a toast', () => {
+  // The item is deleted on the backend (say, from another device) while the
+  // page still shows it. The next change gets a real 404.
+
+  test('when an update fails', async ({ authedPage: page, api, user }) => {
+    const item = await createItem(api, user, { name: 'Stale' })
+    await openItemsPage(page)
+    await expect(itemCard(page, 'Stale')).toBeVisible()
+    await api.delete(`/items/${item.id}`, { headers: authHeaders(user) })
+
+    await page.getByRole('button', { name: 'Edit Stale', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Edit Item' })
+    await dialog.getByLabel('Name').fill('Renamed')
+    const responsePromise = page.waitForResponse(r => r.url().endsWith(`/items/${item.id}`))
+    await dialog.getByRole('button', { name: 'Update' }).click()
+
+    const response = await responsePromise
+    expect(response.status()).toBe(404)
+    const { detail } = await response.json()
+    await expect(errorToast(page)).toContainText('Failed to update item')
+    await expect(errorToast(page)).toContainText(detail)
+    await expect(dialog).toBeVisible() // the user keeps what they typed
   })
 
-  test('displays empty state when no items exist', async ({ page }) => {
-    await page.goto('/items')
-
-    // Should show empty state message
-    await expect(page.locator('text=No items yet')).toBeVisible()
-    await expect(page.locator('text=Get started by creating your first item')).toBeVisible()
-  })
-
-  test('can create a new item with title only', async ({ page }) => {
-    await page.goto('/items')
-
-    // Click the Create Item button
-    await page.click('button:has-text("Create Item")')
-
-    // Wait for dialog to open
-    await expect(page.locator('text=Create New Item')).toBeVisible()
-
-    // Fill in the title
-    await page.fill('input[placeholder="Enter item name"]', 'E2E Test Item')
-
-    // Submit the form
-    await page.click('button:has-text("Create")')
-
-    // Wait for dialog to close and item to appear
-    await expect(page.locator('text=E2E Test Item')).toBeVisible()
-  })
-
-  test('can create a new item with title and description', async ({ page }) => {
-    await page.goto('/items')
-
-    // Click the Create Item button
-    await page.click('button:has-text("Create Item")')
-
-    // Fill in both title and description
-    await page.fill('input[placeholder="Enter item name"]', 'Item with Description')
-    await page.fill('textarea[placeholder="Enter item description"]', 'This is a test description')
-
-    // Submit the form
-    await page.click('button:has-text("Create")')
-
-    // Wait for item to appear
-    await expect(page.locator('text=Item with Description')).toBeVisible()
-    await expect(page.locator('text=This is a test description')).toBeVisible()
-  })
-
-  test('can create multiple items and see them in the list', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create first item
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'First Item')
-    await page.click('button:has-text("Create")')
-    await expect(page.locator('text=First Item')).toBeVisible()
-
-    // Create second item
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Second Item')
-    await page.click('button:has-text("Create")')
-    await expect(page.locator('text=Second Item')).toBeVisible()
-
-    // Check the count
-    await expect(page.locator('text=2 items total')).toBeVisible()
-  })
-
-  test('create dialog validates required title field', async ({ page }) => {
-    await page.goto('/items')
-
-    // Click the Create Item button
-    await page.click('button:has-text("Create Item")')
-
-    // Try to submit without filling title
-    await page.click('button:has-text("Create")')
-
-    // Should show validation error
-    const titleInput = page.locator('input[placeholder="Enter item name"]')
-    await expect(titleInput).toBeFocused()
-  })
-
-  test('can cancel item creation', async ({ page }) => {
-    await page.goto('/items')
-
-    // Click the Create Item button
-    await page.click('button:has-text("Create Item")')
-
-    // Fill in some data
-    await page.fill('input[placeholder="Enter item name"]', 'Cancelled Item')
-
-    // Click Cancel
-    await page.click('button:has-text("Cancel")')
-
-    // Dialog should close and item should not appear
-    await expect(page.locator('text=Cancelled Item')).not.toBeVisible()
-  })
-
-  test('can edit an existing item', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create an item first
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Original Title')
-    await page.click('button:has-text("Create")')
-    await expect(page.locator('text=Original Title')).toBeVisible()
-
-    // Find and click the edit button for the item
-    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Original Title' })
-    await itemCard.locator('button:has([data-lucide="pencil"])').click()
-
-    // Wait for edit dialog
-    await expect(page.locator('text=Edit Item')).toBeVisible()
-
-    // Update the title
-    const titleInput = page.locator('input[placeholder="Enter item name"]')
-    await titleInput.fill('')
-    await titleInput.fill('Updated Title')
-
-    // Submit the form
-    await page.click('button:has-text("Update")')
-
-    // Verify the item was updated
-    await expect(page.locator('text=Updated Title')).toBeVisible()
-    await expect(page.locator('text=Original Title')).not.toBeVisible()
-  })
-
-  test('can edit an item with description', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create an item with description
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Item to Edit')
-    await page.fill('textarea[placeholder="Enter item description"]', 'Original description')
-    await page.click('button:has-text("Create")')
-    await expect(page.locator('text=Item to Edit')).toBeVisible()
-
-    // Edit the item
-    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Item to Edit' })
-    await itemCard.locator('button:has([data-lucide="pencil"])').click()
-
-    // Update description
-    const descInput = page.locator('textarea[placeholder="Enter item description"]')
-    await descInput.fill('')
-    await descInput.fill('Updated description')
-
-    // Submit the form
-    await page.click('button:has-text("Update")')
-
-    // Verify the description was updated
-    await expect(page.locator('text=Updated description')).toBeVisible()
-  })
-
-  test('can cancel item editing', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create an item
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Keep Original')
-    await page.click('button:has-text("Create")')
-    await expect(page.locator('text=Keep Original')).toBeVisible()
-
-    // Start editing
-    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Keep Original' })
-    await itemCard.locator('button:has([data-lucide="pencil"])').click()
-
-    // Change the title but cancel
-    await page.fill('input[placeholder="Enter item name"]', 'Changed Title')
-    await page.click('button:has-text("Cancel")')
-
-    // Original title should remain
-    await expect(page.locator('text=Keep Original')).toBeVisible()
-    await expect(page.locator('text=Changed Title')).not.toBeVisible()
-  })
-
-  test('can delete an item', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create an item
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'To Be Deleted')
-    await page.click('button:has-text("Create")')
-    await expect(page.locator('text=To Be Deleted')).toBeVisible()
-
-    // Click the delete button
-    const itemCard = page.getByTestId('item-card').filter({ hasText: 'To Be Deleted' })
-    await itemCard.locator('button:has([data-lucide="trash-2"])').click()
-
-    // Confirm deletion in alert dialog
-    await expect(page.locator('text=Are you sure you want to delete "To Be Deleted"?')).toBeVisible()
-    await page.click('button:has-text("Delete")')
-
-    // Item should be removed
-    await expect(page.locator('text=To Be Deleted')).not.toBeVisible()
-    await expect(page.locator('text=No items yet')).toBeVisible()
-  })
-
-  test('can cancel item deletion', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create an item
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Keep This Item')
-    await page.click('button:has-text("Create")')
-    await expect(page.locator('text=Keep This Item')).toBeVisible()
-
-    // Click delete but cancel
-    const itemCard = page.getByTestId('item-card').filter({ hasText: 'Keep This Item' })
-    await itemCard.locator('button:has([data-lucide="trash-2"])').click()
-
-    // Click Cancel in the alert dialog
-    await page.click('button:has-text("Cancel")')
-
-    // Item should still be there
-    await expect(page.locator('text=Keep This Item')).toBeVisible()
-  })
-
-  test('can search items by title', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create multiple items
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Apple')
-    await page.click('button:has-text("Create")')
-
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Banana')
-    await page.click('button:has-text("Create")')
-
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Cherry')
-    await page.click('button:has-text("Create")')
-
-    // Wait for all items to appear
-    await expect(page.locator('text=3 items total')).toBeVisible()
-
-    // Search for "App" — search is debounced on input, no button needed
-    await page.fill('input[placeholder="Search items by name..."]', 'App')
-    await page.waitForTimeout(400)
-
-    // Should only show Apple
-    await expect(page.locator('text=Apple')).toBeVisible()
-    await expect(page.locator('text=Banana')).not.toBeVisible()
-    await expect(page.locator('text=Cherry')).not.toBeVisible()
-  })
-
-  test('can clear search', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create items
-    await page.click('button:has-text("Create Item")')
-    await page.fill('input[placeholder="Enter item name"]', 'Searchable Item')
-    await page.click('button:has-text("Create")')
-
-    // Search — debounced on input
-    await page.fill('input[placeholder="Search items by name..."]', 'Search')
-    await page.waitForTimeout(400)
-
-    await expect(page.locator('text=Searchable Item')).toBeVisible()
-
-    // Clear search
-    await page.click('button:has-text("Clear")')
-
-    // Search input should be empty and Clear button should be gone
-    const searchInput = page.locator('input[placeholder="Search items by name..."]')
-    await expect(searchInput).toHaveValue('')
-  })
-
-  test('shows pagination controls when items exceed page size', async ({ page }) => {
-    await page.goto('/items')
-
-    // Create more than 9 items (page size is 9)
-    for (let i = 1; i <= 12; i++) {
-      await page.click('button:has-text("Create Item")')
-      await page.fill('input[placeholder="Enter item name"]', `Item ${i}`)
-      await page.click('button:has-text("Create")')
-      await expect(page.locator(`text=Item ${i}`)).toBeVisible()
-    }
-
-    // Should show pagination controls
-    await expect(page.locator('text=Page 1 of 2')).toBeVisible()
-    await expect(page.locator('button:has-text("Next")')).toBeVisible()
-
-    // Navigate to next page
-    await page.click('button:has-text("Next")')
-
-    // Should be on page 2
-    await expect(page.locator('text=Page 2 of 2')).toBeVisible()
-    await expect(page.locator('button:has-text("Previous")')).toBeVisible()
+  test('when a delete fails', async ({ authedPage: page, api, user }) => {
+    const item = await createItem(api, user, { name: 'Stale' })
+    await openItemsPage(page)
+    await expect(itemCard(page, 'Stale')).toBeVisible()
+    await api.delete(`/items/${item.id}`, { headers: authHeaders(user) })
+
+    await page.getByRole('button', { name: 'Delete Stale', exact: true }).click()
+    const responsePromise = page.waitForResponse(r => r.url().endsWith(`/items/${item.id}`))
+    await page
+      .getByRole('alertdialog', { name: 'Delete Item' })
+      .getByRole('button', { name: 'Delete' })
+      .click()
+
+    const response = await responsePromise
+    expect(response.status()).toBe(404)
+    const { detail } = await response.json()
+    await expect(errorToast(page)).toContainText('Failed to delete item')
+    await expect(errorToast(page)).toContainText(detail)
+    // The optimistic removal is rolled back, then the list reloads from the
+    // backend, where the item is already gone: the page and the backend agree.
+    await expect(page.getByText('No items yet')).toBeVisible()
+    await expect(page.getByTestId('item-card')).toHaveCount(0)
+    expect(await listItems(api, user)).toEqual([])
   })
 })

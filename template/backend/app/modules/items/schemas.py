@@ -1,6 +1,7 @@
 """Item schemas - request and response models."""
 
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -33,3 +34,5 @@ class ItemResponse(ItemBase, OrmBaseModel):
 
     id: uuid.UUID
     user_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -20,7 +20,7 @@ class Session(TimestampMixin, Base):
         ForeignKey("user.id", ondelete="CASCADE"), index=True
     )
     user: Mapped["User"] = relationship()
-    expires_at: Mapped[datetime] = mapped_column(index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
 class PasswordResetToken(TimestampMixin, Base):
@@ -31,8 +31,10 @@ class PasswordResetToken(TimestampMixin, Base):
         ForeignKey("user.id", ondelete="CASCADE"), index=True
     )
     user: Mapped["User"] = relationship()
-    expires_at: Mapped[datetime] = mapped_column(index=True)
-    used_at: Mapped[datetime | None] = mapped_column(default=None)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
 
 class EmailVerificationToken(TimestampMixin, Base):
@@ -43,5 +45,7 @@ class EmailVerificationToken(TimestampMixin, Base):
         ForeignKey("user.id", ondelete="CASCADE"), index=True
     )
     user: Mapped["User"] = relationship()
-    expires_at: Mapped[datetime] = mapped_column(index=True)
-    used_at: Mapped[datetime | None] = mapped_column(default=None)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )

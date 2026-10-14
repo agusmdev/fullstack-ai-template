@@ -3,15 +3,21 @@ node_modules
 dist
 dist-ssr
 *.local
-count.txt
 .env
 .nitro
 .tanstack
-.wrangler
 .output
-.vinxi
-todos.json
 package-lock.json
+
+# Playwright
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
+
+# Desloppify
+.desloppify/
+scorecard.png
 
 # Never ignore the frontend source lib (guards against a parent `lib/` rule)
 !src/lib/

@@ -1,9 +1,11 @@
 """HTTP client integration layer.
 
-All direct HTTP operations in the application use `ExternalApiService` (backed by httpx).
-The `requests` library is NOT imported directly here. It is a transitive dependency pulled
-in by `requests-oauthlib`, which is used exclusively for the OAuth2 session flow in
-`app/user/auth/service.py`. Keep these two HTTP client surfaces separate.
+`ExternalApiService` is a generic async httpx wrapper for third-party APIs. The
+template ships no caller: use it as the base for new integrations. It wraps
+protocol errors in `ExternalApiException` (`from err`).
+
+The Google OAuth2 flow in `app/user/auth/service.py` uses `requests-oauthlib`
+instead. Keep these two HTTP client surfaces separate.
 """
 
 from typing import Any

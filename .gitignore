@@ -1,9 +1,6 @@
 # ---------- OS ----------
 .DS_Store
 Thumbs.db
-.beads/
-.sisyphus/
-
 
 # ---------- Editors / IDEs ----------
 .idea/
@@ -18,7 +15,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-.venv/
+.venv
 venv/
 .eggs/
 
@@ -38,11 +35,15 @@ docker-compose.override.yml
 
 # ---------- Misc ----------
 *.log
-.cache/
+.cache
 tmp/
 
-# ---------- Desloppify ----------
+# ---------- Local agent/tool state ----------
+.beads/
 .desloppify/
+.gstack/
+.sisyphus/
+scorecard.png
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,macos
@@ -50,7 +51,6 @@ tmp/
 
 ### macOS ###
 # General
-.DS_Store
 .AppleDouble
 .LSOverride
 
@@ -83,8 +83,6 @@ Temporary Items
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
 *$py.class
 
 # C extensions
@@ -92,12 +90,9 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
-.eggs/
 # lib/ intentionally NOT ignored at root: would swallow template/frontend/src/lib.
 # Python build `lib/` is handled (anchored) in template/backend/.gitignore.
 lib64/
@@ -106,7 +101,6 @@ sdist/
 var/
 wheels/
 share/python-wheels/
-*.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
@@ -127,7 +121,6 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
-.cache
 nosetests.xml
 coverage.xml
 *.cover
@@ -141,7 +134,6 @@ cover/
 *.pot
 
 # Django stuff:
-*.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -205,10 +197,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
-.venv
 env/
-venv/
 ENV/
 env.bak/
 venv.bak/
@@ -255,4 +244,3 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,macos
-.gstack/

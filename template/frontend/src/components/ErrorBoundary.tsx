@@ -59,7 +59,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </p>
             )}
             <div className="flex gap-2 justify-center">
-              <Button onClick={() => this.setState({ hasError: false, error: null, errorId: null })}>
+              <Button
+                onClick={() => this.setState({ hasError: false, error: null, errorId: null })}
+              >
                 Try again
               </Button>
               <Button variant="outline" onClick={this.copyErrorDetails}>

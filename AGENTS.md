@@ -1,24 +1,36 @@
 # Agent Instructions
 
+This repo is a **project generator**. `ai-fsr init <name>` (code in `ai_fsr/`) copies `template/` into a new project and applies a few substitutions. See [README.md](README.md).
+
 ## Project Structure
 
 ```
-template/
-├── backend/           # FastAPI API server (see backend/AGENTS.md)
-├── frontend/          # React 19 SPA (see frontend/AGENTS.md)
-├── docker-compose.yml # Service orchestration (db, backend, frontend)
+ai_fsr/                # Generator CLI: cli.py (Typer), init.py (copy, substitutions, IGNORED_NAMES)
+template/              # The generated project. Its entry point for agents: template/AGENTS.md
+├── AGENTS.md          # Start here for work inside the template
+├── .claude/skills/project-standards/  # The master standards skill (SKILL.md + references/)
+├── backend/           # FastAPI API server (see template/backend/AGENTS.md)
+├── frontend/          # React 19 + TanStack Start app (see template/frontend/AGENTS.md)
+├── docker-compose.yml # Services: db, backend, frontend
 └── Makefile           # Dev commands (run `make help`)
+.github/workflows/     # CI: backend-ci, frontend-ci (template), generator-ci (ai_fsr + smoke test)
 ```
 
 - **Backend:** Python 3.12+, FastAPI, SQLAlchemy 2, Pydantic 2, Alembic, uv
-- **Frontend:** React 19, TanStack Router/Query, Tailwind v4, shadcn/ui, bun
+- **Frontend:** React 19, TanStack Start/Router/Query, Tailwind v4, shadcn/ui, bun
 - **Database:** PostgreSQL 18.1
 
-**Skills for common tasks:**
-- `/skill:add-backend-entity` — Add a new API resource to the backend
-- `/skill:add-frontend-feature` — Add a new UI feature to the frontend
-- `/skill:backend-filters` — Filter/pagination system reference
-- `/skill:backend-logging` — Structured logging system reference
+## Standards
+
+**Before writing or changing code in `template/`, read `template/.claude/skills/project-standards/SKILL.md` and follow it.** Then read `template/AGENTS.md` and the `AGENTS.md` of the part you change.
+
+## Rules for this repo
+
+- **Template changes must keep the template's own suites green.** Run `cd template && make ci` (static checks + backend e2e + Playwright e2e). Testing is end to end only: no mocks, no unit tests (see `template/AGENTS.md`).
+- The generator replaces exact strings (`get_substitutions()` in `ai_fsr/init.py`) and fails if one is missing. When you change those lines in the template, change the generator too.
+- When you add a local cache or build folder to the template, add it to `IGNORED_NAMES` in `ai_fsr/init.py` **and** to `[tool.hatch.build] exclude` in `pyproject.toml`.
+- Generator checks: `uv run ruff check ai_fsr && uv run ruff format --check ai_fsr`, and a smoke run: `uv run ai-fsr init demo -o /tmp`.
+- Docs: `AGENTS.md` is the only agent-instruction file. Do not add `CLAUDE.md` files.
 
 ## Supply-Chain Policy (npm + PyPI/uv)
 
@@ -74,9 +86,5 @@ bd sync               # Sync with git
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session
 
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+Push yourself instead of handing the push to the user, because unpushed work stays stranded locally. If the push fails, resolve the cause and push again.
 

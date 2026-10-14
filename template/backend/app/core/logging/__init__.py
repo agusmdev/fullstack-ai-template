@@ -25,7 +25,7 @@ Usage:
         return result
 """
 
-from app.core.logging.config import configure_logging, get_logger
+from app.core.logging.config import configure_logging
 from app.core.logging.context import (
     WideEventContext,
     clear_wide_event_context,
@@ -43,7 +43,6 @@ from app.core.logging.helpers import (
 __all__ = [
     # Configuration
     "configure_logging",
-    "get_logger",
     # Context
     "WideEventContext",
     "get_wide_event_context",

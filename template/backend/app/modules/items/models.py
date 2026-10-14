@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -17,6 +17,9 @@ class Item(TimestampMixin, Base):
     """
 
     __tablename__ = "item"
+    # Same schema as the migrations: a UNIQUE constraint plus a plain index.
+    # (`unique=True, index=True` would mean one unique index instead.)
+    __table_args__ = (Index("item_sku_idx", "sku"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -25,4 +28,4 @@ class Item(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, default=None)
     quantity: Mapped[int] = mapped_column(default=0)
-    sku: Mapped[str | None] = mapped_column(String(100), unique=True, index=True)
+    sku: Mapped[str | None] = mapped_column(String(100), unique=True)

@@ -1,3 +1,4 @@
+/** localStorage key of the session token. The e2e fixtures use it to sign users in. */
 export const AUTH_TOKEN_KEY = 'auth_token'
 
 // Subscribers are notified whenever the auth token changes — allows api-client
@@ -8,11 +9,6 @@ const authChangeListeners = new Set<AuthChangeListener>()
 export function subscribeToAuthChanges(listener: AuthChangeListener): () => void {
   authChangeListeners.add(listener)
   return () => authChangeListeners.delete(listener)
-}
-
-/** Clear all auth change listeners. For test teardown to prevent state leakage between tests. */
-export function clearAllAuthListeners(): void {
-  authChangeListeners.clear()
 }
 
 function notifyAuthChange() {
@@ -32,10 +28,6 @@ export function setAuthToken(token: string): void {
   }
   localStorage.setItem(AUTH_TOKEN_KEY, token)
   notifyAuthChange()
-}
-
-export function isAuthenticated(): boolean {
-  return getAuthToken() !== null
 }
 
 export function clearAuthToken(): void {

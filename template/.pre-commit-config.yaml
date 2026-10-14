@@ -1,0 +1,64 @@
+# Git hooks for the whole project (backend/ + frontend/).
+# Install once: `make pre-commit-install` (needs a git repo and `uv sync` in backend/).
+# Run on every tracked file: `make pre-commit-run`.
+# The frontend hooks need `bun install` in frontend/ first.
+# The `(template/)?` path prefix lets the same hooks work in the ai-fsr
+# generator repo, where this project sits in template/ under the git root.
+repos:
+  # --- Backend: ruff. Keep rev in sync with the ruff pin in backend/pyproject.toml.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.3
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        files: ^(template/)?backend/
+      - id: ruff-format
+        files: ^(template/)?backend/
+
+  - repo: local
+    hooks:
+      # --- Frontend: ESLint --fix, then prettier --write, on the files pre-commit
+      # passes in: the staged files on `git commit`, every file on
+      # `make pre-commit-run`. Uses the project's pinned eslint and prettier.
+      # A hook that changes a file fails; stage the change and commit again.
+      - id: frontend-eslint
+        name: frontend eslint
+        language: system
+        files: ^(template/)?frontend/.*\.(ts|tsx|js|jsx|mjs|cjs)$
+        entry: >-
+          bash -c 'd=frontend; if [ ! -d frontend ] && [ -d template/frontend ]; then d=template/frontend; fi;
+          cd "$d" &&
+          if [ ! -x node_modules/.bin/eslint ]; then
+          echo "$d/node_modules is missing: run (cd $d && bun install)"; exit 1; fi;
+          exec node_modules/.bin/eslint --fix --no-warn-ignored --max-warnings 0 "${@#$d/}"' --
+
+      - id: frontend-prettier
+        name: frontend prettier
+        language: system
+        files: ^(template/)?frontend/.*\.(ts|tsx|js|jsx|mjs|cjs|css|json)$
+        entry: >-
+          bash -c 'd=frontend; if [ ! -d frontend ] && [ -d template/frontend ]; then d=template/frontend; fi;
+          cd "$d" &&
+          if [ ! -x node_modules/.bin/prettier ]; then
+          echo "$d/node_modules is missing: run (cd $d && bun install)"; exit 1; fi;
+          exec node_modules/.bin/prettier --write --log-level warn "${@#$d/}"' --
+
+      # --- No mocks: all tests are end-to-end against the real stack.
+      # A fast early warning; the real guards are ruff TID251 + the collection
+      # hook in backend/tests/conftest.py and ESLint + e2e/guards.spec.ts in
+      # frontend/. Comment lines are ignored.
+      - id: no-mocks-backend-tests
+        name: no mocks in backend tests (use the live-server fixtures in tests/e2e/conftest.py)
+        language: pygrep
+        files: ^(template/)?backend/(tests/.*\.py|.*conftest\.py)$
+        # The guards file is the one place that must name the banned constructs.
+        exclude: ^(template/)?backend/tests/e2e/guards\.py$
+        entry: >-
+          (?i)^(?!\s*#).*(unittest\.mock|from\s+unittest\s+import\s+mock|\b(magic|async|noncallable|property)mock\b|create_autospec|mock\.patch|@patch\b|monkey_?patch|dependency_overrides|\bmocker\b|pytest_mock|\b(asgi|wsgi|mock)transport\b|\btestclient\b|^\s*(import|from)\s+(respx|responses|requests_mock|pytest_httpx|aioresponses|freezegun|time_machine|httpretty|vcr|pook)\b|sqlite|\.create_all\()
+
+      - id: no-mocks-frontend-e2e
+        name: no mocks in frontend e2e (use the fixtures in e2e/fixtures.ts)
+        language: pygrep
+        files: ^(template/)?frontend/e2e/
+        entry: >-
+          ^(?!\s*(//|/?\*)).*(\.(route|routeFromHAR|unroute|unrouteAll|routeWebSocket|fulfill|addInitScript|addScriptTag|setContent)\s*\(|\b(window|globalThis|self)\.(fetch|XMLHttpRequest|WebSocket|EventSource)\s*=[^=]|from\s+['"](msw|msw/.*|@mswjs/.*|nock|sinon|fetch-mock|miragejs|pretender|vitest|jest|@testing-library/.*)['"])

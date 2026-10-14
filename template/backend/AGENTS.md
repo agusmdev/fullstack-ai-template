@@ -1,108 +1,118 @@
-# AGENTS.md — Backend Development Guide
+# AGENTS.md — backend
 
-## Commands
-- **Run all tests:** `uv run pytest tests/`
-- **Run single test:** `uv run pytest tests/path/to/test.py::test_function_name -v`
-- **Run unit tests:** `uv run pytest tests/unit -v`
-- **Lint & format:** `uv run ruff check app --fix && uv run ruff format app`
-- **Run app:** `uv run uvicorn app.main:app --reload`
-- **Generate migration:** `uv run alembic revision --autogenerate -m "description"`
-- **Apply migrations:** `uv run alembic upgrade head`
+**Before writing or changing code, read `.claude/skills/project-standards/SKILL.md` (at the project root, one level up: `../.claude/skills/project-standards/SKILL.md`) and follow it.** Start-up steps and the Definition of Done are in [../AGENTS.md](../AGENTS.md).
 
-## uv / PyPI Supply-Chain Policy
+## Commands (run in `backend/`)
 
-**Before adding any Python package** (`uv add`, `uv add --dev`, editing `pyproject.toml`), the agent MUST:
+| Task | Command |
+|---|---|
+| Install deps | `uv sync` |
+| Run the API (port 9095, reload) | `make run` = `uv run uvicorn --factory app.main:create_app --reload --port 9095` |
+| All tests (e2e, needs Docker) | `make test` = `uv run pytest` |
+| One test file / test | `uv run pytest tests/e2e/test_items.py` / `uv run pytest tests/e2e/test_items.py::test_name` |
+| Tests + coverage | `make test-cov` (report in `htmlcov/`) |
+| Lint + format (changes files) | `make lint-all` (`ruff check . --fix`, `ruff format .`) |
+| Check only (what CI runs) | `make check` (`ruff check .`, `ruff format --check .`) |
+| Type check (advisory) | `make backend-typecheck` at the root (runs `cd backend && uvx ty@0.0.84 check app`; version pinned by `TY_VERSION` in the root `Makefile`). Do not run `uvx ty` without a version: it fetches the newest release and skips the 7-day supply-chain floor. `ty` is not a dependency and reports known diagnostics; it is not in CI |
+| New migration | `make migrate-new msg="add orders"` = `uv run alembic revision --autogenerate -m "..."` |
+| Apply / undo migration | `make migrate` / `make migrate-down` |
+| Git hooks | `make pre-commit` (install), `make pre-commit-all` (run on all files). Both use `../.pre-commit-config.yaml` |
 
-1. **Search the web** for the package's latest stable, non-vulnerable release — check the PyPI project page, the project's GitHub releases, and CVE advisories (PyPI's `osv.dev`, GitHub Security Advisories, Snyk, `pip-audit`).
-2. **Verify** the chosen version is at least 7 days old and has no open critical/high CVEs. If the latest release is younger than 7 days, pick the most recent release that is ≥ 7 days old and note the choice in the commit message.
-3. **Pin to the exact version** in `pyproject.toml` using `==`, never `>=` or `~=`. Example: `"fastapi==0.118.0"`, never `"fastapi>=0.115.0"`. Preserve extras: `"pydantic[email]==2.11.10"`.
-4. **Run `uv lock`** to update `uv.lock`, then commit both `pyproject.toml` and `uv.lock` together so the resolved tree is locked in git.
+`.env.example` is for runs **outside** Docker only (`cp .env.example .env`). Docker Compose does not read it: the container gets its settings from `../docker-compose.yml` and the root `.env`.
 
-**Adding a new dep:** `uv add 'pkg==X.Y.Z'` (always with `==X.Y.Z`, never bare `uv add pkg`).
+## Stack
 
-## Tech Stack
-- **Language:** Python 3.12+
-- **Framework:** FastAPI (async)
-- **ORM:** SQLAlchemy 2 (`Mapped[]`, `mapped_column`)
-- **Validation:** Pydantic 2
-- **Migrations:** Alembic
-- **Linting:** Ruff (line-length=100, isort)
-- **Logging:** Loguru with structured wide events
-- **Auth:** Session-based, argon2 password hashing
+Python 3.12, FastAPI 0.118 (async), SQLAlchemy 2 (`Mapped[]`, `mapped_column`, asyncpg), Pydantic 2, Alembic, fastapi-filter, fastapi-pagination, Loguru, argon2, uv. Ruff (`ruff==0.13.3`) is the linter and the formatter; default line length 88, E501 ignored. There is no black.
 
-## Architecture
-
-**Pattern:** Router → Service → Repository (strict layering)
-
-- **Routers:** HTTP endpoints only. NO business logic. Inject service via `Depends(get_*_service)`.
-- **Services:** ALL business logic. Inherit `BaseService[T]` from `app/services/base_crud_service.py`.
-- **Repositories:** Data access only. Inherit `SQLAlchemyRepository[T]` from `app/repositories/sql_repository.py`. Uses INSERT...RETURNING, ON CONFLICT.
-- **Modules:** Self-contained in `app/modules/{name}/` with: `models.py`, `schemas.py`, `repository.py`, `service.py`, `routers.py`, `filters.py`, `dependencies.py`
+## Layout
 
 ```
 app/
-├── main.py              # App factory, CORS, middleware, Sentry
-├── routers.py           # Central router registration
-├── core/                # Config, permissions, logging, base schemas
-├── database/            # Base model, engine, session, mixins
-├── repositories/        # BaseRepository, SQLAlchemyRepository, QueryBuilder
-├── services/            # BaseService (generic CRUD)
-├── dependencies/        # Engine singleton, session factory, get_repository()
-├── middlewares/          # RequestContextMiddleware
-├── user/                # User + Auth module (models, service, routers)
-│   └── auth/            # Session auth (register, login, logout, me)
-└── modules/             # Feature modules (e.g., items/)
+├── main.py           # create_app(): exception handlers, middleware (CORS → WideEvent), Sentry, /health
+├── routers.py        # Registers every feature router
+├── exceptions.py     # ErrorResponse {detail, error_code}, HTTPExceptionMixin
+├── core/             # config.py (Settings), logging/, optional_model.py (partial_model)
+├── database/         # Base, engine/session, mixins (TimestampMixin), db/ (select_from_pydantic)
+├── repositories/     # BaseRepository, SQLAlchemyRepository, QueryOptions, on-conflict clauses, exceptions
+├── services/         # BaseService (generic CRUD)
+├── dependencies/     # get_engine (singleton), get_db_session, get_repository()
+├── integrations/     # ExternalApiService: async httpx wrapper for third-party APIs (unused by default)
+├── user/             # User model, /users/me routes
+│   └── auth/         # Sessions, register/login/logout, password reset, email verification, Google OAuth
+├── modules/          # Feature modules; items/ is the reference example
+└── migrations/       # Alembic env.py + versions/
+tests/
+├── conftest.py       # Guard hooks (no mocks, route coverage)
+└── e2e/              # The only test folder: conftest.py (fixtures), helpers.py, test_<feature>.py
 ```
 
-## Dependency Injection
+New cross-cutting HTTP middleware goes in `app/middlewares/` (create it when needed). Middleware tied to one feature stays in its package (for example `app/core/logging/middleware.py`).
 
-Uses **FastAPI's native `Depends()`** with factory functions. No DI container.
+## Architecture
 
-```python
-# app/dependencies/__init__.py provides:
-get_repository(RepoType)  # Generic factory → returns Depends()-compatible callable
+**Router → Service → Repository**, strict.
 
-# Each module has dependencies.py:
-def get_item_service(
-    repo: ItemRepository = Depends(get_repository(ItemRepository)),
-) -> ItemService:
-    return ItemService(repo=repo)
+- **Router:** HTTP only. No business logic. Gets the service with `Depends(get_<x>_service)`.
+- **Service:** all business logic. Inherits `BaseService[T]` (`app/services/base_crud_service.py`).
+- **Repository:** data access only. Inherits `SQLAlchemyRepository[T]` (`app/repositories/sql_repository.py`).
+- **Feature module:** `app/modules/<name>/` with `models.py`, `schemas.py`, `repository.py`, `service.py`, `filters.py`, `dependencies.py`, `routers.py`, `__init__.py`. Copy `app/modules/items/`.
+- **DI:** FastAPI `Depends()` with factory functions (`get_repository(RepoType)` in `app/dependencies/`). No DI container.
+- **PATCH schemas:** `@partial_model` (`app/core/optional_model.py`). Fields can be left out but keep their type; `null` is accepted only for nullable fields (else 422).
+- **`__init__.py`:** every package has one. Packages with a public API set `__all__`.
 
-# Router uses:
-async def list_items(service: ItemService = Depends(get_item_service)):
-    ...
-```
+## New entity checklist
+
+1. `app/modules/<name>/` with the files above (copy `items/`).
+2. Register the router in `app/routers.py`.
+3. Import the model module in `app/migrations/env.py` (explicit list). If you skip this, autogenerate does not see the table.
+4. `make migrate` first (autogenerate fails if the database is not up to date), then `make migrate-new msg="add <name>"` (needs `backend/.env`: `cp .env.example .env` once), then `make lint-all` (alembic output is not ruff-formatted), review the file, `make migrate`.
+5. List endpoints: `item_filter: ItemFilter = FilterDepends(ItemFilter)` (from `fastapi_filter`) — not `Depends()`, which moves list fields such as `order_by` into the request body. Pagination: `Params = Depends()` (`page` default 1, `size` default 50, max 100).
+6. Write `tests/e2e/test_<name>.py` (see Testing). Put a `create_<name>()` helper in `tests/e2e/helpers.py`.
+
+## Filters
+
+`ItemFilter` (`app/modules/items/filters.py`) declares `order_by` (default `["created_at"]`, `-field` = descending), `name__ilike` and `search` (name and description, case-insensitive).
+
+For a new filter, declare `<field>__<op>` with op in `neq, gt, gte, lt, lte, in, not_in, isnull, not, like, ilike`. There is **no `__eq`**: equality uses the bare field name. Send `%` yourself for `like`/`ilike`.
 
 ## Auth
 
-- **Guard dependency:** `Depends(AuthenticatedUser.current_user_id)` on protected routers
-- **Get user ID:** `user_id: uuid.UUID = Depends(AuthenticatedUser.current_user_id)`
-- **Get email:** `email: str = Depends(AuthenticatedUser.current_user_email)`
-- Session-based with Bearer token transport, argon2 hashing, DB-stored sessions
+- Feature routes: `Depends(require_current_user_id)` from `app.user.auth` (see `app/modules/items/routers.py`). Import from the package, not from `app.user.auth.permissions`.
+- Inside `app/user/`: `AuthenticatedUser.current_user_id` / `.get_current_user`.
+- Sessions are DB rows; the client sends `Authorization: Bearer <session id>`. Passwords: argon2, at least 8 characters. Emails are stored lowercase. `User.is_active=False` blocks login and every request.
+- OAuth callback redirects to `{FRONTEND_URL}/oauth/callback?session=<id>`, or `{FRONTEND_URL}/oauth/error?error=<code>` (`access_denied`, `missing_code`, `unsupported_provider`, `inactive_user`, ...).
 
-## Error Handling
+## Error contract
 
-- Custom exceptions inherit `HTTPExceptionMixin` with class attrs: `status_code`, `detail`, `error_code`
-- Repository exceptions auto-parsed from SQLAlchemy `IntegrityError`:
-  - `NotFoundError` (404) — entity not found
-  - `DuplicateError` (400) — unique constraint violation
-  - `ReferencedError` (400) — foreign key constraint violation
+Every error body is `{"detail": ..., "error_code": "..."}` (`app/exceptions.py` → `ErrorResponse`). There is no `fields` or `code` key.
+
+| Case | Status | `error_code` |
+|---|---|---|
+| Request validation (incl. NUL in text) | 422 | `validation_error` (`detail` = FastAPI's list of `{loc, msg, type}` issues, or a string) |
+| No `Authorization` header / non-Bearer scheme | 403 | `http_error` (`Not authenticated` / `Invalid authentication credentials`) |
+| Unknown or revoked session | 401 | `invalid_session` |
+| Expired session | 401 | `session_expired` |
+| Inactive user | 401 | `inactive_user` |
+| Login: unknown or inactive user / wrong password | 401 | `authentication_error` / `invalid_password` |
+| Not found (missing, or owned by another user) | 404 | `not_found` |
+| Unique / foreign-key violation | 400 | `duplicate_item` / `referenced_item` |
+| Router 404/405, plain `HTTPException` | — | `http_error` |
+| Unhandled exception | 500 | `internal_server_error` |
+
+- Services and repositories raise domain exceptions (subclass `HTTPExceptionMixin` with `status_code`, `detail`, `error_code`). Keep the cause: `raise X(...) from err`. Never `from None`.
+- Routers do not catch exceptions (exception: the redirect-based OAuth callback).
+- External I/O: catch protocol errors and wrap them in a domain exception with `from err` (example: `ExternalApiService` in `app/integrations/http_client.py`).
 
 ## Logging
 
-Wide event / canonical log lines pattern via `WideEventMiddleware`:
-- One structured log per request with method, path, duration, status, client IP, errors
-- In handlers, use helpers: `log_action("create")`, `log_entity("item", item_id)`, `log_custom(key=value)`
-- Sensitive data auto-redacted (passwords, tokens, secrets, API keys)
+`WideEventMiddleware` (`app/core/logging/middleware.py`) creates the `request_id` and writes one structured "wide event" per request. In code, add context with `log_action()`, `log_entity()`, `log_entities()`, `log_custom()` from `app.core.logging`; the auth dependency calls `log_user()`. For plain log lines use `from loguru import logger`. Values of sensitive keys (names that contain `password`, `token`, `secret`, `api_key`, `authorization`, `cookie`, ...) and the `code` and `session` query params are replaced with `[REDACTED]` (lists: `SENSITIVE_KEYS` and `SENSITIVE_QUERY_PARAMS` in `app/core/logging/sanitizer.py`).
 
-## Code Style
-- **Formatting:** Ruff. Imports: stdlib → third-party → local (`app.`)
-- **Naming:** snake_case (functions/vars), PascalCase (classes), SCREAMING_SNAKE_CASE (constants)
-- **Types:** Type hints everywhere. `@partial_model` for update schemas. SQLAlchemy models inherit `Base` + `TimestampMixin`
-- **Git:** Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`)
+## Testing (end-to-end only)
 
-## New Entities
+No unit tests, no mocks, no patches, no `dependency_overrides`, no TestClient/ASGI transport, no sqlite. The suite starts Postgres (testcontainers), runs `alembic upgrade head` and `alembic check`, starts the real `uvicorn` and sends HTTP.
 
-Create in `app/modules/` following the items module pattern. Use `/skill:add-backend-entity` for step-by-step guidance.
+- Put tests in `tests/e2e/test_<feature>.py`. Read the docstring of `tests/e2e/conftest.py` first; `tests/e2e/test_items.py` is the reference.
+- Fixtures: `api`, `auth_client`, `register_user`, `make_client`, `server_log`, `db` (raw SQL only for state the API cannot create).
+- Guards fail the run for a mock, a test outside `tests/e2e/`, an app import in tests, a route with no successful (<400) request, or a model change with no migration.
 
-**Quick checklist:** models.py → schemas.py → repository.py → service.py → filters.py → dependencies.py → routers.py → register in `app/routers.py` → generate migration
+Full guide: `../.claude/skills/project-standards/references/e2e-testing.md`.
