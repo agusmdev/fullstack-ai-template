@@ -164,7 +164,9 @@ Run from the project root. All must pass before you call the work done.
   (`skip`, `only`, `fixme`).
 - The migration exists and is reviewed when a model changed.
 - Docs match the code: `grep` the `AGENTS.md` files, `README.md` and this skill
-  for every command, path or env var you added, renamed or removed.
+  for every command, path or env var you added, renamed or removed. A new
+  feature gets one line in the `README.md` intro. Do not add feature helpers or
+  feature files to this skill: it describes the shared patterns only.
 - New dependencies: pick a release at least 7 days old with no open
   critical/high CVE, pin it exactly (`"foo==1.2.3"` in `pyproject.toml`,
   `"foo": "1.2.3"` in `package.json`), and commit the lockfile (`uv.lock` /

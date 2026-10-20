@@ -140,6 +140,23 @@ Integrity errors become HTTP errors automatically: unique violation ->
 `ReferencedError` (400 `referenced_item`). Add custom methods only for queries
 the base methods cannot express.
 
+A custom method that writes must have `@SQLAlchemyRepository.translate_commit_errors`,
+like the inherited ones. Without it, a unique or foreign-key violation (for
+example, a write that refers to a row another request just deleted) is a 500:
+
+```python
+from sqlalchemy.dialects.postgresql import insert
+
+
+class NoteTagRepository(SQLAlchemyRepository[NoteTag]):
+    model = NoteTag
+
+    @SQLAlchemyRepository.translate_commit_errors
+    async def add_once(self, note_id: uuid.UUID, tag: str) -> None:
+        stmt = insert(NoteTag).values(note_id=note_id, tag=tag).on_conflict_do_nothing()
+        await self._session.execute(stmt)
+```
+
 ## 4. Service (`service.py`)
 
 The items service scopes every call to the owner. Copy it for user-owned data:
@@ -351,6 +368,8 @@ Rules:
 - Auth: `require_current_user_id` from `app.user.auth` (the package, not
   `app.user.auth.permissions`). `AuthenticatedUser.*` is for `app/user/` only.
 - Return `XResponse.model_validate(...)`. No `cast`, no raw ORM objects.
+  When the response has a field that is not a column (a count, a streak), the
+  service builds the `XResponse` and the router returns it as it is.
 - `log_entity("<table name>", id)`: same lowercase name the service uses.
 - No `try/except` in routers.
 

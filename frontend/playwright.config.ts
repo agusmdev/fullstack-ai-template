@@ -7,6 +7,7 @@ import {
   DB_URL,
   FRONTEND_PORT,
   FRONTEND_URL,
+  REUSE,
   composePostgresImage,
 } from './e2e/support/stack'
 
@@ -19,11 +20,6 @@ import {
  * { test, expect } from './fixtures'.
  */
 const isCI = !!process.env.CI
-// Reuse a stack that is already running only when asked (E2E_REUSE=1, never in
-// CI). Without it, a server on the e2e ports is an error: it may belong to
-// another checkout, with other code and another database.
-const reuse = !isCI && !!process.env.E2E_REUSE
-
 // Each stack piece watches this PID and stops itself if the runner is killed.
 const supervision = { E2E_RUNNER_PID: String(process.pid) }
 const stopGracefully = { signal: 'SIGTERM', timeout: 15_000 } as const
@@ -61,7 +57,7 @@ export default defineConfig({
       command: 'bash e2e/support/stack.sh db',
       env: {
         ...supervision,
-        E2E_REUSE: reuse ? '1' : '',
+        E2E_REUSE: REUSE ? '1' : '',
         E2E_DB_CONTAINER: DB_CONTAINER,
         E2E_DB_PORT: String(DB_PORT),
         E2E_BACKEND_PORT: String(BACKEND_PORT), // to tell whether a running backend will be reused
@@ -89,7 +85,9 @@ export default defineConfig({
         GOOGLE_CLIENT_ID: '',
         GOOGLE_CLIENT_SECRET: '',
       },
-      reuseExistingServer: reuse,
+      // Without REUSE, a server on the e2e ports is an error: it may belong to
+      // another checkout, with other code and another database.
+      reuseExistingServer: REUSE,
       timeout: 180_000,
       gracefulShutdown: stopGracefully,
     },
@@ -103,7 +101,7 @@ export default defineConfig({
         E2E_FRONTEND_PORT: String(FRONTEND_PORT),
         VITE_API_BASE_URL: BACKEND_URL,
       },
-      reuseExistingServer: reuse,
+      reuseExistingServer: REUSE,
       timeout: 120_000,
       gracefulShutdown: stopGracefully,
     },

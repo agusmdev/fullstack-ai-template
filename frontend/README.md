@@ -22,7 +22,7 @@ In Docker, the `frontend` service in `../docker-compose.yml` builds and serves t
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run format` / `bun run format:check` | Prettier |
 
-The e2e suite needs Docker, uv, bun and Chromium (`bunx playwright install --with-deps chromium`). It uses its own ports (55432, 59095, 53000), so it can run next to the dev stack and `bun run dev`. The e2e frontend turns off the TanStack devtools event bus (fixed port 42069), so it shares no port.
+The e2e suite needs Docker, uv, bun and Chromium (`bunx playwright install --with-deps chromium`). It picks free ports for each run, so it can run next to the dev stack and `bun run dev`. The e2e frontend turns off the TanStack devtools event bus (fixed port 42069), so it shares no port.
 
 ## Pages
 

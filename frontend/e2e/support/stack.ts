@@ -1,24 +1,52 @@
 /**
  * Where the e2e stack runs. playwright.config.ts starts it, fixtures.ts talks to it.
  *
- * The ports differ from the dev stack (db 5432, backend 9095, frontend 3000), so
- * the suite never touches a running dev environment. Set E2E_DB_PORT,
- * E2E_BACKEND_PORT or E2E_FRONTEND_PORT to run two checkouts side by side.
+ * Each run picks free ports, so it never touches a running dev environment or
+ * another checkout's run. Set E2E_DB_PORT, E2E_BACKEND_PORT or
+ * E2E_FRONTEND_PORT to choose them. With E2E_REUSE=1 the ports are fixed
+ * (55432, 59095, 53000), so a second run finds the stack the first one left.
  * The e2e frontend does not start the TanStack devtools event bus (fixed port
  * 42069, see vite.config.ts), so no other port is shared.
  */
+import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-function portFromEnv(name: string, fallback: number): number {
-  const value = Number(process.env[name] ?? fallback)
+const PORTS = { E2E_DB_PORT: 55432, E2E_BACKEND_PORT: 59095, E2E_FRONTEND_PORT: 53000 }
+type PortName = keyof typeof PORTS
+
+/** Binds `count` ports at once (so they differ), then frees them. Synchronous: the config cannot await. */
+function freePorts(count: number): number[] {
+  const script = `
+    const net = require('node:net')
+    const servers = Array.from({ length: ${count} }, () => net.createServer())
+    Promise.all(servers.map((s) => new Promise((ok) => s.listen(0, '127.0.0.1', ok)))).then(() => {
+      process.stdout.write(servers.map((s) => s.address().port).join(','))
+      servers.forEach((s) => s.close())
+    })`
+  return execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' }).split(',').map(Number)
+}
+
+/** Reuse a stack that is already running (E2E_REUSE=1, never in CI). playwright.config.ts reads this too. */
+export const REUSE = !process.env.CI && !!process.env.E2E_REUSE
+
+// The runner loads this file first and writes the chosen ports to process.env.
+// Its worker processes inherit that env, so every process sees the same ports.
+// A runner that stays alive between runs (the VS Code extension) keeps them.
+const unset = (Object.keys(PORTS) as PortName[]).filter(name => !process.env[name])
+const picked =
+  REUSE || unset.length === 0 ? unset.map(name => PORTS[name]) : freePorts(unset.length)
+unset.forEach((name, i) => (process.env[name] = String(picked[i])))
+
+function portFromEnv(name: PortName): number {
+  const value = Number(process.env[name])
   if (!Number.isInteger(value) || value <= 0) throw new Error(`${name} must be a port number`)
   return value
 }
 
-export const DB_PORT = portFromEnv('E2E_DB_PORT', 55432)
-export const BACKEND_PORT = portFromEnv('E2E_BACKEND_PORT', 59095)
-export const FRONTEND_PORT = portFromEnv('E2E_FRONTEND_PORT', 53000)
+export const DB_PORT = portFromEnv('E2E_DB_PORT')
+export const BACKEND_PORT = portFromEnv('E2E_BACKEND_PORT')
+export const FRONTEND_PORT = portFromEnv('E2E_FRONTEND_PORT')
 
 // 127.0.0.1 everywhere: "localhost" can resolve to ::1 first, and the browser
 // origin must match the backend's CORS setting (FRONTEND_URL) exactly.

@@ -87,13 +87,15 @@ Show errors with `toastApiError(error, 'Could not save item')` from `src/lib/err
 
 ## Testing (end-to-end only)
 
-No unit tests, no Vitest/Jest/Testing Library, no mocks, no `page.route()` or other network interception. Playwright runs against the real Vite server, the real backend and a real Postgres. `bun run test:e2e` starts and stops all three (ports 55432 / 59095 / 53000).
+No unit tests, no Vitest/Jest/Testing Library, no mocks, no `page.route()` or other network interception. Playwright runs against the real Vite server, the real backend and a real Postgres. `bun run test:e2e` starts and stops all three, on free ports (set `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` to fix them).
 
 - Requirements: Docker, uv, bun, and `bunx playwright install --with-deps chromium` once.
 - New spec: `e2e/<feature>.spec.ts`, starting with `import { test, expect } from './fixtures'`. Seed data only through the real API; put helpers for a new resource in `e2e/fixtures.ts`.
 - Fixtures: `api`, `user`, `authedPage`, `loginAs`. Helpers: `registerUser`, `loginUser`, `createItem(s)`, `listItems`, `uniqueEmail` (uses `@example.com`), `PASSWORD`, ...
 - `e2e/guards.spec.ts` fails when a page is never opened (`page.goto` / `toHaveURL`), an `API` endpoint is never used by a spec or fixture, or a mock library is in `package.json`. ESLint fails on network stubbing (incl. CDP sessions), `waitForTimeout`, `test.skip/only/fixme`, a `retries` override and imports of `@playwright/test` outside `fixtures.ts`.
 - shadcn `CardTitle` is a `<div>`, not a heading: find it with `getByText`, not `getByRole('heading')`.
+- A run deletes `test-results/` first. Before you run a failed test again, read its error, its trace and the `[frontend]` lines, and save the whole output (`2>&1 | tee`).
+- Keep each `API` entry in `src/lib/api-endpoints.ts` a path with no query string. Build query strings in a helper next to it (see `buildItemsListUrl`).
 - Failed test: trace and screenshot in `test-results/<test>/`; open with `bunx playwright show-trace <trace.zip>`.
 
 Full guide: `../.claude/skills/project-standards/references/e2e-testing.md`.

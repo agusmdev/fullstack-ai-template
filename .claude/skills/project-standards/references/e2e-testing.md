@@ -198,12 +198,15 @@ three `webServer` entries through `e2e/support/stack.sh`, in order:
 
 | Piece | Address | Details |
 |---|---|---|
-| db | 127.0.0.1:55432 | container `e2e-postgres-<port>`, tmpfs, image of the compose `db` service |
-| backend | 127.0.0.1:59095 | `uv run alembic upgrade head`, then uvicorn with explicit env (`DB_URL`, `FRONTEND_URL`, `LOG_LEVEL=ERROR`) |
-| frontend | 127.0.0.1:53000 | `vite dev` with `VITE_API_BASE_URL` = the e2e backend |
+| db | 127.0.0.1, free port | container `e2e-postgres-<port>`, tmpfs, image of the compose `db` service |
+| backend | 127.0.0.1, free port | `uv run alembic upgrade head`, then uvicorn with explicit env (`DB_URL`, `FRONTEND_URL`, `LOG_LEVEL=ERROR`) |
+| frontend | 127.0.0.1, free port | `vite dev` with `VITE_API_BASE_URL` = the e2e backend |
 
-The dev ports (5432, 9095, 3000) are never touched. Each piece stops if the
-Playwright runner dies.
+`e2e/support/stack.ts` picks 3 free ports per run, so a run does not use the
+ports of the dev stack or of another run. A runner that stays alive between
+runs (the Playwright VS Code extension) keeps the ports of its first run: if one
+gets busy, restart it or set `E2E_*_PORT`. Each piece stops if the Playwright runner
+dies, and a run removes the containers that killed runs of this checkout left.
 
 The TanStack devtools event bus always listens on port 42069.
 `vite.config.ts` turns it off when `E2E_RUNNER_PID` is set (Playwright sets
@@ -212,10 +215,10 @@ it), so the e2e frontend shares no port with `bun run dev` or another e2e run.
 One-time setup: `bun install`, `cd ../backend && uv sync`,
 `bunx playwright install --with-deps chromium`. Linux, macOS and CI only (bash).
 
-Env overrides: `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` (set
-them to run two checkouts at once), `E2E_DB_IMAGE`. `E2E_REUSE=1` reuses a
-stack that is already running (never in CI); without it a busy e2e port fails
-the run.
+Env overrides: `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` (fixed
+ports instead of free ones), `E2E_DB_IMAGE`. `E2E_REUSE=1` (never in CI) uses
+the fixed ports 55432, 59095 and 53000 and reuses a stack that is already
+running on them.
 
 Config (`playwright.config.ts`): only `*.spec.ts` run, `forbidOnly: true`,
 `retries: 0` (fix a flaky test, do not retry it; ESLint rejects a `retries` override in specs), traces and screenshots kept
@@ -368,7 +371,9 @@ Style:
 - every page route in `src/routeTree.gen.ts` is opened by a spec with
   `page.goto('/path')` or `toHaveURL('/path')`;
 - every endpoint in `src/lib/api-endpoints.ts` appears as a string in a spec
-  or in `e2e/fixtures.ts`;
+  or in `e2e/fixtures.ts`. Keep each `API` entry a path with no query string,
+  and build query strings in a helper next to it (see `buildItemsListUrl`). The
+  guard matches `'/items'`, `'/items?…'` and `` `/items/${id}` `` in a spec;
 - no mock or unit-test library is in `package.json`, and no
   `public/mockServiceWorker.js`.
 
@@ -385,7 +390,28 @@ bunx playwright show-trace test-results/<test-folder>/trace.zip
 
 Server output is prefixed `[db]`, `[backend]` (errors only) and `[frontend]`.
 
+A run deletes `test-results/` first. Before you run a failed test again, read
+its error, its trace and the `[frontend]` lines (Vite prints "optimized
+dependencies changed. reloading" when it re-bundles mid-run). Save the whole
+output (`bun run test:e2e 2>&1 | tee /tmp/e2e.log`), not only its last lines.
+
 ---
+
+## Time-dependent features
+
+The tests run on the real date. The backend guards ban fake clocks
+(`freezegun`, `time_machine`). Do not use Playwright's `page.clock` either: it
+changes only the browser's clock, so the browser and the backend disagree on
+the date.
+
+- **Backend:** create the past with the `db` fixture. Insert rows with past
+  dates (a completion 3 days ago), then call the API and check the result. This
+  is the "state no endpoint can create" case the fixture is for.
+- **Frontend:** there is no `db` fixture. Seed what the API can create (today's
+  state) and check that the UI shows it. Test multi-day rules in the backend
+  suite.
+- Do not add API parameters only so tests can change the date. A parameter
+  must be a product need (for example the user's local date).
 
 ## Third-party services
 
