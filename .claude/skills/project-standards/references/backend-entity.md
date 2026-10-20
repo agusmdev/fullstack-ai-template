@@ -404,7 +404,7 @@ line, autogenerate does not create the table.
 
 Alembic runs on your machine (not in the container). It reads `DB_URL` from
 `backend/.env`, or else the `config.py` default
-(`app:app@localhost:5432/app`), which matches the root `.env` defaults. Create
+(`postgresql://app:app@localhost:5432/app`), which matches the root `.env` defaults. Create
 `backend/.env` and edit its `DB_URL` only when you change `POSTGRES_*` or
 `DB_PORT` in the root `.env`. Else Alembic fails with `password authentication
 failed` or cannot connect.

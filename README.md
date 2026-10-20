@@ -66,7 +66,7 @@ docker compose up -d db
 
 # terminal 1
 cd backend
-cp .env.example .env          # DB_URL must match POSTGRES_* in the root .env
+cp .env.example .env          # edit DB_URL if you changed POSTGRES_* or DB_PORT in the root .env
 uv sync && uv run alembic upgrade head
 make run                      # http://localhost:9095
 
@@ -119,7 +119,7 @@ Docker Compose does **not** read `backend/.env`. The backend container gets its 
 
 ### Change a port
 
-Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it); for the frontend port, also change `FRONTEND_URL`. For the database port, also change `DB_URL` in `backend/.env` (create it from `backend/.env.example`), because the host commands `make migrate*`, `make db-reset` and `make run` read it. Then rebuild: `docker compose up -d --build`.
+Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it); for the frontend port, also change `FRONTEND_URL`. For the database port, also change `DB_URL` in `backend/.env` (create it from `backend/.env.example`), because the host commands `make migrate*`, `make db-reset` and `make backend-dev` read it. Then rebuild: `docker compose up -d --build`.
 
 ### Change the database credentials
 
