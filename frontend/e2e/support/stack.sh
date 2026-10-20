@@ -73,6 +73,13 @@ start_db() {
 
   remove_container() { docker rm -f "$E2E_DB_CONTAINER" >/dev/null 2>&1 || true; }
   remove_container # a container left by a run that was killed hard
+  # Ports are random per run, so a container a killed run left behind has
+  # another name. Remove this checkout's containers whose runner is gone.
+  local stale pid
+  for stale in $(docker ps -aq --filter "label=e2e.checkout=$frontend_dir"); do
+    pid="$(docker inspect --format '{{ index .Config.Labels "e2e.runner-pid" }}' "$stale")"
+    kill -0 "$pid" 2>/dev/null || docker rm -f "$stale" >/dev/null 2>&1 || true
+  done
   trap remove_container EXIT
 
   # tmpfs storage: every run starts with an empty database.

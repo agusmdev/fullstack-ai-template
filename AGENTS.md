@@ -1,6 +1,6 @@
 # AGENTS.md — start here
 
-Full-stack web app: a FastAPI backend, a React 19 frontend (TanStack Start) and PostgreSQL 18.1, run together with Docker Compose. Session auth (register, login, OAuth with Google) and an example `items` feature are included. Needs Docker (Compose v2), [uv](https://docs.astral.sh/uv/) and [bun](https://bun.sh/).
+Full-stack web app: a FastAPI backend, a React 19 frontend (TanStack Start) and PostgreSQL 18.1, run together with Docker Compose. Session auth (register, login, OAuth with Google) and an example `items` feature are included. Keep `items`: the recipes and the tests use it as the reference. To hide it from users, remove its link in `frontend/src/components/Navigation.tsx`. Needs Docker (Compose v2), [uv](https://docs.astral.sh/uv/) and [bun](https://bun.sh/).
 
 ## Rule 0: read the standards first
 
@@ -32,7 +32,7 @@ Every test drives the real system. The backend suite sends HTTP to a live `uvico
 
 - **Dev stack ports** are `BACKEND_PORT`, `FRONTEND_PORT` and `DB_PORT` in the root `.env` (defaults 9095, 3000, 5432). The URLs do not follow the ports. With a new `BACKEND_PORT`, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it). With a new `FRONTEND_PORT`, also change `FRONTEND_URL`. Then run `docker compose up -d --build`, because the frontend bakes `VITE_API_BASE_URL` in at build time.
 - **Host commands** (`make migrate*`, `make db-reset`, `make backend-dev`) read `DB_URL` from `backend/.env`, or else the `config.py` default `postgresql://app:app@localhost:5432/app`. With a new `DB_PORT` or `POSTGRES_*`, run `cp backend/.env.example backend/.env` and edit its `DB_URL`.
-- **Test ports.** `make test-backend` picks free ports. `make test-e2e` uses 55432, 59095 and 53000. If one is busy, set `E2E_DB_PORT`, `E2E_BACKEND_PORT` or `E2E_FRONTEND_PORT`. Neither suite touches the dev stack.
+- **Test ports.** Both suites pick free ports, so they never touch the dev stack or another run. You do not need to set any test port.
 
 All variables: [README.md](README.md#environment).
 

@@ -137,7 +137,7 @@ make check            # every static check: ruff, ESLint, prettier, tsc, build
 make ci               # check + test
 ```
 
-First Playwright run: `cd frontend && bunx playwright install --with-deps chromium`. `make test-backend` picks free ports. `make test-e2e` uses 55432, 59095 and 53000 (override with `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT`). Neither suite touches the dev stack. The e2e frontend turns off the TanStack devtools event bus (fixed port 42069), so `bun run dev` can stay up.
+First Playwright run: `cd frontend && bunx playwright install --with-deps chromium`. `make test-backend` picks free ports. `make test-e2e` picks free ports too (set `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` to fix them). Neither suite touches the dev stack. The e2e frontend turns off the TanStack devtools event bus (fixed port 42069), so `bun run dev` can stay up.
 
 Where tests go and how to write them: [AGENTS.md](AGENTS.md#tests-and-checks) and `.claude/skills/project-standards/references/e2e-testing.md`.
 
@@ -163,5 +163,5 @@ Run `make help` for the full list. The most used:
 | Port already in use | `make check-ports` (default ports only), then change the port in `.env` (see above) |
 | Backend cannot reach the database | `docker compose ps`, `make logs-db`; after a credential change run `make db-reset`, then `docker compose up -d` |
 | Frontend calls the wrong backend URL | `VITE_API_BASE_URL` is baked in at build time: `docker compose up -d --build frontend` |
-| `make test-e2e` says a port is busy | Another e2e run uses it. Wait, or set `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` |
+| `make test-e2e` says a port is busy | You set `E2E_*_PORT` or `E2E_REUSE=1`, and another run uses that port. Unset them, so the run picks free ports |
 | `bun run dev` fails with `EADDRINUSE ... 42069` | Another `bun run dev` holds the TanStack devtools port. Stop it (e2e runs do not use 42069) |

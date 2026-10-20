@@ -1,4 +1,4 @@
-.PHONY: help install clean lint format lint-all check run test test-cov migrate migrate-new migrate-history migrate-down pre-commit pre-commit-all venv
+.PHONY: help install clean lint format lint-all check run test test-cov migrate migrate-new migrate-create migrate-history migrate-down pre-commit pre-commit-all venv
 
 # Default target
 help:
@@ -14,6 +14,7 @@ help:
 	@echo "  make test-cov         - Run the end-to-end suite with an app coverage report"
 	@echo "  make migrate          - Apply database migrations"
 	@echo "  make migrate-new      - Create a new migration (usage: make migrate-new message='description')"
+	@echo "  make migrate-create   - Same as migrate-new (the name the root Makefile uses)"
 	@echo "  make migrate-history  - Show migration history"
 	@echo "  make migrate-down     - Downgrade migration by one"
 	@echo "  make venv             - Activate virtual environment (source this)"
@@ -81,6 +82,8 @@ ifndef message
 	$(error message is required. Usage: make migrate-new message="description")
 endif
 	uv run alembic revision --autogenerate -m "$(message)"
+
+migrate-create: migrate-new
 
 # Show migration history
 migrate-history:

@@ -54,7 +54,7 @@ New cross-cutting HTTP middleware goes in `app/middlewares/` (create it when nee
 
 - **Router:** HTTP only. No business logic. Gets the service with `Depends(get_<x>_service)`.
 - **Service:** all business logic. Inherits `BaseService[T]` (`app/services/base_crud_service.py`).
-- **Repository:** data access only. Inherits `SQLAlchemyRepository[T]` (`app/repositories/sql_repository.py`).
+- **Repository:** data access only. Inherits `SQLAlchemyRepository[T]` (`app/repositories/sql_repository.py`). A custom method that writes needs `@SQLAlchemyRepository.translate_commit_errors`, or a constraint violation is a 500.
 - **Feature module:** `app/modules/<name>/` with `models.py`, `schemas.py`, `repository.py`, `service.py`, `filters.py`, `dependencies.py`, `routers.py`, `__init__.py`. Copy `app/modules/items/`.
 - **DI:** FastAPI `Depends()` with factory functions (`get_repository(RepoType)` in `app/dependencies/`). No DI container.
 - **PATCH schemas:** `@partial_model` (`app/core/optional_model.py`). Fields can be left out but keep their type; `null` is accepted only for nullable fields (else 422).
