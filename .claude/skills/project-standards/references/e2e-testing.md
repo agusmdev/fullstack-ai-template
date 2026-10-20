@@ -202,8 +202,10 @@ three `webServer` entries through `e2e/support/stack.sh`, in order:
 | backend | 127.0.0.1, free port | `uv run alembic upgrade head`, then uvicorn with explicit env (`DB_URL`, `FRONTEND_URL`, `LOG_LEVEL=ERROR`) |
 | frontend | 127.0.0.1, free port | `vite dev` with `VITE_API_BASE_URL` = the e2e backend |
 
-`e2e/support/stack.ts` picks 3 free ports per run, so a run never touches the
-dev stack or another checkout's run. Each piece stops if the Playwright runner
+`e2e/support/stack.ts` picks 3 free ports per run, so a run does not use the
+ports of the dev stack or of another run. A runner that stays alive between
+runs (the Playwright VS Code extension) keeps the ports of its first run: if one
+gets busy, restart it or set `E2E_*_PORT`. Each piece stops if the Playwright runner
 dies, and a run removes the containers that killed runs of this checkout left.
 
 The TanStack devtools event bus always listens on port 42069.

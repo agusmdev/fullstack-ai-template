@@ -27,13 +27,15 @@ function freePorts(count: number): number[] {
   return execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' }).split(',').map(Number)
 }
 
+/** Reuse a stack that is already running (E2E_REUSE=1, never in CI). playwright.config.ts reads this too. */
+export const REUSE = !process.env.CI && !!process.env.E2E_REUSE
+
 // The runner loads this file first and writes the chosen ports to process.env.
 // Its worker processes inherit that env, so every process sees the same ports.
+// A runner that stays alive between runs (the VS Code extension) keeps them.
 const unset = (Object.keys(PORTS) as PortName[]).filter(name => !process.env[name])
 const picked =
-  process.env.E2E_REUSE || unset.length === 0
-    ? unset.map(name => PORTS[name])
-    : freePorts(unset.length)
+  REUSE || unset.length === 0 ? unset.map(name => PORTS[name]) : freePorts(unset.length)
 unset.forEach((name, i) => (process.env[name] = String(picked[i])))
 
 function portFromEnv(name: PortName): number {

@@ -32,7 +32,7 @@ Every test drives the real system. The backend suite sends HTTP to a live `uvico
 
 - **Dev stack ports** are `BACKEND_PORT`, `FRONTEND_PORT` and `DB_PORT` in the root `.env` (defaults 9095, 3000, 5432). The URLs do not follow the ports. With a new `BACKEND_PORT`, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it). With a new `FRONTEND_PORT`, also change `FRONTEND_URL`. Then run `docker compose up -d --build`, because the frontend bakes `VITE_API_BASE_URL` in at build time.
 - **Host commands** (`make migrate*`, `make db-reset`, `make backend-dev`) read `DB_URL` from `backend/.env`, or else the `config.py` default `postgresql://app:app@localhost:5432/app`. With a new `DB_PORT` or `POSTGRES_*`, run `cp backend/.env.example backend/.env` and edit its `DB_URL`.
-- **Test ports.** Both suites pick free ports, so they never touch the dev stack or another run. You do not need to set any test port.
+- **Test ports.** Both suites pick free ports, so they do not clash with the dev stack or another run. You do not need to set any test port.
 
 All variables: [README.md](README.md#environment).
 
