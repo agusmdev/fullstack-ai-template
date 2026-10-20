@@ -14,6 +14,8 @@ Included: session auth (register, login, logout, password reset, email verificat
 
 ## Start a new project
 
+Site, live demos and quickstart: **[burntop.dev](https://burntop.dev)**. For AI agents: [burntop.dev/llms.txt](https://burntop.dev/llms.txt).
+
 This repo is the project. Copy it with fresh git history:
 
 ```bash
