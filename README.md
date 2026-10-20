@@ -27,11 +27,16 @@ git clone --depth 1 https://github.com/agusmdev/fullstack-ai-template my-app
 rm -rf my-app/.git && git -C my-app init
 ```
 
+Then, in the new project, before anything else, delete 2 sections that are for this template repo only:
+
+- "Start a new project" (this section) in `README.md`.
+- "Maintaining this template" at the end of `AGENTS.md`.
+
 To give an agent the job, send it this prompt:
 
 > Create a new project from https://github.com/agusmdev/fullstack-ai-template as described in its README, then open `AGENTS.md` and follow it.
 
-Then delete the "Maintaining this template" section at the end of `AGENTS.md`. It is for this repo only. The database user, password and name are `app` by default. Change them in `.env` if you want (see [Environment](#environment)).
+The database user, password and name are `app` by default. Change them in `.env` if you want (see [Environment](#environment)).
 
 ## 1. Prerequisites
 

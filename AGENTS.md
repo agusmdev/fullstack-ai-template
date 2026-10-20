@@ -131,7 +131,7 @@ Before you add a package: use a release that is **at least 7 days old** and has 
 
 ## Maintaining this template
 
-This section is for the template repo (`agusmdev/fullstack-ai-template`) only. A project made from it deletes this section.
+This section is for the template repo (`agusmdev/fullstack-ai-template`) only. In a project made from it, delete this section first, and do not follow it.
 
 - New projects copy this repo as it is (see "Start a new project" in [README.md](README.md)). There is no generator and no placeholder to keep in sync.
 - `gh repo create --template` and the **Use this template** button work only while the GitHub repo is marked as a template repository (`gh repo edit agusmdev/fullstack-ai-template --template`).
