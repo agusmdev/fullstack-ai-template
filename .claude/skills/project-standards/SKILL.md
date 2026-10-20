@@ -44,8 +44,8 @@ with `docker-compose.yml`).
   not see the table.
 - **Migrations:** every model change needs an Alembic migration
   (`cd backend && uv run alembic upgrade head && uv run alembic revision
-  --autogenerate -m "..."`; needs `backend/.env`; autogenerate fails if the
-  database is not up to date). Run ruff on the new file, then review it.
+  --autogenerate -m "..."`; autogenerate fails if the database is not up to
+  date; database settings: [backend-entity.md](references/backend-entity.md) step 11). Run ruff on the new file, then review it.
   The backend test suite runs `alembic check` and fails on drift.
 - **DI:** FastAPI `Depends()` with factory functions in `dependencies.py`
   (`get_<name>_service`, built on `get_repository(Repo)` from `app.dependencies`).
@@ -132,7 +132,7 @@ with `docker-compose.yml`).
 1. `models.py` -> 2. `schemas.py` -> 3. `repository.py` -> 4. `service.py`
 -> 5. `filters.py` -> 6. `dependencies.py` -> 7. `routers.py` -> 8. `__init__.py`
 -> 9. include router in `app/routers.py` -> 10. import model in
-`app/migrations/env.py` -> 11. autogenerate the migration (needs `backend/.env`), ruff-fix and review it
+`app/migrations/env.py` -> 11. autogenerate the migration, ruff-fix and review it
 -> 12. `tests/e2e/test_<name>.py` + a `create_<name>` helper in
 `tests/e2e/helpers.py` -> 13. Definition of Done.
 
@@ -158,9 +158,15 @@ Run from the project root. All must pass before you call the work done.
   diagnostics in code you touch, except the ones the `items` pattern already
   has (ty ignores the mypy-style `# type: ignore[override]` on the service
   overrides, and reports `invalid-type-form` on `<Entity>Update = Body(...)`).
-- New behaviour has e2e tests. No test was skipped (`skip`, `only`, `fixme`).
+- Every new or changed backend endpoint has an e2e test with at least one
+  successful request. Every new page, and every new entry in
+  `frontend/src/lib/api-endpoints.ts`, is used by a spec. No test was skipped
+  (`skip`, `only`, `fixme`).
 - The migration exists and is reviewed when a model changed.
-- Docs (`AGENTS.md`, this skill) still match the code you changed.
+- Docs match the code: `grep` the `AGENTS.md` files, `README.md` and this skill
+  for every command, path or env var you added, renamed or removed. A new
+  feature gets one line in the `README.md` intro. Do not add feature helpers or
+  feature files to this skill: it describes the shared patterns only.
 - New dependencies: pick a release at least 7 days old with no open
   critical/high CVE, pin it exactly (`"foo==1.2.3"` in `pyproject.toml`,
   `"foo": "1.2.3"` in `package.json`), and commit the lockfile (`uv.lock` /

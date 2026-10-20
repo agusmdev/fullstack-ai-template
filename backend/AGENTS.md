@@ -14,7 +14,7 @@
 | Lint + format (changes files) | `make lint-all` (`ruff check . --fix`, `ruff format .`) |
 | Check only (what CI runs) | `make check` (`ruff check .`, `ruff format --check .`) |
 | Type check (advisory) | `make backend-typecheck` at the root (runs `cd backend && uvx ty@0.0.84 check app`; version pinned by `TY_VERSION` in the root `Makefile`). Do not run `uvx ty` without a version: it fetches the newest release and skips the 7-day supply-chain floor. `ty` is not a dependency and reports known diagnostics; it is not in CI |
-| New migration | `make migrate-new msg="add orders"` = `uv run alembic revision --autogenerate -m "..."` |
+| New migration | `make migrate-new message="add orders"` = `uv run alembic revision --autogenerate -m "..."` |
 | Apply / undo migration | `make migrate` / `make migrate-down` |
 | Git hooks | `make pre-commit` (install), `make pre-commit-all` (run on all files). Both use `../.pre-commit-config.yaml` |
 
@@ -54,7 +54,7 @@ New cross-cutting HTTP middleware goes in `app/middlewares/` (create it when nee
 
 - **Router:** HTTP only. No business logic. Gets the service with `Depends(get_<x>_service)`.
 - **Service:** all business logic. Inherits `BaseService[T]` (`app/services/base_crud_service.py`).
-- **Repository:** data access only. Inherits `SQLAlchemyRepository[T]` (`app/repositories/sql_repository.py`).
+- **Repository:** data access only. Inherits `SQLAlchemyRepository[T]` (`app/repositories/sql_repository.py`). A custom method that writes needs `@SQLAlchemyRepository.translate_commit_errors`, or a constraint violation is a 500.
 - **Feature module:** `app/modules/<name>/` with `models.py`, `schemas.py`, `repository.py`, `service.py`, `filters.py`, `dependencies.py`, `routers.py`, `__init__.py`. Copy `app/modules/items/`.
 - **DI:** FastAPI `Depends()` with factory functions (`get_repository(RepoType)` in `app/dependencies/`). No DI container.
 - **PATCH schemas:** `@partial_model` (`app/core/optional_model.py`). Fields can be left out but keep their type; `null` is accepted only for nullable fields (else 422).
@@ -65,7 +65,7 @@ New cross-cutting HTTP middleware goes in `app/middlewares/` (create it when nee
 1. `app/modules/<name>/` with the files above (copy `items/`).
 2. Register the router in `app/routers.py`.
 3. Import the model module in `app/migrations/env.py` (explicit list). If you skip this, autogenerate does not see the table.
-4. `make migrate` first (autogenerate fails if the database is not up to date), then `make migrate-new msg="add <name>"` (needs `backend/.env`: `cp .env.example .env` once), then `make lint-all` (alembic output is not ruff-formatted), review the file, `make migrate`.
+4. `make migrate` first (autogenerate fails if the database is not up to date), then `make migrate-new message="add <name>"` (database settings: `../.claude/skills/project-standards/references/backend-entity.md` step 11), then `make lint-all` (alembic output is not ruff-formatted), review the file, `make migrate`.
 5. List endpoints: `item_filter: ItemFilter = FilterDepends(ItemFilter)` (from `fastapi_filter`) — not `Depends()`, which moves list fields such as `order_by` into the request body. Pagination: `Params = Depends()` (`page` default 1, `size` default 50, max 100).
 6. Write `tests/e2e/test_<name>.py` (see Testing). Put a `create_<name>()` helper in `tests/e2e/helpers.py`.
 

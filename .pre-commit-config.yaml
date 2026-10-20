@@ -2,8 +2,6 @@
 # Install once: `make pre-commit-install` (needs a git repo and `uv sync` in backend/).
 # Run on every tracked file: `make pre-commit-run`.
 # The frontend hooks need `bun install` in frontend/ first.
-# The `(template/)?` path prefix lets the same hooks work in the ai-fsr
-# generator repo, where this project sits in template/ under the git root.
 repos:
   # --- Backend: ruff. Keep rev in sync with the ruff pin in backend/pyproject.toml.
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -11,9 +9,9 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
-        files: ^(template/)?backend/
+        files: ^backend/
       - id: ruff-format
-        files: ^(template/)?backend/
+        files: ^backend/
 
   - repo: local
     hooks:
@@ -24,10 +22,9 @@ repos:
       - id: frontend-eslint
         name: frontend eslint
         language: system
-        files: ^(template/)?frontend/.*\.(ts|tsx|js|jsx|mjs|cjs)$
+        files: ^frontend/.*\.(ts|tsx|js|jsx|mjs|cjs)$
         entry: >-
-          bash -c 'd=frontend; if [ ! -d frontend ] && [ -d template/frontend ]; then d=template/frontend; fi;
-          cd "$d" &&
+          bash -c 'd=frontend; cd "$d" &&
           if [ ! -x node_modules/.bin/eslint ]; then
           echo "$d/node_modules is missing: run (cd $d && bun install)"; exit 1; fi;
           exec node_modules/.bin/eslint --fix --no-warn-ignored --max-warnings 0 "${@#$d/}"' --
@@ -35,10 +32,9 @@ repos:
       - id: frontend-prettier
         name: frontend prettier
         language: system
-        files: ^(template/)?frontend/.*\.(ts|tsx|js|jsx|mjs|cjs|css|json)$
+        files: ^frontend/.*\.(ts|tsx|js|jsx|mjs|cjs|css|json)$
         entry: >-
-          bash -c 'd=frontend; if [ ! -d frontend ] && [ -d template/frontend ]; then d=template/frontend; fi;
-          cd "$d" &&
+          bash -c 'd=frontend; cd "$d" &&
           if [ ! -x node_modules/.bin/prettier ]; then
           echo "$d/node_modules is missing: run (cd $d && bun install)"; exit 1; fi;
           exec node_modules/.bin/prettier --write --log-level warn "${@#$d/}"' --
@@ -50,15 +46,15 @@ repos:
       - id: no-mocks-backend-tests
         name: no mocks in backend tests (use the live-server fixtures in tests/e2e/conftest.py)
         language: pygrep
-        files: ^(template/)?backend/(tests/.*\.py|.*conftest\.py)$
+        files: ^backend/(tests/.*\.py|.*conftest\.py)$
         # The guards file is the one place that must name the banned constructs.
-        exclude: ^(template/)?backend/tests/e2e/guards\.py$
+        exclude: ^backend/tests/e2e/guards\.py$
         entry: >-
           (?i)^(?!\s*#).*(unittest\.mock|from\s+unittest\s+import\s+mock|\b(magic|async|noncallable|property)mock\b|create_autospec|mock\.patch|@patch\b|monkey_?patch|dependency_overrides|\bmocker\b|pytest_mock|\b(asgi|wsgi|mock)transport\b|\btestclient\b|^\s*(import|from)\s+(respx|responses|requests_mock|pytest_httpx|aioresponses|freezegun|time_machine|httpretty|vcr|pook)\b|sqlite|\.create_all\()
 
       - id: no-mocks-frontend-e2e
         name: no mocks in frontend e2e (use the fixtures in e2e/fixtures.ts)
         language: pygrep
-        files: ^(template/)?frontend/e2e/
+        files: ^frontend/e2e/
         entry: >-
           ^(?!\s*(//|/?\*)).*(\.(route|routeFromHAR|unroute|unrouteAll|routeWebSocket|fulfill|addInitScript|addScriptTag|setContent)\s*\(|\b(window|globalThis|self)\.(fetch|XMLHttpRequest|WebSocket|EventSource)\s*=[^=]|from\s+['"](msw|msw/.*|@mswjs/.*|nock|sinon|fetch-mock|miragejs|pretender|vitest|jest|@testing-library/.*)['"])

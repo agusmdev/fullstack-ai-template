@@ -1,90 +1,70 @@
-# Agent Instructions
+# AGENTS.md — start here
 
-This repo is a **project generator**. `ai-fsr init <name>` (code in `ai_fsr/`) copies `template/` into a new project and applies a few substitutions. See [README.md](README.md).
+Full-stack web app: a FastAPI backend, a React 19 frontend (TanStack Start) and PostgreSQL 18.1, run together with Docker Compose. Session auth (register, login, OAuth with Google) and an example `items` feature are included. Keep `items`: the recipes and the tests use it as the reference. To hide it from users, remove its link in `frontend/src/components/Navigation.tsx`. Needs Docker (Compose v2), [uv](https://docs.astral.sh/uv/) and [bun](https://bun.sh/).
 
-## Project Structure
+## Rule 0: read the standards first
 
-```
-ai_fsr/                # Generator CLI: cli.py (Typer), init.py (copy, substitutions, IGNORED_NAMES)
-template/              # The generated project. Its entry point for agents: template/AGENTS.md
-├── AGENTS.md          # Start here for work inside the template
-├── .claude/skills/project-standards/  # The master standards skill (SKILL.md + references/)
-├── backend/           # FastAPI API server (see template/backend/AGENTS.md)
-├── frontend/          # React 19 + TanStack Start app (see template/frontend/AGENTS.md)
-├── docker-compose.yml # Services: db, backend, frontend
-└── Makefile           # Dev commands (run `make help`)
-.github/workflows/     # CI: backend-ci, frontend-ci (template), generator-ci (ai_fsr + smoke test)
-```
+**Before writing or changing code, read `.claude/skills/project-standards/SKILL.md` and follow it.** The path is relative to the project root (the folder of this file). Its `references/` folder has the full recipes.
 
-- **Backend:** Python 3.12+, FastAPI, SQLAlchemy 2, Pydantic 2, Alembic, uv
-- **Frontend:** React 19, TanStack Start/Router/Query, Tailwind v4, shadcn/ui, bun
-- **Database:** PostgreSQL 18.1
+Then read the `AGENTS.md` of the part you change:
 
-## Standards
+- [backend/AGENTS.md](backend/AGENTS.md) — FastAPI, SQLAlchemy, Alembic, uv
+- [frontend/AGENTS.md](frontend/AGENTS.md) — React 19, TanStack Start/Router/Query, Tailwind v4, shadcn/ui, bun
 
-**Before writing or changing code in `template/`, read `template/.claude/skills/project-standards/SKILL.md` and follow it.** Then read `template/AGENTS.md` and the `AGENTS.md` of the part you change.
+## Definition of Done
 
-## Rules for this repo
+A change is done when the checklist in `.claude/skills/project-standards/SKILL.md` section 5 is true. In short: `make check` and `make test` pass, new behaviour has e2e tests, a model change has a reviewed migration, and the docs match the code.
 
-- **Template changes must keep the template's own suites green.** Run `cd template && make ci` (static checks + backend e2e + Playwright e2e). Testing is end to end only: no mocks, no unit tests (see `template/AGENTS.md`).
-- The generator replaces exact strings (`get_substitutions()` in `ai_fsr/init.py`) and fails if one is missing. When you change those lines in the template, change the generator too.
-- When you add a local cache or build folder to the template, add it to `IGNORED_NAMES` in `ai_fsr/init.py` **and** to `[tool.hatch.build] exclude` in `pyproject.toml`.
-- Generator checks: `uv run ruff check ai_fsr && uv run ruff format --check ai_fsr`, and a smoke run: `uv run ai-fsr init demo -o /tmp`.
-- Docs: `AGENTS.md` is the only agent-instruction file. Do not add `CLAUDE.md` files.
+## Tests and checks
 
-## Supply-Chain Policy (npm + PyPI/uv)
+Every test drives the real system. The backend suite sends HTTP to a live `uvicorn` on a real Postgres (testcontainers), after `alembic upgrade head` and `alembic check`. The frontend suite runs Playwright against the real Vite dev server, backend and Postgres. Guards fail the run on a mock, a test outside the e2e folders, a backend route with no successful request, a page or API endpoint that no spec uses, or a model change with no migration. How to write tests: `.claude/skills/project-standards/references/e2e-testing.md`.
 
-**Before installing any third-party package**, the agent MUST follow this policy for both ecosystems.
+| Command (project root) | What it runs |
+|---|---|
+| `make check` | Every static check, no file changes: ruff, ESLint, prettier, `tsc`, build |
+| `make test` | Both suites: backend, then full stack |
+| `make test-backend` | Backend suite (`cd backend && uv run pytest`). Needs Docker |
+| `make test-e2e` | Full-stack suite (`cd frontend && bun run test:e2e`). Needs Docker, uv, bun, Chromium (`cd frontend && bunx playwright install --with-deps chromium`) |
+| `make ci` | `make check` + `make test` |
+| `make format`, `make lint-fix` | Fix formatting and lint (both apps) |
 
-### Step 1 — Web search
-Look up the package's latest stable, non-vulnerable release. Check the registry page (npm or PyPI), the project's GitHub releases, and CVE advisories (GitHub Security Advisories, Snyk, `npm audit` / `pip-audit` / osv.dev).
+## Ports and env
 
-### Step 2 — Verify
-Confirm the chosen version is **at least 7 days old** and has no open critical/high CVEs. If the latest release is younger than 7 days, pick the most recent release that is ≥ 7 days old and note the choice in the commit message.
+- **Dev stack ports** are `BACKEND_PORT`, `FRONTEND_PORT` and `DB_PORT` in the root `.env` (defaults 9095, 3000, 5432). The URLs do not follow the ports. With a new `BACKEND_PORT`, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it). With a new `FRONTEND_PORT`, also change `FRONTEND_URL`. Then run `docker compose up -d --build`, because the frontend bakes `VITE_API_BASE_URL` in at build time.
+- **Host commands** (`make migrate*`, `make db-reset`, `make backend-dev`) read `DB_URL` from `backend/.env`, or else the `config.py` default `postgresql://app:app@localhost:5432/app`. With a new `DB_PORT` or `POSTGRES_*`, run `cp backend/.env.example backend/.env` and edit its `DB_URL`.
+- **Test ports.** Both suites pick free ports, so they do not clash with the dev stack or another run. You do not need to set any test port.
 
-### Step 3 — Pin exactly
+All variables: [README.md](README.md#environment).
 
-| Ecosystem | File | Pin format | Never |
-|---|---|---|---|
-| npm (bun/npm/pnpm) | `package.json` | `"foo": "1.2.3"` | `^1.2.3`, `~1.2.3`, `latest` |
-| Python (uv) | `pyproject.toml` | `"foo==1.2.3"` (preserve extras: `"pydantic[email]==2.11.10"`) | `>=`, `~=`, `*` |
-
-### Step 4 — Lock + commit
-Run `bun install` / `npm install` (or `uv lock`) to regenerate the lockfile, then commit `package.json` + lockfile (or `pyproject.toml` + `uv.lock`) **together** so the resolved tree is locked in git.
-
-The 7-day floor is also enforced globally for npm via `~/.npmrc` (`min-release-age=7`, `save-exact=true`) and `~/.bunfig.toml` (`minimumReleaseAge = 604800`). uv currently has no equivalent setting — the policy is the only enforcement, so do not skip step 2.
-
-## Issue Tracking
-
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
+## First run (Docker)
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
+cp .env.example .env          # optional: every value has a default in docker-compose.yml
+docker compose up -d --build  # `make start` = `docker compose up -d` (no rebuild)
 ```
 
-## Landing the Plane (Session Completion)
+The backend container runs `alembic upgrade head` before it starts. Frontend: http://localhost:3000. API: http://localhost:9095 (no `/api` prefix; `GET /` is 404, so check `/health` or `/docs`).
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+Stop: `docker compose down`. Reset the database: `make db-reset`. It deletes the data, runs the migrations from the host, and leaves only `db` running, so then run `docker compose up -d`.
 
-**MANDATORY WORKFLOW:**
+Hot reload outside Docker, and the git hooks: [README.md](README.md) sections 3 and 4.
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+## Files that are not obvious
 
-Push yourself instead of handing the push to the user, because unpushed work stays stranded locally. If the push fails, resolve the cause and push again.
+| Path | What it is |
+|---|---|
+| `.env.example` | Template for the root `.env`. Docker Compose reads only the root `.env`, never `backend/.env` |
+| `backend/app/migrations/env.py` | Imports every model module. A model that is not imported here gets no autogenerated migration |
+| `.pre-commit-config.yaml` | The one git-hook config for the whole project (`make pre-commit-install`) |
+| `.github/workflows/` | CI: `backend-ci.yml` (ruff + backend e2e), `frontend-ci.yml` (lint, typecheck, build + Playwright e2e) |
+| `Makefile`, `backend/Makefile` | All dev commands. Run `make help` |
 
+## Maintaining this template
+
+This section is for the template repo (`agusmdev/fullstack-ai-template`) only. In a project made from it, delete this section first, and do not follow it.
+
+- New projects copy this repo as it is (see "Start a new project" in [README.md](README.md)). There is no generator and no placeholder to keep in sync.
+- `gh repo create --template` and the **Use this template** button work only while the GitHub repo is marked as a template repository (`gh repo edit agusmdev/fullstack-ai-template --template`).
+- Every change keeps `make ci` green.
+- `AGENTS.md` is the only agent-instruction file. Do not add `CLAUDE.md` files.
+- When you end a session, push your work: `git pull --rebase && git push`, then check that `git status` shows "up to date with origin". If the push fails, fix the cause and push again. Drop only the stashes you created.
