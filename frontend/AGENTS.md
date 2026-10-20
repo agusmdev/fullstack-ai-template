@@ -93,6 +93,7 @@ No unit tests, no Vitest/Jest/Testing Library, no mocks, no `page.route()` or ot
 - New spec: `e2e/<feature>.spec.ts`, starting with `import { test, expect } from './fixtures'`. Seed data only through the real API; put helpers for a new resource in `e2e/fixtures.ts`.
 - Fixtures: `api`, `user`, `authedPage`, `loginAs`. Helpers: `registerUser`, `loginUser`, `createItem(s)`, `listItems`, `uniqueEmail` (uses `@example.com`), `PASSWORD`, ...
 - `e2e/guards.spec.ts` fails when a page is never opened (`page.goto` / `toHaveURL`), an `API` endpoint is never used by a spec or fixture, or a mock library is in `package.json`. ESLint fails on network stubbing (incl. CDP sessions), `waitForTimeout`, `test.skip/only/fixme`, a `retries` override and imports of `@playwright/test` outside `fixtures.ts`.
+- shadcn `CardTitle` is a `<div>`, not a heading: find it with `getByText`, not `getByRole('heading')`.
 - Failed test: trace and screenshot in `test-results/<test>/`; open with `bunx playwright show-trace <trace.zip>`.
 
 Full guide: `../.claude/skills/project-standards/references/e2e-testing.md`.

@@ -104,7 +104,7 @@ Docker Compose does **not** read `backend/.env`. The backend container gets its 
 
 | Variable | Default | Notes |
 |---|---|---|
-| `BACKEND_PORT`, `FRONTEND_PORT`, `DB_PORT` | `9095`, `3000`, `5432` | Host ports. Check what is free: `make check-ports` |
+| `BACKEND_PORT`, `FRONTEND_PORT`, `DB_PORT` | `9095`, `3000`, `5432` | Host ports. `make check-ports` checks the defaults only |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `app` | Used by `db`, and to build the backend `DB_URL` (host `db`) |
 | `DB_URL` | built from `POSTGRES_*` | Not in `.env.example`. Set it only for an external Postgres, or when the password has `@ : / # %` (URL-encode them) |
 | `DB_POOL_SIZE`, `DB_POOL_PRE_PING` | `100`, `false` | SQLAlchemy pool |
@@ -119,7 +119,7 @@ Docker Compose does **not** read `backend/.env`. The backend container gets its 
 
 ### Change a port
 
-Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it); for the frontend port, also change `FRONTEND_URL`. Then rebuild: `docker compose up -d --build`.
+Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it); for the frontend port, also change `FRONTEND_URL`. For the database port, also change `DB_URL` in `backend/.env` (create it from `backend/.env.example`), because the host commands `make migrate*`, `make db-reset` and `make run` read it. Then rebuild: `docker compose up -d --build`.
 
 ### Change the database credentials
 
@@ -137,9 +137,9 @@ make check            # every static check: ruff, ESLint, prettier, tsc, build
 make ci               # check + test
 ```
 
-First Playwright run: `cd frontend && bunx playwright install --with-deps chromium`. The suites use their own ports (55432, 59095, 53000) and never touch the dev stack. The e2e frontend turns off the TanStack devtools event bus (fixed port 42069), so `bun run dev` can stay up.
+First Playwright run: `cd frontend && bunx playwright install --with-deps chromium`. `make test-backend` picks free ports. `make test-e2e` uses 55432, 59095 and 53000 (override with `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT`). Neither suite touches the dev stack. The e2e frontend turns off the TanStack devtools event bus (fixed port 42069), so `bun run dev` can stay up.
 
-Where tests go and how to write them: [AGENTS.md](AGENTS.md#testing-end-to-end-only) and `.claude/skills/project-standards/references/e2e-testing.md`.
+Where tests go and how to write them: [AGENTS.md](AGENTS.md#tests-and-checks) and `.claude/skills/project-standards/references/e2e-testing.md`.
 
 ## Make targets
 
@@ -160,7 +160,7 @@ Run `make help` for the full list. The most used:
 
 | Problem | Fix |
 |---|---|
-| Port already in use | `make check-ports`, then change the port in `.env` (see above) |
+| Port already in use | `make check-ports` (default ports only), then change the port in `.env` (see above) |
 | Backend cannot reach the database | `docker compose ps`, `make logs-db`; after a credential change run `make db-reset`, then `docker compose up -d` |
 | Frontend calls the wrong backend URL | `VITE_API_BASE_URL` is baked in at build time: `docker compose up -d --build frontend` |
 | `make test-e2e` says a port is busy | Another e2e run uses it. Wait, or set `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` |

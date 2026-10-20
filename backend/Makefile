@@ -13,7 +13,7 @@ help:
 	@echo "  make test             - Run the end-to-end suite (needs Docker)"
 	@echo "  make test-cov         - Run the end-to-end suite with an app coverage report"
 	@echo "  make migrate          - Apply database migrations"
-	@echo "  make migrate-new      - Create a new migration (usage: make migrate-new msg='description')"
+	@echo "  make migrate-new      - Create a new migration (usage: make migrate-new message='description')"
 	@echo "  make migrate-history  - Show migration history"
 	@echo "  make migrate-down     - Downgrade migration by one"
 	@echo "  make venv             - Activate virtual environment (source this)"
@@ -75,12 +75,12 @@ migrate:
 	uv run alembic upgrade head
 
 # Create a new migration
-# Usage: make migrate-new msg="description"
+# Usage: make migrate-new message="description"
 migrate-new:
-ifndef msg
-	$(error msg is required. Usage: make migrate-new msg="description")
+ifndef message
+	$(error message is required. Usage: make migrate-new message="description")
 endif
-	uv run alembic revision --autogenerate -m "$(msg)"
+	uv run alembic revision --autogenerate -m "$(message)"
 
 # Show migration history
 migrate-history:

@@ -331,6 +331,8 @@ test('sends anonymous users to login', async ({ page }) => {
 Style:
 - Find elements by role, label and text (`getByRole`, `getByLabel`); add a
   `data-testid` only when nothing else is unique (see `item-card`).
+- shadcn `CardTitle` and `CardDescription` render a `<div>`, not a heading, so
+  `getByRole('heading')` does not find them. Use `getByText` inside the card.
 - Never sleep. `expect(...)` retries until the UI matches.
 - Check the result twice: in the UI and through the `api` fixture.
 
