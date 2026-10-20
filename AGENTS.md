@@ -134,6 +134,7 @@ Before you add a package: use a release that is **at least 7 days old** and has 
 This section is for the template repo (`agusmdev/fullstack-ai-template`) only. A project made from it deletes this section.
 
 - New projects copy this repo as it is (see "Start a new project" in [README.md](README.md)). There is no generator and no placeholder to keep in sync.
+- `gh repo create --template` and the **Use this template** button work only while the GitHub repo is marked as a template repository (`gh repo edit agusmdev/fullstack-ai-template --template`).
 - Every change keeps `make ci` green (static checks + backend e2e + Playwright e2e).
 - `AGENTS.md` is the only agent-instruction file. Do not add `CLAUDE.md` files.
 

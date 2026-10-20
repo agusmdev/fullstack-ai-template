@@ -27,7 +27,7 @@ git clone --depth 1 https://github.com/agusmdev/fullstack-ai-template my-app
 rm -rf my-app/.git && git -C my-app init
 ```
 
-Pin a release with `--branch <tag>` on `git clone`. To give an agent the job, send it this prompt:
+To give an agent the job, send it this prompt:
 
 > Create a new project from https://github.com/agusmdev/fullstack-ai-template as described in its README, then open `AGENTS.md` and follow it.
 
