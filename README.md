@@ -1,94 +1,167 @@
-# ai-fsr — full-stack project generator
+# Full-Stack App
 
-`ai-fsr` creates a new full-stack project from the `template/` folder of this repo:
+FastAPI backend + React 19 frontend (TanStack Start) + PostgreSQL 18.1, run with Docker Compose.
 
-- **Backend:** FastAPI, async SQLAlchemy 2, Alembic, Pydantic 2, uv (Python 3.12). Router → Service → Repository. Session auth + Google OAuth. Example `items` feature.
-- **Frontend:** React 19, TanStack Start/Router/Query, Tailwind v4, shadcn/ui, bun.
-- **Database:** PostgreSQL 18.1 in Docker Compose.
-- **Tests:** end to end only — a backend API suite (real Postgres + live server) and a Playwright full-stack suite. Guards fail the run on mocks or untested routes.
-- **For AI agents:** `AGENTS.md` files and one standards skill (`.claude/skills/project-standards/SKILL.md`).
+| Part | Stack | Docs |
+|---|---|---|
+| `backend/` | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic 2, uv | [backend/AGENTS.md](backend/AGENTS.md) |
+| `frontend/` | React 19, TanStack Start/Router/Query, Tailwind v4, shadcn/ui, bun | [frontend/AGENTS.md](frontend/AGENTS.md) |
+| `db` | PostgreSQL 18.1 (`postgres:18.1-alpine`) | `docker-compose.yml` |
 
-## Create a project
+Included: session auth (register, login, logout, password reset, email verification, Google OAuth), an example `items` CRUD feature, structured request logging, and two end-to-end test suites.
 
-Requirements: [uv](https://docs.astral.sh/uv/) and Docker (the command stops if `docker` is not on the PATH). To run the project you also need [bun](https://bun.sh/).
+**Working with an AI agent?** It starts at [AGENTS.md](AGENTS.md). Code standards for agents and people: `.claude/skills/project-standards/SKILL.md`.
+
+## Start a new project
+
+This repo is the project. Copy it with fresh git history:
 
 ```bash
-uvx --from git+https://github.com/agusmdev/fullstack-ai-template ai-fsr init my-app
+gh repo create my-app --template agusmdev/fullstack-ai-template --private --clone
 ```
 
-From a local checkout of this repo (no `uv sync` needed first; `--directory` changes the working folder, so give `-o` an absolute path):
+Without `gh`, use the **Use this template** button on GitHub, or:
 
 ```bash
-uv run --directory /path/to/fullstack-ai-template ai-fsr init my-app -o /path/to/parent
+git clone --depth 1 https://github.com/agusmdev/fullstack-ai-template my-app
+rm -rf my-app/.git && git -C my-app init
 ```
 
-Then:
+Then, in the new project, before anything else, delete 2 sections that are for this template repo only:
+
+- "Start a new project" (this section) in `README.md`.
+- "Maintaining this template" at the end of `AGENTS.md`.
+
+To give an agent the job, send it this prompt:
+
+> Create a new project from https://github.com/agusmdev/fullstack-ai-template as described in its README, then open `AGENTS.md` and follow it.
+
+The database user, password and name are `app` by default. Change them in `.env` if you want (see [Environment](#environment)).
+
+## 1. Prerequisites
+
+- Docker with Compose v2
+- [uv](https://docs.astral.sh/uv/) — backend outside Docker, backend tests, git hooks
+- [bun](https://bun.sh/) — frontend outside Docker, frontend tests
+
+## 2. Start everything with Docker
 
 ```bash
-cd my-app
-cp .env.example .env
-docker compose up -d --build
+cp .env.example .env          # optional; every value has a default
+docker compose up -d --build  # `make start` = `docker compose up -d` (no rebuild)
 ```
 
 - Frontend: http://localhost:3000
-- Backend API: http://localhost:9095 (no root page: `GET /` is 404; check http://localhost:9095/health or the docs at http://localhost:9095/docs)
+- Backend API: http://localhost:9095 (no `/api` prefix; `GET /` is 404, check `/health`)
+- API docs: http://localhost:9095/docs
 
-**Next: open `my-app/AGENTS.md`.** It explains the project layout, the first-run steps, the testing rule and the Definition of Done. `my-app/README.md` is the human guide.
+The backend container runs the migrations (`alembic upgrade head`) before it starts. Logs: `make logs`. Stop: `make down`. Reset the database: `make db-reset`, then `docker compose up -d` (the reset leaves only `db` running).
 
-### Options
+## 3. Develop with hot reload (optional)
 
-```
-ai-fsr init PROJECT_NAME [OPTIONS]
-```
-
-| Option | What it does |
-|---|---|
-| `PROJECT_NAME` | Normalized to kebab-case (`My App` → `my-app`). `node`, `npm`, `test`, `package`, `frontend`, `backend` are reserved |
-| `-o, --output-dir PATH` | Parent folder for the project (default: current folder) |
-| `-f, --force` | Write into an existing folder: template files are overwritten, other files stay |
-| `--dry-run` | Show what would be created, write nothing |
-| `--git-init` | Run `git init` in the new project |
-| `--install-deps` | Run `uv sync` in `backend/` and `bun install` in `frontend/` |
-
-`ai-fsr --version` prints the version. Git hooks are not installed by `init`; after `git init`, run `make pre-commit-install` in the project.
-
-### What the generator changes
-
-With project name `N`, it copies `template/` and replaces:
-
-| File | Change |
-|---|---|
-| `.env.example` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` = `N` |
-| `docker-compose.yml` | `${POSTGRES_*:-N}` defaults |
-| `backend/.env.example` | `DB_URL=postgresql://N:N@localhost:5432/N` |
-| `backend/app/core/config.py` | `DB_URL` default = `postgresql://N:N@localhost:5432/N` |
-| `backend/pyproject.toml`, `backend/uv.lock` | `name = "N-backend"` |
-
-Only these 6 files change (Markdown and `frontend/package.json` stay as they are). Docker names the images `<folder>-backend` and `<folder>-frontend`.
-
-The copy skips local junk (`node_modules`, `.venv`, caches, build output, test reports, `*.db`, `*.log`) and every `.env*` file except `.env.example` — see `IGNORED_NAMES` in `ai_fsr/init.py`.
-
-## Work on the generator
+Run Postgres in Docker and the apps on your machine:
 
 ```bash
-git clone https://github.com/agusmdev/fullstack-ai-template
-cd fullstack-ai-template
-uv sync                          # installs ai-fsr (editable) and ruff
-uv run ai-fsr init demo -o /tmp  # try it
-uv run ruff check ai_fsr && uv run ruff format ai_fsr
+docker compose up -d db
+
+# terminal 1
+cd backend
+cp .env.example .env          # edit DB_URL if you changed POSTGRES_* or DB_PORT in the root .env
+uv sync && uv run alembic upgrade head
+make run                      # http://localhost:9095
+
+# terminal 2
+cd frontend
+bun install && bun run dev    # http://localhost:3000
 ```
 
-| Path | What it is |
+`make setup` copies both `.env` files and installs the backend and frontend dependencies in one step.
+
+## 4. Git hooks
+
+After `git init` (and `uv sync` in `backend/`, `bun install` in `frontend/`):
+
+```bash
+make pre-commit-install       # ruff, frontend eslint + prettier, no-mock guards
+make pre-commit-run           # run them on every tracked file
+```
+
+The hooks are in `.pre-commit-config.yaml`. They are fast early warnings; the real checks are `make check` and `make test`.
+
+## Environment
+
+There are two sets of settings:
+
+| File | Read by | Used for |
+|---|---|---|
+| `.env` (from `.env.example`) | Docker Compose | Ports, Postgres credentials, every backend setting for the container, the frontend build URL |
+| `backend/.env` (from `backend/.env.example`) | the backend when you run it **outside** Docker (`make run`) | Same backend settings; `DB_URL` points at `localhost` |
+| `frontend/.env` (from `frontend/.env.example`, optional) | `bun run dev` / `bun run build` outside Docker | `VITE_API_BASE_URL` |
+
+Docker Compose does **not** read `backend/.env`. The backend container gets its settings only from `docker-compose.yml`, which takes them from the root `.env` (with defaults). All `.env` files are git-ignored; the `.env.example` files are committed.
+
+### Root `.env` variables
+
+| Variable | Default | Notes |
+|---|---|---|
+| `BACKEND_PORT`, `FRONTEND_PORT`, `DB_PORT` | `9095`, `3000`, `5432` | Host ports. `make check-ports` checks the defaults only |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `app` | Used by `db`, and to build the backend `DB_URL` (host `db`) |
+| `DB_URL` | built from `POSTGRES_*` | Not in `.env.example`. Set it only for an external Postgres, or when the password has `@ : / # %` (URL-encode them) |
+| `DB_POOL_SIZE`, `DB_POOL_PRE_PING` | `100`, `false` | SQLAlchemy pool |
+| `APP_NAME`, `ENVIRONMENT`, `DEBUG_MODE` | `backend`, `local`, `false` | Sentry is off when `ENVIRONMENT=local` |
+| `LOG_LEVEL`, `LOG_FORMAT` | `INFO`, `console` | `json` = one wide event per request, for log shipping |
+| `FRONTEND_URL` | `http://localhost:3000` | CORS origin and OAuth redirect target. Keep in sync with `FRONTEND_PORT` |
+| `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE` | empty, `0.0`, `0.0` | Empty DSN = off |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | empty | Empty = Google OAuth not set up |
+| `GOOGLE_REDIRECT_URI` | `http://localhost:${BACKEND_PORT}/auth/oauth/google/callback` | Must match the Google console |
+| `VERSION`, `COMMIT_HASH`, `INSTANCE_ID` | empty | Optional log context |
+| `VITE_API_BASE_URL` | `http://localhost:9095` | Baked into the frontend image at build time |
+
+### Change a port
+
+Set the new port in `.env`. For the backend port, also change `VITE_API_BASE_URL` (and `GOOGLE_REDIRECT_URI` if you set it); for the frontend port, also change `FRONTEND_URL`. For the database port, also change `DB_URL` in `backend/.env` (create it from `backend/.env.example`), because the host commands `make migrate*`, `make db-reset` and `make backend-dev` read it. Then rebuild: `docker compose up -d --build`.
+
+### Change the database credentials
+
+Change `POSTGRES_*` in `.env` and the matching `DB_URL` in `backend/.env`. An existing database volume keeps the old credentials: reset it with `make db-reset` (this deletes the data), then run `docker compose up -d` (the reset starts only `db`).
+
+## Tests
+
+All tests are end to end against the real stack. There are no unit tests and no mocks.
+
+```bash
+make test             # both suites
+make test-backend     # API suite: Postgres (testcontainers) + migrations + live server (needs Docker)
+make test-e2e         # browser suite: Postgres + backend + Vite + Playwright (needs Docker, uv, bun, Chromium)
+make check            # every static check: ruff, ESLint, prettier, tsc, build
+make ci               # check + test
+```
+
+First Playwright run: `cd frontend && bunx playwright install --with-deps chromium`. `make test-backend` picks free ports. `make test-e2e` uses 55432, 59095 and 53000 (override with `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT`). Neither suite touches the dev stack. The e2e frontend turns off the TanStack devtools event bus (fixed port 42069), so `bun run dev` can stay up.
+
+Where tests go and how to write them: [AGENTS.md](AGENTS.md#tests-and-checks) and `.claude/skills/project-standards/references/e2e-testing.md`.
+
+## Make targets
+
+Run `make help` for the full list. The most used:
+
+| Target | What it does |
 |---|---|
-| `ai_fsr/cli.py` | Typer CLI (`ai-fsr init`) |
-| `ai_fsr/init.py` | Copy, substitutions (`get_substitutions`), copy filter (`IGNORED_NAMES`), post-init steps |
-| `template/` | The project that gets copied. Its own docs start at `template/AGENTS.md` |
-| `.github/workflows/` | CI for this repo: `backend-ci.yml`, `frontend-ci.yml` (template lint + both e2e suites), `generator-ci.yml` (ruff on `ai_fsr`, a generated-project smoke test) |
-| `pyproject.toml` | Package config. `[tool.hatch.build] exclude` keeps junk out of the wheel; keep it in sync with `IGNORED_NAMES` |
-| `AGENTS.md` | Rules for agents working on this repo |
+| `make start` / `make down` | Start the stack in the background / stop it |
+| `make logs`, `make logs-backend` | Follow logs |
+| `make rebuild` | Rebuild images and start |
+| `make migrate`, `make migrate-create message="..."`, `make migrate-rollback` | Alembic |
+| `make db-shell`, `make db-reset` | psql in the `db` container / wipe and re-migrate (only `db` runs afterwards; then `docker compose up -d`) |
+| `make lint`, `make lint-fix`, `make format`, `make typecheck` | Code quality (both apps) |
+| `make backend-typecheck` | ty on the backend (advisory, not in CI) |
+| `make clean` | Remove this project's containers, networks and volumes |
 
-Rules for template changes:
+## Troubleshooting
 
-- The generator fails if a placeholder in the table above is missing. If you change those lines in the template, update `get_substitutions()` too.
-- The template's own checks must stay green: `cd template && make ci` (static checks + both e2e suites).
-- The wheel ships the template as `ai_fsr/template`. Only the repo-root `.gitignore` and the `[tool.hatch.build] exclude` list filter it; the nested `template/*/.gitignore` files do not.
+| Problem | Fix |
+|---|---|
+| Port already in use | `make check-ports` (default ports only), then change the port in `.env` (see above) |
+| Backend cannot reach the database | `docker compose ps`, `make logs-db`; after a credential change run `make db-reset`, then `docker compose up -d` |
+| Frontend calls the wrong backend URL | `VITE_API_BASE_URL` is baked in at build time: `docker compose up -d --build frontend` |
+| `make test-e2e` says a port is busy | Another e2e run uses it. Wait, or set `E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` |
+| `bun run dev` fails with `EADDRINUSE ... 42069` | Another `bun run dev` holds the TanStack devtools port. Stop it (e2e runs do not use 42069) |
