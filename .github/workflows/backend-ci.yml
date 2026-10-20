@@ -4,13 +4,13 @@ on:
   push:
     branches: [main, dev]
     paths:
-      - 'template/backend/**'
-      - 'template/docker-compose.yml' # the e2e suite reads the Postgres image from it
+      - 'backend/**'
+      - 'docker-compose.yml' # the e2e suite reads the Postgres image from it
       - '.github/workflows/backend-ci.yml'
   pull_request:
     paths:
-      - 'template/backend/**'
-      - 'template/docker-compose.yml'
+      - 'backend/**'
+      - 'docker-compose.yml'
       - '.github/workflows/backend-ci.yml'
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ permissions:
 
 defaults:
   run:
-    working-directory: template/backend
+    working-directory: backend
 
 jobs:
   lint:
@@ -39,7 +39,7 @@ jobs:
         with:
           version: '0.10.8'
           enable-cache: true
-          cache-dependency-glob: template/backend/uv.lock
+          cache-dependency-glob: backend/uv.lock
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -72,7 +72,7 @@ jobs:
         with:
           version: '0.10.8'
           enable-cache: true
-          cache-dependency-glob: template/backend/uv.lock
+          cache-dependency-glob: backend/uv.lock
 
       - name: Install Python
         uses: actions/setup-python@v5

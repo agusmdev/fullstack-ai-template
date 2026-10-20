@@ -1,17 +1,11 @@
 name: Frontend CI
 
 # The frontend e2e suite runs the whole stack (Postgres + backend + frontend),
-# so any change under template/ can break it.
+# so any change can break it.
 on:
   push:
     branches: [main, dev]
-    paths:
-      - 'template/**'
-      - '.github/workflows/frontend-ci.yml'
   pull_request:
-    paths:
-      - 'template/**'
-      - '.github/workflows/frontend-ci.yml'
   workflow_dispatch:
   schedule:
     # Nightly full-stack run (2 AM UTC) to catch drift in images and browsers.
@@ -26,7 +20,7 @@ permissions:
 
 defaults:
   run:
-    working-directory: template/frontend
+    working-directory: frontend
 
 jobs:
   lint-typecheck-build:
@@ -88,7 +82,7 @@ jobs:
         with:
           version: '0.10.8'
           enable-cache: true
-          cache-dependency-glob: template/backend/uv.lock
+          cache-dependency-glob: backend/uv.lock
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -96,7 +90,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install backend dependencies
-        working-directory: template/backend
+        working-directory: backend
         run: uv sync --locked
 
       - name: Install frontend dependencies
@@ -115,6 +109,6 @@ jobs:
         with:
           name: playwright-report
           path: |
-            template/frontend/playwright-report/
-            template/frontend/test-results/
+            frontend/playwright-report/
+            frontend/test-results/
           retention-days: 14
