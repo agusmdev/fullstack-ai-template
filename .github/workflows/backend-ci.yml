@@ -56,6 +56,12 @@ jobs:
       - name: Run ruff formatting check
         run: uv run ruff format --check .
 
+      # Static: blocking calls (sync I/O, sleeps, locks) reachable from the
+      # event loop. Exit 1 = findings, 2 = hydroid failed; both fail the job.
+      # Version pinned by HYDROID_VERSION in backend/Makefile.
+      - name: Check for blocking calls on the event loop (hydroid)
+        run: make evloop
+
   e2e:
     # Real Postgres (testcontainers, Docker is on the runner) -> alembic upgrade
     # head + alembic check -> live uvicorn -> HTTP tests. Guards: no mocks

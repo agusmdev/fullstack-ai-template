@@ -1,4 +1,9 @@
-.PHONY: help install clean lint format lint-all check run test test-cov migrate migrate-new migrate-create migrate-history migrate-down pre-commit pre-commit-all venv
+.PHONY: help install clean lint format lint-all check evloop run test test-cov migrate migrate-new migrate-create migrate-history migrate-down pre-commit pre-commit-all venv
+
+# hydroid (event-loop blocking-call linter) is not a project dependency: run a
+# pinned release with uvx. Supply-chain policy: a release at least 7 days old
+# (0.5.0 = 2026-10-16).
+HYDROID_VERSION := 0.5.0
 
 # Default target
 help:
@@ -8,7 +13,8 @@ help:
 	@echo "  make lint             - Run ruff linter with auto-fix"
 	@echo "  make format           - Run ruff formatter"
 	@echo "  make lint-all         - Run lint and format"
-	@echo "  make check            - Check lint and format without changing files (CI)"
+	@echo "  make check            - Check lint, format and event-loop blocking calls (CI)"
+	@echo "  make evloop           - Find blocking calls on the event loop (hydroid)"
 	@echo "  make run              - Run the FastAPI application on port 9095"
 	@echo "  make test             - Run the end-to-end suite (needs Docker)"
 	@echo "  make test-cov         - Run the end-to-end suite with an app coverage report"
@@ -53,10 +59,15 @@ format:
 # Run both lint and format
 lint-all: lint format
 
-# Check lint and format without changing files (what CI runs)
+# Check lint, format and event-loop blocking calls without changing files (what CI runs)
 check:
 	uv run ruff check .
 	uv run ruff format --check .
+	$(MAKE) evloop
+
+# Find blocking calls that run on the event loop (static, needs `uv sync`)
+evloop:
+	uvx --from hydroid-cli==$(HYDROID_VERSION) hydroid .
 
 # Run the FastAPI application
 run:

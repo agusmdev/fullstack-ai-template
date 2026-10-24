@@ -135,7 +135,7 @@ All tests are end to end against the real stack. There are no unit tests and no 
 make test             # both suites
 make test-backend     # API suite: Postgres (testcontainers) + migrations + live server (needs Docker)
 make test-e2e         # browser suite: Postgres + backend + Vite + Playwright (needs Docker, uv, bun, Chromium)
-make check            # every static check: ruff, ESLint, prettier, tsc, build
+make check            # every static check: ruff, hydroid, ESLint, prettier, tsc, build
 make ci               # check + test
 ```
 

@@ -21,7 +21,7 @@ Every test drives the real system. The backend suite sends HTTP to a live `uvico
 
 | Command (project root) | What it runs |
 |---|---|
-| `make check` | Every static check, no file changes: ruff, ESLint, prettier, `tsc`, build |
+| `make check` | Every static check, no file changes: ruff, hydroid (blocking calls on the event loop), ESLint, prettier, `tsc`, build |
 | `make test` | Both suites: backend, then full stack |
 | `make test-backend` | Backend suite (`cd backend && uv run pytest`). Needs Docker |
 | `make test-e2e` | Full-stack suite (`cd frontend && bun run test:e2e`). Needs Docker, uv, bun, Chromium (`cd frontend && bunx playwright install --with-deps chromium`) |
