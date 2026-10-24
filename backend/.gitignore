@@ -136,6 +136,9 @@ venv.bak/
 # Ruff
 .ruff_cache/
 
+# hydroid (event-loop linter)
+.hydroid_cache/
+
 # desloppify scan state
 .desloppify/
 scorecard.png

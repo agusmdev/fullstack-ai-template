@@ -12,7 +12,8 @@
 | One test file / test | `uv run pytest tests/e2e/test_items.py` / `uv run pytest tests/e2e/test_items.py::test_name` |
 | Tests + coverage | `make test-cov` (report in `htmlcov/`) |
 | Lint + format (changes files) | `make lint-all` (`ruff check . --fix`, `ruff format .`) |
-| Check only (what CI runs) | `make check` (`ruff check .`, `ruff format --check .`) |
+| Check only (what CI runs) | `make check` (`ruff check .`, `ruff format --check .`, `make evloop`) |
+| Blocking calls on the event loop | `make evloop` = `uvx --from hydroid-cli==0.5.0 hydroid .` (version pinned by `HYDROID_VERSION` in `Makefile`). [hydroid](https://github.com/agusmdev/hydroid) reads the code (static, needs `uv sync`) and fails on sync I/O, sleeps or locks reachable from an `async def`. Fix a finding with an async library or `await asyncio.to_thread(...)`; for a false positive, add `# hydroid: ignore - <reason>` on the reported line |
 | Type check (advisory) | `make backend-typecheck` at the root (runs `cd backend && uvx ty@0.0.84 check app`; version pinned by `TY_VERSION` in the root `Makefile`). Do not run `uvx ty` without a version: it fetches the newest release and skips the 7-day supply-chain floor. `ty` is not a dependency and reports known diagnostics; it is not in CI |
 | New migration | `make migrate-new message="add orders"` = `uv run alembic revision --autogenerate -m "..."` |
 | Apply / undo migration | `make migrate` / `make migrate-down` |

@@ -149,7 +149,7 @@ Run from the project root. All must pass before you call the work done.
 
 | Check | Command |
 |---|---|
-| Static checks (backend ruff check + format --check; frontend lint, format:check, typecheck, build) | `make check` |
+| Static checks (backend ruff check + format --check + hydroid event-loop check; frontend lint, format:check, typecheck, build) | `make check` |
 | Both e2e suites (backend API, then Playwright full stack), incl. route-coverage and no-mock guards | `make test` |
 | Everything CI runs | `make ci` (= `make check` + `make test`) |
 

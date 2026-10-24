@@ -1,5 +1,5 @@
 .PHONY: help up up-d down down-v logs logs-backend logs-db restart restart-backend build rebuild rebuild-backend ps clean \
-	backend-shell backend-dev backend-install backend-format backend-lint backend-lint-fix backend-check backend-typecheck \
+	backend-shell backend-dev backend-install backend-format backend-lint backend-lint-fix backend-check backend-evloop backend-typecheck \
 	frontend-shell frontend-dev frontend-install frontend-build frontend-lint frontend-lint-fix frontend-format frontend-format-check frontend-typecheck \
 	migrate migrate-create migrate-rollback migrate-history migrate-current db-shell db-reset \
 	test test-backend test-backend-cov test-e2e lint lint-fix format typecheck check ci quality \
@@ -84,8 +84,11 @@ backend-lint: ## Lint backend code with ruff
 backend-lint-fix: ## Lint and auto-fix backend code
 	cd backend && uv run ruff check . --fix
 
-backend-check: ## Check backend lint + format without changing files (what CI runs)
-	cd backend && uv run ruff check . && uv run ruff format --check .
+backend-check: ## Check backend lint + format + event-loop blocking calls without changing files (what CI runs)
+	cd backend && $(MAKE) check
+
+backend-evloop: ## Find blocking calls on the backend event loop (hydroid, pinned in backend/Makefile)
+	cd backend && $(MAKE) evloop
 
 backend-typecheck: ## Type-check the backend with ty (advisory: known diagnostics, not run in CI)
 	cd backend && uvx ty@$(TY_VERSION) check app
